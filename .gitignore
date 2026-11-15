@@ -16,10 +16,33 @@ dist/
 .env.*
 !.env.example
 
-# Test and coverage files
+# Test, lint and type-check caches
 .pytest_cache/
 .coverage
 htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# Node / Remotion (rendering/)
+node_modules/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+.remotion/
+
+# Rendered output (videos, stills)
+rendering/out/
+out/
+*.mp4
+*.webm
+*.mov
+
+# Logs
+logs/
+*.log
+
+# Ephemeral job folders (inputs, renders)
+workspace/
 
 # Private project notes
 Project.brief.md
@@ -28,3 +51,5 @@ Project.brief.md
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
+*.swp
