@@ -1,0 +1,27 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "radial-gradient(circle at 50% 50%, #0b2447 0%, #020617 70%)",
+    "accent": "#38bdf8"
+  },
+  "scenes": [
+    {
+      "id": "wan",
+      "component": "GlobeScene",
+      "durationInFrames": 510,
+      "props": {
+        "title": "WAN — Wide Area Network",
+        "caption": "Data from India reaches Europe, the USA, Japan and Australia",
+        "camera": "follow",
+        "routes": [
+          {"from": "India", "to": "United Kingdom"},
+          {"from": "India", "to": "USA"},
+          {"from": "India", "to": "Japan"},
+          {"from": "India", "to": "Australia"}
+        ]
+      }
+    }
+  ]
+}

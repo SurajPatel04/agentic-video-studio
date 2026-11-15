@@ -1,0 +1,26 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "radial-gradient(ellipse at 50% 45%, #1d344b 0%, #091421 80%)",
+    "accent": "#74d8ed"
+  },
+  "scenes": [
+    {
+      "id": "lan",
+      "component": "NetworkScene",
+      "durationInFrames": 180
+    },
+    {
+      "id": "compare",
+      "component": "ComparisonTableScene",
+      "durationInFrames": 150
+    },
+    {
+      "id": "zoom",
+      "component": "ZoomOutScene",
+      "durationInFrames": 330
+    }
+  ]
+}

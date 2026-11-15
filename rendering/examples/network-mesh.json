@@ -1,0 +1,19 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "radial-gradient(ellipse at 50% 45%, #1d344b 0%, #091421 80%)",
+    "accent": "#74d8ed"
+  },
+  "scenes": [
+    {
+      "id": "mesh",
+      "component": "NetworkScene",
+      "durationInFrames": 180,
+      "props": {
+        "topology": "mesh"
+      }
+    }
+  ]
+}

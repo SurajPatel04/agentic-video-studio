@@ -1,0 +1,90 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "radial-gradient(ellipse at 50% 45%, #1d344b 0%, #091421 80%)",
+    "accent": "#74d8ed"
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "component": "TitleScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "LAN \u00b7 MAN \u00b7 WAN",
+        "subtitle": "How networks connect our world"
+      }
+    },
+    {
+      "id": "definition",
+      "component": "DefinitionScene",
+      "durationInFrames": 120
+    },
+    {
+      "id": "example",
+      "component": "ExampleCardScene",
+      "durationInFrames": 120
+    },
+    {
+      "id": "hardware",
+      "component": "TechnologyScene",
+      "durationInFrames": 120
+    },
+    {
+      "id": "lan",
+      "component": "NetworkScene",
+      "durationInFrames": 150
+    },
+    {
+      "id": "man",
+      "component": "CityNetworkScene",
+      "durationInFrames": 150
+    },
+    {
+      "id": "zoom",
+      "component": "ZoomOutScene",
+      "durationInFrames": 330
+    },
+    {
+      "id": "wan",
+      "component": "GlobeScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "WAN connects distant networks",
+        "routes": [
+          {
+            "from": "India",
+            "to": "Japan"
+          }
+        ],
+        "caption": "Networks span regions and countries."
+      }
+    },
+    {
+      "id": "journey",
+      "component": "PacketJourneyScene",
+      "durationInFrames": 300
+    },
+    {
+      "id": "comparison",
+      "component": "ComparisonTableScene",
+      "durationInFrames": 180
+    },
+    {
+      "id": "process",
+      "component": "StepsScene",
+      "durationInFrames": 150
+    },
+    {
+      "id": "quiz",
+      "component": "QuizScene",
+      "durationInFrames": 180
+    },
+    {
+      "id": "summary",
+      "component": "SummaryScene",
+      "durationInFrames": 150
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "#0b1424",
+    "accent": "#73b9ff"
+  },
+  "scenes": [
+    {
+      "id": "city",
+      "component": "BuildingScene",
+      "durationInFrames": 180
+    },
+    {
+      "id": "technology",
+      "component": "TechnologyScene",
+      "durationInFrames": 180
+    },
+    {
+      "id": "custom",
+      "component": "InfrastructureScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Scale the infrastructure to your story",
+        "objects": [
+          {
+            "kind": "building",
+            "label": "Small",
+            "size": "small",
+            "color": "#55c6bc"
+          },
+          {
+            "kind": "building",
+            "label": "Tall",
+            "size": "large",
+            "height": 1.3,
+            "color": "#77a7ff"
+          },
+          {
+            "kind": "server",
+            "label": "Server",
+            "width": 0.8,
+            "color": "#b5a0f5"
+          },
+          {
+            "kind": "laptop",
+            "label": "Client",
+            "scale": 0.85,
+            "color": "#f0bc75"
+          }
+        ]
+      }
+    }
+  ]
+}

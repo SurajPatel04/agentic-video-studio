@@ -1,0 +1,31 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "scenes": [
+    {
+      "id": "india",
+      "component": "GlobeScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "India, connected to the world",
+        "caption": "Satellite terrain \u00b7 Official Indian boundary depiction",
+        "camera": "overview",
+        "spinSpeed": 0,
+        "cities": [
+          {
+            "name": "India",
+            "lat": 22,
+            "lon": 79
+          }
+        ],
+        "highlightCountries": [
+          "India"
+        ],
+        "surface": "satellite",
+        "indiaBoundary": "official",
+        "cameraDistance": 5.4
+      }
+    }
+  ]
+}
