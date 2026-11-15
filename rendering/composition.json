@@ -1,0 +1,39 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+    "text": "#f8fafc",
+    "muted": "#94a3b8",
+    "accent": "#38bdf8"
+  },
+  "defaultTransition": { "type": "fade", "durationInFrames": 15 },
+  "scenes": [
+    {
+      "id": "s1",
+      "component": "TitleScene",
+      "durationInFrames": 120,
+      "props": { "title": "The Solar System", "subtitle": "A quick tour", "animation": "zoom" }
+    },
+    {
+      "id": "s2",
+      "component": "BulletListScene",
+      "durationInFrames": 180,
+      "transition": { "type": "slide", "direction": "from-right", "durationInFrames": 20 },
+      "props": {
+        "title": "Inner planets",
+        "items": ["Mercury", "Venus", "Earth", "Mars"],
+        "stagger": 25
+      }
+    },
+    {
+      "id": "s3",
+      "component": "QuoteScene",
+      "durationInFrames": 120,
+      "background": "#1e1b4b",
+      "theme": { "accent": "#fde68a" },
+      "props": { "text": "The Sun holds 99.8% of the system's mass." }
+    }
+  ]
+}
