@@ -1,0 +1,1872 @@
+[
+  {
+    "name": "TitleScene",
+    "version": "1.0.0",
+    "description": "An animated title and optional subtitle.",
+    "tags": [
+      "title",
+      "introduction"
+    ],
+    "path": "rendering/src/scenes/TitleScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Study video",
+          "type": "string"
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "center",
+            "left"
+          ]
+        },
+        "animation": {
+          "type": "string",
+          "enum": [
+            "fade-up",
+            "fade",
+            "zoom",
+            "slide-left",
+            "none"
+          ]
+        },
+        "subtitleDelay": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "titleStyle": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "subtitleStyle": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Study video"
+    }
+  },
+  {
+    "name": "BulletListScene",
+    "version": "1.0.0",
+    "description": "A bullet list with frame-timed item reveals.",
+    "tags": [
+      "text",
+      "list",
+      "bullets"
+    ],
+    "path": "rendering/src/scenes/BulletListScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "items": {
+          "default": [
+            "First point",
+            "Second point"
+          ],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "startAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "itemFrames": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "bullet": {
+          "type": "string"
+        },
+        "animation": {
+          "type": "string",
+          "enum": [
+            "fade-up",
+            "fade",
+            "zoom",
+            "slide-left",
+            "none"
+          ]
+        },
+        "titleStyle": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "itemStyle": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "items": [
+        "First point",
+        "Second point"
+      ]
+    }
+  },
+  {
+    "name": "QuoteScene",
+    "version": "1.0.0",
+    "description": "A quotation or key fact with optional attribution.",
+    "tags": [
+      "quote",
+      "fact"
+    ],
+    "path": "rendering/src/scenes/QuoteScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "text": {
+          "default": "Start with a clear idea.",
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "animation": {
+          "type": "string",
+          "enum": [
+            "fade-up",
+            "fade",
+            "zoom",
+            "slide-left",
+            "none"
+          ]
+        },
+        "slowZoom": {
+          "type": "boolean"
+        },
+        "textStyle": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "authorStyle": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "text": "Start with a clear idea."
+    }
+  },
+  {
+    "name": "GlobeScene",
+    "version": "1.0.0",
+    "description": "A satellite globe with official India boundaries, animated routes, and a follow camera.",
+    "tags": [
+      "globe",
+      "WAN",
+      "geography",
+      "routes"
+    ],
+    "path": "rendering/src/scenes/GlobeScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "surface": {
+          "type": "string",
+          "enum": [
+            "satellite",
+            "political"
+          ]
+        },
+        "indiaBoundary": {
+          "type": "string",
+          "enum": [
+            "official",
+            "natural-earth"
+          ]
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          }
+        },
+        "cities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lon": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "name",
+              "lat",
+              "lon"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "camera": {
+          "type": "string",
+          "enum": [
+            "follow",
+            "overview"
+          ]
+        },
+        "highlightCountries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "title": {
+          "type": "string"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "oceanColor": {
+          "type": "string"
+        },
+        "landColor": {
+          "type": "string"
+        },
+        "highlightColor": {
+          "type": "string"
+        },
+        "borderColor": {
+          "type": "string"
+        },
+        "arcColor": {
+          "type": "string"
+        },
+        "packetColor": {
+          "type": "string"
+        },
+        "showLabels": {
+          "type": "boolean"
+        },
+        "highlightRouteCountries": {
+          "type": "boolean"
+        },
+        "keepTraffic": {
+          "type": "boolean"
+        },
+        "bidirectional": {
+          "type": "boolean"
+        },
+        "showAtmosphere": {
+          "type": "boolean"
+        },
+        "showStars": {
+          "type": "boolean"
+        },
+        "startAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "holdFrames": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "linkStagger": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "travelFrames": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "returnFrames": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "drawFrames": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "packetFrames": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "spinSpeed": {
+          "type": "number"
+        },
+        "cameraDistance": {
+          "type": "number",
+          "minimum": 3
+        },
+        "zoomOnTravel": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "titleStyle": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "captionStyle": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "labelStyle": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {}
+  },
+  {
+    "name": "InfrastructureScene",
+    "version": "1.0.0",
+    "description": "Buildings and technology objects grow from their base, hold, then disappear with configurable sizes and timing.",
+    "tags": [
+      "building",
+      "city",
+      "server",
+      "computer",
+      "laptop",
+      "router",
+      "infrastructure"
+    ],
+    "path": "rendering/src/scenes/InfrastructureScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Infrastructure, built step by step",
+          "type": "string"
+        },
+        "caption": {
+          "default": "Buildings, servers, and devices — ready for your next explanation.",
+          "type": "string"
+        },
+        "preset": {
+          "default": "mixed",
+          "type": "string",
+          "enum": [
+            "city",
+            "technology",
+            "mixed"
+          ]
+        },
+        "objects": {
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "default": "building",
+                "type": "string",
+                "enum": [
+                  "building",
+                  "server",
+                  "computer",
+                  "laptop",
+                  "router"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "size": {
+                "default": "medium",
+                "type": "string",
+                "enum": [
+                  "small",
+                  "medium",
+                  "large"
+                ]
+              },
+              "scale": {
+                "default": 1,
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 2
+              },
+              "width": {
+                "default": 1,
+                "type": "number",
+                "minimum": 0.4,
+                "maximum": 1.8
+              },
+              "height": {
+                "default": 1,
+                "type": "number",
+                "minimum": 0.4,
+                "maximum": 1.8
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "y": {
+                "default": 76,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "color": {
+                "type": "string"
+              },
+              "delay": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "growFrames": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "disappearAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind",
+              "size",
+              "scale",
+              "width",
+              "height",
+              "y"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "scale": {
+          "default": 1,
+          "type": "number",
+          "minimum": 0.25,
+          "maximum": 1.5
+        },
+        "stagger": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "growFrames": {
+          "default": 28,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "disappear": {
+          "default": true,
+          "type": "boolean"
+        },
+        "disappearAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "disappearFrames": {
+          "default": 22,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "showLabels": {
+          "default": true,
+          "type": "boolean"
+        },
+        "showPlatform": {
+          "default": true,
+          "type": "boolean"
+        },
+        "animation": {
+          "default": "grow",
+          "type": "string",
+          "enum": [
+            "grow",
+            "fade",
+            "none"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "caption",
+        "preset",
+        "scale",
+        "stagger",
+        "growFrames",
+        "disappear",
+        "disappearFrames",
+        "showLabels",
+        "showPlatform",
+        "animation"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Infrastructure, built step by step",
+      "caption": "Buildings, servers, and devices — ready for your next explanation.",
+      "preset": "mixed",
+      "scale": 1,
+      "stagger": 10,
+      "growFrames": 28,
+      "disappear": true,
+      "disappearFrames": 22,
+      "showLabels": true,
+      "showPlatform": true,
+      "animation": "grow"
+    }
+  },
+  {
+    "name": "BuildingScene",
+    "version": "1.0.0",
+    "description": "Buildings and technology objects grow from their base, hold, then disappear with configurable sizes and timing.",
+    "tags": [
+      "building",
+      "city",
+      "server",
+      "computer",
+      "laptop",
+      "router",
+      "infrastructure"
+    ],
+    "path": "rendering/src/scenes/InfrastructureScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "A city takes shape",
+          "type": "string"
+        },
+        "caption": {
+          "default": "Different sizes. One connected city.",
+          "type": "string"
+        },
+        "preset": {
+          "default": "city",
+          "type": "string",
+          "enum": [
+            "city",
+            "technology",
+            "mixed"
+          ]
+        },
+        "objects": {
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "default": "building",
+                "type": "string",
+                "enum": [
+                  "building",
+                  "server",
+                  "computer",
+                  "laptop",
+                  "router"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "size": {
+                "default": "medium",
+                "type": "string",
+                "enum": [
+                  "small",
+                  "medium",
+                  "large"
+                ]
+              },
+              "scale": {
+                "default": 1,
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 2
+              },
+              "width": {
+                "default": 1,
+                "type": "number",
+                "minimum": 0.4,
+                "maximum": 1.8
+              },
+              "height": {
+                "default": 1,
+                "type": "number",
+                "minimum": 0.4,
+                "maximum": 1.8
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "y": {
+                "default": 76,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "color": {
+                "type": "string"
+              },
+              "delay": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "growFrames": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "disappearAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind",
+              "size",
+              "scale",
+              "width",
+              "height",
+              "y"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "scale": {
+          "default": 1,
+          "type": "number",
+          "minimum": 0.25,
+          "maximum": 1.5
+        },
+        "stagger": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "growFrames": {
+          "default": 28,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "disappear": {
+          "default": true,
+          "type": "boolean"
+        },
+        "disappearAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "disappearFrames": {
+          "default": 22,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "showLabels": {
+          "default": true,
+          "type": "boolean"
+        },
+        "showPlatform": {
+          "default": true,
+          "type": "boolean"
+        },
+        "animation": {
+          "default": "grow",
+          "type": "string",
+          "enum": [
+            "grow",
+            "fade",
+            "none"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "caption",
+        "preset",
+        "scale",
+        "stagger",
+        "growFrames",
+        "disappear",
+        "disappearFrames",
+        "showLabels",
+        "showPlatform",
+        "animation"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "A city takes shape",
+      "caption": "Different sizes. One connected city.",
+      "preset": "city",
+      "scale": 1,
+      "stagger": 10,
+      "growFrames": 28,
+      "disappear": true,
+      "disappearFrames": 22,
+      "showLabels": true,
+      "showPlatform": true,
+      "animation": "grow"
+    }
+  },
+  {
+    "name": "TechnologyScene",
+    "version": "1.0.0",
+    "description": "Buildings and technology objects grow from their base, hold, then disappear with configurable sizes and timing.",
+    "tags": [
+      "building",
+      "city",
+      "server",
+      "computer",
+      "laptop",
+      "router",
+      "infrastructure"
+    ],
+    "path": "rendering/src/scenes/InfrastructureScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "The hardware behind the network",
+          "type": "string"
+        },
+        "caption": {
+          "default": "Servers, computers, and routers working together.",
+          "type": "string"
+        },
+        "preset": {
+          "default": "technology",
+          "type": "string",
+          "enum": [
+            "city",
+            "technology",
+            "mixed"
+          ]
+        },
+        "objects": {
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "default": "building",
+                "type": "string",
+                "enum": [
+                  "building",
+                  "server",
+                  "computer",
+                  "laptop",
+                  "router"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "size": {
+                "default": "medium",
+                "type": "string",
+                "enum": [
+                  "small",
+                  "medium",
+                  "large"
+                ]
+              },
+              "scale": {
+                "default": 1,
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 2
+              },
+              "width": {
+                "default": 1,
+                "type": "number",
+                "minimum": 0.4,
+                "maximum": 1.8
+              },
+              "height": {
+                "default": 1,
+                "type": "number",
+                "minimum": 0.4,
+                "maximum": 1.8
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "y": {
+                "default": 76,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "color": {
+                "type": "string"
+              },
+              "delay": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "growFrames": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "disappearAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind",
+              "size",
+              "scale",
+              "width",
+              "height",
+              "y"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "scale": {
+          "default": 1,
+          "type": "number",
+          "minimum": 0.25,
+          "maximum": 1.5
+        },
+        "stagger": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "growFrames": {
+          "default": 28,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "disappear": {
+          "default": true,
+          "type": "boolean"
+        },
+        "disappearAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "disappearFrames": {
+          "default": 22,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "showLabels": {
+          "default": true,
+          "type": "boolean"
+        },
+        "showPlatform": {
+          "default": true,
+          "type": "boolean"
+        },
+        "animation": {
+          "default": "grow",
+          "type": "string",
+          "enum": [
+            "grow",
+            "fade",
+            "none"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "caption",
+        "preset",
+        "scale",
+        "stagger",
+        "growFrames",
+        "disappear",
+        "disappearFrames",
+        "showLabels",
+        "showPlatform",
+        "animation"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "The hardware behind the network",
+      "caption": "Servers, computers, and routers working together.",
+      "preset": "technology",
+      "scale": 1,
+      "stagger": 10,
+      "growFrames": 28,
+      "disappear": true,
+      "disappearFrames": 22,
+      "showLabels": true,
+      "showPlatform": true,
+      "animation": "grow"
+    }
+  },
+  {
+    "name": "NetworkScene",
+    "version": "1.0.0",
+    "description": "A 3D LAN with star, bus, ring, or mesh cables and frame-driven packet traffic.",
+    "tags": [
+      "network",
+      "LAN",
+      "topology",
+      "packets"
+    ],
+    "path": "rendering/src/scenes/NetworkScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "A local network. Every device connected.",
+          "type": "string"
+        },
+        "topology": {
+          "default": "star",
+          "type": "string",
+          "enum": [
+            "star",
+            "bus",
+            "ring",
+            "mesh"
+          ]
+        },
+        "devices": {
+          "default": [
+            "router",
+            "computer",
+            "computer",
+            "server",
+            "laptop"
+          ],
+          "minItems": 3,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "computer",
+              "router",
+              "server",
+              "laptop"
+            ]
+          }
+        },
+        "startAt": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 3,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "drawFrames": {
+          "default": 24,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "packetFrames": {
+          "default": 60,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "caption": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "topology",
+        "devices",
+        "startAt",
+        "stagger",
+        "drawFrames",
+        "packetFrames"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "A local network. Every device connected.",
+      "topology": "star",
+      "devices": [
+        "router",
+        "computer",
+        "computer",
+        "server",
+        "laptop"
+      ],
+      "startAt": 20,
+      "stagger": 3,
+      "drawFrames": 24,
+      "packetFrames": 60
+    }
+  },
+  {
+    "name": "CityNetworkScene",
+    "version": "1.0.0",
+    "description": "An overhead 3D city connected by a progressively illuminated fibre ring.",
+    "tags": [
+      "MAN",
+      "city",
+      "fibre",
+      "ring"
+    ],
+    "path": "rendering/src/scenes/CityNetworkScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "One city. A connected fibre ring.",
+          "type": "string"
+        },
+        "buildingCount": {
+          "default": 6,
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 10
+        },
+        "startAt": {
+          "default": 15,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "drawFrames": {
+          "default": 10,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "packetFrames": {
+          "default": 40,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "caption": {
+          "default": "MAN • A metropolitan area network connects sites across a city.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "buildingCount",
+        "startAt",
+        "drawFrames",
+        "packetFrames",
+        "caption"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "One city. A connected fibre ring.",
+      "buildingCount": 6,
+      "startAt": 15,
+      "drawFrames": 10,
+      "packetFrames": 40,
+      "caption": "MAN • A metropolitan area network connects sites across a city."
+    }
+  },
+  {
+    "name": "ZoomOutScene",
+    "version": "1.0.0",
+    "description": "A continuous 3D pullback from a room LAN to a city MAN, then a matched dissolve into the satellite WAN globe.",
+    "tags": [
+      "zoom",
+      "LAN",
+      "MAN",
+      "WAN",
+      "scale"
+    ],
+    "path": "rendering/src/scenes/ZoomOutScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "From your room to the world",
+          "type": "string"
+        },
+        "lanLabel": {
+          "default": "LAN • One room",
+          "type": "string"
+        },
+        "manLabel": {
+          "default": "MAN • One city",
+          "type": "string"
+        },
+        "wanLabel": {
+          "default": "WAN • Across the world",
+          "type": "string"
+        },
+        "cityAt": {
+          "default": 90,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "globeAt": {
+          "default": 210,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "transitionFrames": {
+          "default": 45,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "title",
+        "lanLabel",
+        "manLabel",
+        "wanLabel",
+        "cityAt",
+        "globeAt",
+        "transitionFrames"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "From your room to the world",
+      "lanLabel": "LAN • One room",
+      "manLabel": "MAN • One city",
+      "wanLabel": "WAN • Across the world",
+      "cityAt": 90,
+      "globeAt": 210,
+      "transitionFrames": 45
+    }
+  },
+  {
+    "name": "PacketJourneyScene",
+    "version": "1.0.0",
+    "description": "Follow a single packet through labeled devices, an ISP, the internet, and a server.",
+    "tags": [
+      "packet",
+      "routing",
+      "internet",
+      "journey"
+    ],
+    "path": "rendering/src/scenes/PacketJourneyScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Follow one packet to its destination",
+          "type": "string"
+        },
+        "stops": {
+          "default": [
+            {
+              "label": "Laptop",
+              "kind": "laptop",
+              "detail": "Your device creates data and sends it to the local gateway."
+            },
+            {
+              "label": "Router",
+              "kind": "router",
+              "detail": "The gateway forwards the packet beyond your local network."
+            },
+            {
+              "label": "ISP",
+              "kind": "server",
+              "detail": "Your internet service provider carries the packet toward its destination."
+            },
+            {
+              "label": "Internet",
+              "kind": "internet",
+              "detail": "Routers across interconnected networks forward the packet."
+            },
+            {
+              "label": "Server",
+              "kind": "server",
+              "detail": "The destination receives the packet and can send a response."
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "laptop",
+                  "router",
+                  "server",
+                  "computer",
+                  "internet"
+                ]
+              }
+            },
+            "required": [
+              "label",
+              "detail",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "startAt": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "travelFrames": {
+          "default": 35,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "holdFrames": {
+          "default": 25,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "title",
+        "stops",
+        "startAt",
+        "travelFrames",
+        "holdFrames"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Follow one packet to its destination",
+      "stops": [
+        {
+          "label": "Laptop",
+          "kind": "laptop",
+          "detail": "Your device creates data and sends it to the local gateway."
+        },
+        {
+          "label": "Router",
+          "kind": "router",
+          "detail": "The gateway forwards the packet beyond your local network."
+        },
+        {
+          "label": "ISP",
+          "kind": "server",
+          "detail": "Your internet service provider carries the packet toward its destination."
+        },
+        {
+          "label": "Internet",
+          "kind": "internet",
+          "detail": "Routers across interconnected networks forward the packet."
+        },
+        {
+          "label": "Server",
+          "kind": "server",
+          "detail": "The destination receives the packet and can send a response."
+        }
+      ],
+      "startAt": 20,
+      "travelFrames": 35,
+      "holdFrames": 25
+    }
+  },
+  {
+    "name": "ComparisonTableScene",
+    "version": "1.0.0",
+    "description": "A configurable comparison table with sequential row reveals.",
+    "tags": [
+      "comparison",
+      "table",
+      "LAN",
+      "MAN",
+      "WAN"
+    ],
+    "path": "rendering/src/scenes/ComparisonTableScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "LAN, MAN, WAN — what changes?",
+          "type": "string"
+        },
+        "columns": {
+          "default": [
+            "Property",
+            "LAN",
+            "MAN",
+            "WAN"
+          ],
+          "minItems": 2,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rows": {
+          "default": [
+            [
+              "Range",
+              "Room, building, campus",
+              "Across a city",
+              "Regions and countries"
+            ],
+            [
+              "Speed",
+              "Depends on technology",
+              "Depends on technology",
+              "Depends on technology"
+            ],
+            [
+              "Cost",
+              "Local equipment + cabling",
+              "Metro links + equipment",
+              "Long-distance links + services"
+            ],
+            [
+              "Example",
+              "School computer lab",
+              "City-wide campus network",
+              "Company branches worldwide"
+            ]
+          ],
+          "minItems": 1,
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "startAt": {
+          "default": 12,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "rowStagger": {
+          "default": 24,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "revealFrames": {
+          "default": 15,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "footer": {
+          "default": "Network size describes coverage; it does not guarantee speed or cost.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "columns",
+        "rows",
+        "startAt",
+        "rowStagger",
+        "revealFrames",
+        "footer"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "LAN, MAN, WAN — what changes?",
+      "columns": [
+        "Property",
+        "LAN",
+        "MAN",
+        "WAN"
+      ],
+      "rows": [
+        [
+          "Range",
+          "Room, building, campus",
+          "Across a city",
+          "Regions and countries"
+        ],
+        [
+          "Speed",
+          "Depends on technology",
+          "Depends on technology",
+          "Depends on technology"
+        ],
+        [
+          "Cost",
+          "Local equipment + cabling",
+          "Metro links + equipment",
+          "Long-distance links + services"
+        ],
+        [
+          "Example",
+          "School computer lab",
+          "City-wide campus network",
+          "Company branches worldwide"
+        ]
+      ],
+      "startAt": 12,
+      "rowStagger": 24,
+      "revealFrames": 15,
+      "footer": "Network size describes coverage; it does not guarantee speed or cost."
+    }
+  },
+  {
+    "name": "DefinitionScene",
+    "version": "1.0.0",
+    "description": "A term and its meaning with a delayed definition reveal.",
+    "tags": [
+      "definition",
+      "term"
+    ],
+    "path": "rendering/src/scenes/DefinitionScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "term": {
+          "default": "Local Area Network",
+          "type": "string"
+        },
+        "abbreviation": {
+          "default": "LAN",
+          "type": "string"
+        },
+        "meaning": {
+          "default": "A network that connects devices within a limited area, such as a home, school, or office.",
+          "type": "string"
+        },
+        "detail": {
+          "default": "Think: nearby devices sharing a connection.",
+          "type": "string"
+        },
+        "revealAt": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "term",
+        "abbreviation",
+        "meaning",
+        "detail",
+        "revealAt"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "term": "Local Area Network",
+      "abbreviation": "LAN",
+      "meaning": "A network that connects devices within a limited area, such as a home, school, or office.",
+      "detail": "Think: nearby devices sharing a connection.",
+      "revealAt": 20
+    }
+  },
+  {
+    "name": "ExampleCardScene",
+    "version": "1.0.0",
+    "description": "A real-life example paired with an existing 3D infrastructure object.",
+    "tags": [
+      "example",
+      "application"
+    ],
+    "path": "rendering/src/scenes/ExampleCardScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Home Wi-Fi is a LAN",
+          "type": "string"
+        },
+        "example": {
+          "default": "Your phone, laptop, and printer connect through the home router.",
+          "type": "string"
+        },
+        "takeaway": {
+          "default": "One small area. Several connected devices.",
+          "type": "string"
+        },
+        "kind": {
+          "default": "router",
+          "type": "string",
+          "enum": [
+            "router",
+            "computer",
+            "laptop",
+            "server",
+            "building"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "example",
+        "takeaway",
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Home Wi-Fi is a LAN",
+      "example": "Your phone, laptop, and printer connect through the home router.",
+      "takeaway": "One small area. Several connected devices.",
+      "kind": "router"
+    }
+  },
+  {
+    "name": "StepsScene",
+    "version": "1.0.0",
+    "description": "A numbered process with sequential reveals and arrows.",
+    "tags": [
+      "process",
+      "steps"
+    ],
+    "path": "rendering/src/scenes/StepsScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "How a message moves",
+          "type": "string"
+        },
+        "steps": {
+          "default": [
+            "Create the message",
+            "Split into packets",
+            "Forward across the network",
+            "Reassemble at the destination"
+          ],
+          "minItems": 2,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "startAt": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 30,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "title",
+        "steps",
+        "startAt",
+        "stagger"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "How a message moves",
+      "steps": [
+        "Create the message",
+        "Split into packets",
+        "Forward across the network",
+        "Reassemble at the destination"
+      ],
+      "startAt": 10,
+      "stagger": 30
+    }
+  },
+  {
+    "name": "QuizScene",
+    "version": "1.0.0",
+    "description": "Four answer choices followed by the correct answer and explanation.",
+    "tags": [
+      "quiz",
+      "assessment"
+    ],
+    "path": "rendering/src/scenes/QuizScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "question": {
+          "default": "Which network typically spans a city?",
+          "type": "string"
+        },
+        "options": {
+          "default": [
+            "LAN",
+            "MAN",
+            "WAN",
+            "PAN"
+          ],
+          "minItems": 4,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "correctIndex": {
+          "default": 1,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "answerAt": {
+          "default": 120,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "explanation": {
+          "default": "A MAN connects sites across a metropolitan area.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question",
+        "options",
+        "correctIndex",
+        "answerAt",
+        "explanation"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "question": "Which network typically spans a city?",
+      "options": [
+        "LAN",
+        "MAN",
+        "WAN",
+        "PAN"
+      ],
+      "correctIndex": 1,
+      "answerAt": 120,
+      "explanation": "A MAN connects sites across a metropolitan area."
+    }
+  },
+  {
+    "name": "SummaryScene",
+    "version": "1.0.0",
+    "description": "Key takeaways appearing sequentially with check marks.",
+    "tags": [
+      "summary",
+      "recap"
+    ],
+    "path": "rendering/src/scenes/SummaryScene.tsx",
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Three networks. Three scales.",
+          "type": "string"
+        },
+        "points": {
+          "default": [
+            "LAN connects nearby devices.",
+            "MAN connects sites across a city.",
+            "WAN connects networks across large distances."
+          ],
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "startAt": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 25,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "title",
+        "points",
+        "startAt",
+        "stagger"
+      ],
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Three networks. Three scales.",
+      "points": [
+        "LAN connects nearby devices.",
+        "MAN connects sites across a city.",
+        "WAN connects networks across large distances."
+      ],
+      "startAt": 10,
+      "stagger": 25
+    }
+  }
+]
