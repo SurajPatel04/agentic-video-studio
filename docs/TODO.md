@@ -1,11 +1,11 @@
 # Progress tracker — prompt-to-video
 
 Prompt → LLM plans the video → React/Remotion scenes → MP4.
-**Scope (v1):** React/Remotion only. No ComfyUI, no third-party TTS/audio, no third-party image generation. All visuals are code (SVG, CSS, Three.js).
+**Scope (v1):** React/Remotion only. No ComfyUI, no third-party image generation. Narration uses Deepgram TTS (only third-party audio). All visuals are code (SVG, CSS, Three.js).
 
 Legend: `[x]` done · `[~]` partly done · `[ ]` not started
 
-_Last updated: 2026-11-15 (Step 2 done)_
+_Last updated: 2026-11-15 (scene library expanded to 28 entries)_
 
 ---
 
@@ -37,9 +37,9 @@ _Last updated: 2026-11-15 (Step 2 done)_
 - [x] Render from external JSON: `npx remotion render VideoComposition out/x.mp4 --props=file.json`
 - [x] Styling decision: pure CSS (inline styles + theme), no Tailwind
 
-## 4. Scenes (build step 2) — done for networking
+## 4. Scenes (build step 2) — done
 
-### Done
+### Core
 - [x] `TitleScene` — title + subtitle, entrance animations
 - [x] `BulletListScene` — staggered items, custom bullets/timings
 - [x] `QuoteScene` — quote + author, slow zoom
@@ -56,34 +56,92 @@ _Last updated: 2026-11-15 (Step 2 done)_
 - [x] `PacketJourneyScene` — laptop → router → ISP → internet → server, step labels
 - [x] `DefinitionScene`, `ExampleCardScene`, `StepsScene`, `QuizScene`, `SummaryScene`
 
-### Later (any study topic)
-- [ ] `ChartScene` (bar / line — d3-scale + d3-shape, installed)
-- [ ] `EquationScene` (KaTeX installed — load CSS/fonts before first frame)
-- [ ] `TimelineScene`
-- [ ] `CodeScene` (prism-react-renderer or Shiki)
+### Library expansion — planner-ready
+- [x] `ChartScene` — bar / line / area, 1–4 series, axes, grid, legend, value labels
+- [x] `EquationScene` — KaTeX formulas and derivations, 1–5 revealed steps
+- [x] `TimelineScene` — horizontal or vertical dated events, 2–7 cards
+- [x] `FlowchartScene` — dagre layout, start / process / decision / end nodes, labeled edges
+- [x] `CodeScene` — syntax-highlighted code, line numbers, highlighted lines, line-by-line reveal
+- [x] `MapScene` — Natural Earth flat map, highlighted countries, city markers, animated routes
+- [x] `StatScene` — animated key number with optional comparison bars
+- [x] `ImageScene` — local/remote figures with caption, credit, and pan/zoom motion
+- [x] `CycleScene` — circular process diagram, 3–8 stages, animated arrows
+- [x] `VennScene` — two-circle comparison with left-only, right-only, and shared points
+
+### Devices & pointer
+- [x] 2D device icons — `components/Device.tsx` (63 kinds: lucide + custom SVG in `components/icons.tsx`), `DeviceGridScene`
+- [x] 3D models for modem, hub, coaxial, fibre, undersea-cable, isp, resistor, capacitor, motherboard, hacker (`three/models/extra.tsx`) — all 63 kinds now have 2D + 3D
+- [x] Realistic 3D devices — `components/three/` (procedural, all 63 kinds), `<Device3D>` / `<DeviceModel>`, `Device3DScene`
+- [x] States for both: off / on / active / error, plus `changes` at frames
+- [x] Realistic mouse pointer — `components/Pointer.tsx` (arrow / hand / text, path + clicks with ripple)
+- [x] Old scenes use the realistic models: `InfrastructureObject` now draws `DeviceModel` (Network, PacketJourney, Infrastructure/Building/Technology, City, ZoomOut, ExampleCard) and accepts any device kind
+- [x] Shared motion effects, 2D (`src/effects/`): `FlowPath` packet / current / light / bits, `SignalWaves`; 3D (`three/effects.tsx`): `Flow3D`, `Movers`, `Waves3D`
+- [x] Shared annotations: `Callout`, `Mark` (check / cross), `Badge`
+- [x] `overlays` on any scene in JSON (flow, waves, callout, check, cross, badge, arrow, pointer) — validated by `npm run validate`
+- [x] `ConnectionScene` (2D or 3D devices + animated links) and `DeviceDemoScene` (app window, typing, button, pointer, device reacts)
+- [x] Old Network / City cables use the shared 3D `Movers` (NetworkScene `effect`: packet / light / current / dot)
+- [x] UI kit: `AppWindow` (title or URL bar), `TextField` (typing, password mask), `UIButton` (press + ripple) — `components/ui.tsx`
+- [x] UI overlays: `terminal`, `notification`, `toggle` (switch / checkbox), `chat` (`src/effects/ui.tsx`)
+- [x] Per-device `color` in `DeviceGridScene`, `ConnectionScene`, `Device3DScene`, `DeviceDemoScene`, `InfrastructureScene`
+- [x] Per-device `glow` (screen / LED / ring colour) for 2D + 3D devices
+- [x] More motion: `field` (magnet / dipole / ± charge), `sound` (sine wave), `progress`, `lock` (padlock + text → ciphertext); 3D `FieldLines3D`, speaker sound rings, `lock` + `magnet` device kinds (65 kinds)
+- [x] More annotations: `highlight` (box + spotlight), `tooltip`, `zoom` (magnifying lens over the real scene)
+- [x] Named positions for overlays (`top-left` … `bottom-right`); edge-aligned near frame edges
+- [x] `CircuitScene`, `WirelessScene` (ConnectionScene presets), `BlankScene` (base for overlays) — see `examples/more-effects.json`
+- [x] Circuit and wireless: covered by `ConnectionScene` (`current` / `waves` links), see `examples/effects-demo.json`
+
+### Motion kit (education-style animation)
+- [x] `src/motion/`: `AnimatedText` (words / letters / lines / typewriter / fade), `Highlight`, `Underline`, `CircleMark`, `Stagger`, `CountUp`, `Pulse`, `Exit`, `DrawArrow`
+- [x] Text markup in JSON: `**bold**` `==highlight==` `__underline__` `((circle))`, `\n` = new line
+- [x] 10 entrance types in `animation.ts` (added pop, blur, rise, slide-right, slide-down)
+- [x] Used by Title, BulletList, Quote, `StudyFrame` titles, and new `ExplainScene`
+- [x] Kit used in Definition, ExampleCard, Steps, Quiz, Summary (markup + `textAnimation` in all text fields; StudyFrame footer animates)
 
 ### Test videos
 - [x] `examples/networking-complete.json` — 13 scenes, 68 s, renders with no code change (~36 s render)
 - [x] Other examples: `networking-priority`, `study-gallery`, `network-{star,bus,ring,mesh}`, `globe-*`, `infrastructure`
+- [x] `examples/library-showcase.json` — 13 scenes, 53 s, covers all ten new components (`LibraryShowcase`)
+
+### Course components (planned, build later)
+Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute their own steps.
+- [ ] 1. Shared: `GraphScene` (nodes/edges, spread), `TreeScene` (BST/heap/org chart), `TableScene` (SQL, truth/DP tables)
+- [ ] 2. DSA: `ArrayScene` (indices, swaps, i/j pointers), `SortingScene` (bubble/selection/insertion/merge/quick from `{algorithm, input}`), linked list, stack/queue, hash table, BFS/DFS/Dijkstra, recursion call stack, Big-O race, code trace with variables
+- [ ] 3. Maths: `PlotScene` (y = f(x), tangent, area), `GeometryScene`, number line, unit circle, vectors, matrix multiply, probability (coin/dice/tree), fractions, algebra steps
+- [ ] 4. CS: `SequenceScene` (HTTP/DNS/TCP handshake), `LayerStackScene` (OSI, encapsulation), `LogicGateScene` + truth table, binary/hex, CPU fetch-decode-execute, Gantt scheduling, memory/paging
+- [ ] 5. Mass communication: communication models (Shannon–Weaver, SMCR, Lasswell with noise + feedback), generic media mockups (newspaper, breaking-news ticker, social post, video player, podcast), viral spread, camera shots / rule of thirds, agenda-setting funnel
+- [ ] Common: `MindMapScene`, `PyramidScene` / `FunnelScene`, `CharacterScene` (avatars + speech bubbles), `WhiteboardScene` (hand-drawn)
+
+### Audio
+- [x] Deepgram TTS in the backend: `app/utils/tts.py` (cached WAV clips in `rendering/public/audio/tts/`), `app/utils/render.py` (narration → voice + scene lengths, validate, Remotion render to `workspace/jobs/<id>/video.mp4`)
+- [x] API: `POST /tts` (text → WAV), `POST /render` (composition → MP4), `GET /render/{id}/video`, `GET /render/{id}/composition`; CLI: `python -m app.cli tts|voice|render`
+- [x] Code-generated SFX (`npm run sfx` → `public/sfx/`): click, pop, whoosh, typing, ding, success, error, lock, notify
+- [x] Built-in sounds: pointer clicks, device pop-in, ✓ ding / ✗ error, badge / callout / chat pop, toast notify, toggle click, lock, typing (terminal, text field, typewriter), progress success, whoosh on transitions
+- [x] JSON: composition `audio` (effects on/off + volume, transitions, voice, voiceVolume, `music` with ducking under narration); scene `voice` (own recording works too) and `sfx` cues
+- [x] Captions from the narration: word timings via Deepgram speech-to-text on our own clip (estimate fallback), word-by-word highlight; on/off + style from JSON `captions`, API (`captions: true/false` on `/render` and `/video`), CLI (`--captions` / `--no-captions`)
+- [x] Planner (`app/utils/planner.py`): LLM writes the composition with narration per scene from a compact scene catalog; validated, errors fed back (3 tries). API `POST /plan`, `POST /video` (prompt → plan → voice → captions → MP4); CLI `plan`, `video`
+- [ ] Long renders: move `/render` onto the job queue (now it waits for the MP4)
 
 ## 5. Library contract & registry
 
-- [x] Zod props schema + description + tags for every scene (17 entries) in `src/registry.ts` → `sceneCatalog`
+- [x] Zod props schema + description + tags for every scene (28 entries) in `src/registry.ts` → `sceneCatalog`
 - [x] Schemas are strict: unknown props (typos like `"titel"`) are errors, not silently dropped
 - [x] `library/registry.json` generated by `npm run check:scenes` (Zod 4 `z.toJSONSchema()`, defaults as example)
 - [x] Props validated in `VideoComposition` (render fails with the exact message)
 - [x] `npm run validate <file.json>` — checks components, props, durations, duplicate ids before rendering; exit 1 + exact JSON path per error
-- [x] `npm run check:visual` — renders stills of every scene for a visual check
+- [x] `npm run check:visual` — renders stills of the networking and expanded-library scenes for a visual check
 - [ ] Real `version` and hand-picked `example` per scene (currently `1.0.0` and the schema defaults)
 - [ ] Auto scene length from props (e.g. `globeSceneFrames`) instead of hand-typed `durationInFrames`
 - [ ] Move library out of `rendering/src/` to top-level `library/` (needs bundler alias)
 
 ## 6. Planner agent (LLM → JSON)
 
-- [ ] `script.json` schema (Pydantic): scenes, type, on-screen text, props, duration
-- [ ] Planner prompt + call through the gateway; validate, retry on bad JSON
-- [ ] Durations from on-screen text (~2.5–3 words/s + animation time), min/max limits
-- [ ] Build `composition.json` from `script.json` + `registry.json`
+- [x] Planner prompt + call through the gateway; validate with the scene contracts, retry with the errors (`app/utils/planner.py`)
+- [x] LLM writes `composition.json` directly from a compact catalog built from `registry.json` (no separate script.json step)
+- [x] Durations: planner gives a rough length, the narration step stretches each scene to fit its speech
+- [x] Topic filter: only core + matching scenes go in the prompt (LAN/MAN/WAN plan: ~5.3K input tokens, was ~9–10K)
+- [x] Planner modes: `catalog` (filtered prompt, 1 call), `tools` (search_scenes / get_scene / list_device_kinds / get_overlay via the Responses API), `auto` (tools once the library has > 80 scenes)
+- [x] Catalog reloads when `library/registry.json` / `library/overlays.json` change (no backend restart); overlays' fields exported to `library/overlays.json`
+- [ ] Planner quality: few-shot example videos, per-subject guidance, scene variety checks
 
 ## 7. API, queue, storage
 
@@ -95,16 +153,23 @@ _Last updated: 2026-11-15 (Step 2 done)_
 
 ## 8. Agent writes new components
 
-- [ ] Safe file tools (paths limited to `workspace/jobs/<id>/` and `library/staging/`)
-- [ ] Search registry → reuse, or write new component in `library/staging/`
-- [ ] Skills: `video-planning`, `remotion-video`, `motion-animation`, `threejs-animation`, `video-rendering` (`SKILL.md` each)
+- [x] Sandboxed file tools (`app/agent/sandbox.py`): list_dir, read_file, glob, grep (rendering/src, examples, library, docs; never .env / node_modules); write_file, edit_file, delete_file only in `workspace/jobs/<job>/`
+- [x] Checks (`app/agent/staging.py`): rules (import allow-list, no randomness / clock / timers / network) → typecheck → contract (registered, metadata, defaults) → render frames 10 / middle / last; the agent sees the frames
+- [x] Staging: passing scenes go to `rendering/src/staging/` (manifest + generated index), usable in videos and visible to the planner; failed drafts never enter `src/`
+- [x] Promote (→ `src/scenes/` + `registry.ts`, rolled back on failure) / unstage
+- [x] API: `POST /components`, `GET /components`, `POST /components/{name}/promote`, `DELETE /components/{name}`; CLI `component`, `staged`, `promote`, `unstage`
+- [x] Token controls (history window, one-turn frames, paged reads, pre-call budget, `usage.json`), see `docs/Agent-harness.md`
+- [x] Publish only on `finish` (checks never publish; publish is all-or-nothing with rollback)
+- [ ] Run generated code in an isolated worker (no credentials / network); semantic animation tests with several prop sets
+- [ ] Planner calls the agent automatically when no scene fits a topic
 
 ## 9. Validation & fix loop
 
-- [ ] Typecheck + lint rules (frame-driven only, import allow-list, no network/fs)
-- [ ] Render still frames (first / middle / last per scene)
-- [ ] Feed errors back to the agent, max 3–5 retries, then fallback generic scene
-- [ ] Promote passing components from staging → library, update registry
+- [x] Typecheck + rule check (frame-driven only, import allow-list, no network/fs)
+- [x] Render still frames (first / middle / last)
+- [x] Feed errors back to the agent (max `AGENT_MAX_CHECKS` = 6 checks, `AGENT_MAX_STEPS` = 40 calls)
+- [x] Promote passing components from staging → library, update registry
+- [ ] Fallback to a generic scene when the agent gives up
 
 ## 10. Production
 
@@ -118,7 +183,7 @@ _Last updated: 2026-11-15 (Step 2 done)_
 
 | Topic | Decision |
 |---|---|
-| Audio | None in v1 (silent video). Local TTS (e.g. Piper) can be added later. |
+| Audio | Deepgram TTS for narration (approved), code-generated SFX, optional own music/voice files. |
 | Images | None from services; visuals are SVG/CSS/Three.js. Local bundled assets allowed (e.g. Blue Marble). |
 | Styling | Inline CSS + theme from JSON. No Tailwind in `rendering/`. |
 | 3D | Three.js via `@remotion/three`; every animation driven by `useCurrentFrame()`. |
@@ -129,3 +194,14 @@ _Last updated: 2026-11-15 (Step 2 done)_
 - MLflow route `summary` is shared with another service's usage tracking.
 - Scene durations are typed by hand in JSON; a too-short scene cuts animations off.
 - Survey of India outline is for visualization, not a certified survey map.
+
+## Component harness token controls
+
+- [x] Bound complete conversation turns, including old source-bearing tool arguments; preserve a compact tool activity ledger.
+- [x] Consume rendered frames once; require a later review turn before finish.
+- [x] Paginate default file reads and reserve input budget before dispatch (conservative local estimate, not a provider billing cap).
+- [x] Record per-call usage/cache/latency in each job's `usage.json`; offline regressions and opt-in TEST-only live smoke.
+- [ ] Same-request end-to-end cost/quality benchmark on TEST; semantic animation assertions and varied props.
+- [ ] Separate validation from staging publication; transactional rollback for all staging artifacts; isolated execution worker.
+
+See `docs/Agent-harness.md` for controls, commands and limitations.

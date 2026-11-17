@@ -1,6 +1,6 @@
 # Networking and study scene library
 
-All ten scenes in the current build list are implemented and registered. `ChartScene` and `TimelineScene` remain deferred, as requested. The official Indian map depiction from Survey of India remains the default; no alternative India-view download is needed.
+All ten scenes in the current build list are implemented and registered. The library has since expanded with ten planner-ready scenes — charts, equations, timelines, flowcharts, code, maps, statistics, images, cycles, and Venn diagrams. See [Expanded scene library](Library-scenes.md). The official Indian map depiction from Survey of India remains the default; no alternative India-view download is needed.
 
 ## Preview and render
 
@@ -53,6 +53,6 @@ npm run typecheck
 npm run check:visual
 ```
 
-`check:scenes` verifies all default contracts, alias presets, topology wiring, and representative invalid inputs, then exports the registry. `check:visual` renders sixteen frames covering all new scenes, all four topologies, the room/city/globe stages, and both quiz states into `out/scene-checks`.
+`check:scenes` verifies all default contracts, alias presets, topology wiring, and representative invalid inputs, then exports the registry. `check:visual` renders stills for the core networking scenes and the ten new components into `out/scene-checks`, covering all topologies, the room/city/globe stages, and both quiz states.
 
 A complete narrated video still needs narration/TTS and audio assembly from the backend pipeline; these changes provide the reusable visuals and demo composition.

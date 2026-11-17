@@ -53,3 +53,7 @@ Project.brief.md
 .DS_Store
 Thumbs.db
 *.swp
+
+# Generated narration audio (re-made by `npm run voice`, cached by text)
+rendering/public/audio/tts/
+rendering/examples/*.voiced.json
