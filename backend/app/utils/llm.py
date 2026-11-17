@@ -83,3 +83,24 @@ async def call_model(prompt: Any, model: str | None = None, **kwargs: Any) -> st
         (time.perf_counter() - started) * 1000,
     )
     return response.text if hasattr(response, "text") else str(response.content)
+
+
+def get_tool_llm(model: str | None = None, **kwargs: Any) -> ChatOpenAI:
+    """Client for tool calling. gpt-6-luna only allows tools with reasoning on the Responses API
+    (/v1/responses); on /chat/completions it needs reasoning_effort="none"."""
+    return get_llm(model, use_responses_api=True, **kwargs)
+
+
+def usage_of(message: Any) -> tuple[int, int]:
+    """(input tokens, output tokens) of an LLM reply, 0 when unknown."""
+    u = getattr(message, "usage_metadata", None) or {}
+    return int(u.get("input_tokens", 0)), int(u.get("output_tokens", 0))
+
+
+def text_of(message: Any) -> str:
+    t = getattr(message, "text", None)
+    if isinstance(t, str):  # newer langchain: property (a str)
+        return str(t)
+    if callable(t):
+        return t()
+    return str(message.content)
