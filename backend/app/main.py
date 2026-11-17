@@ -136,7 +136,7 @@ class RenderRequest(BaseModel):
     composition: dict[str, Any]  # same JSON as rendering/examples/*.json
     narrate: bool = True  # voice every scene's "narration" with Deepgram first
     captions: bool | None = None  # True/False forces subtitles on/off; None = what the JSON says (default on)
-    # burn = in the picture (styled, word highlight) | track = player can switch it on/off | both; None = JSON / CAPTIONS_MODE
+    # burn = in the picture (styled, word highlight) | track = player can switch it on/off | both; None = JSON / CAPTIONS_PLAYER_TRACK
     captions_mode: Literal["burn", "track", "both"] | None = None
     scale: float = Field(default=1.0, gt=0.1, le=2.0)  # 0.5 = half resolution (quick preview)
 

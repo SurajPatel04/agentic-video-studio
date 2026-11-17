@@ -41,7 +41,7 @@ from app.utils.console import step
 from app.utils.llm import get_llm, text_of, usage_of
 from app.utils.planner import PlanError, _extract_json, plan_video
 from app.utils import subtitles
-from app.utils.render import RenderError, render_video, validate, without_intro
+from app.utils.render import RenderError, default_caption_mode, render_video, validate, without_intro
 
 log = logging.getLogger(__name__)
 
@@ -448,7 +448,7 @@ async def join_chapters(state: LongState) -> Path:
         if (job / "captions.srt").exists():  # chapter subtitles, shifted to where the chapter starts
             cues += [subtitles.Cue(q.start + start, q.end + start, q.text) for q in subtitles.parse_srt((job / "captions.srt").read_text())]
             if (job / "composition.json").exists():
-                mode = subtitles.caption_mode(json.loads((job / "composition.json").read_text()), settings.CAPTIONS_MODE)
+                mode = subtitles.caption_mode(json.loads((job / "composition.json").read_text()), default_caption_mode())
         meta += ["[CHAPTER]", "TIMEBASE=1/1000", f"START={round(start * 1000)}", f"END={round(end * 1000)}", f"title={ch.title}"]
         stamps.append(f"{_stamp(start)} {ch.title}")
         start = end

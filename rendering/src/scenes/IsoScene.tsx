@@ -6,12 +6,18 @@ import {ISO_COLORS, isoColorNames, mix, PAPER, project, type IsoColor, type Pt, 
 import {IsoBox, IsoPerson, IsoShadow, Note, noteSize, StatusPill, Tag} from '../iso/shapes';
 import {IsoLink} from '../iso/link';
 import {along, bendPoint, curve, sample} from '../iso/curve';
-import {IsoArt, iconByName, type ArtKind} from '../iso/objects';
+import {IsoArt, Road, iconByName, type ArtKind} from '../iso/objects';
+import {GENERAL_KINDS} from '../iso/general';
+import {ROAD_KINDS, isRoadKind} from '../iso/roads';
 
 /* ----------------------------------------------------------------------------- kinds */
 
 type Kind = {shape: 'art' | 'people' | 'slab' | 'person'; size: [number, number, number]; color: IsoColor};
+const GENERAL_PRESETS = Object.fromEntries(Object.entries(GENERAL_KINDS).map(([kind, value]) => [kind, {shape: 'art', size: [...value.size], color: value.color}])) as Record<keyof typeof GENERAL_KINDS, Kind>;
+const ROAD_PRESETS = Object.fromEntries(Object.entries(ROAD_KINDS).map(([kind, value]) => [kind, {shape: 'slab', size: [...value.size], color: value.color}])) as Record<keyof typeof ROAD_KINDS, Kind>;
 const KINDS = {
+  ...ROAD_PRESETS,
+  ...GENERAL_PRESETS,
   server: {shape: 'art', size: [1.5, 1.5, 2.3], color: 'lavender'},
   database: {shape: 'art', size: [1.9, 1.9, 1.7], color: 'mint'},
   storage: {shape: 'art', size: [1.7, 1.7, 1.1], color: 'slate'},
@@ -43,6 +49,62 @@ const KINDS = {
   mic: {shape: 'art', size: [0.9, 0.9, 2.2], color: 'slate'},
   camera: {shape: 'art', size: [1.8, 1, 1.2], color: 'slate'},
   billboard: {shape: 'art', size: [3.2, 0.6, 2.8], color: 'cream'},
+  // medical / healthcare objects
+  hospital: {shape: 'art', size: [2.4, 2.2, 3.2], color: 'cream'},
+  doctor: {shape: 'art', size: [1.2, 1.2, 2.4], color: 'sky'},
+  bed: {shape: 'art', size: [2.8, 1.6, 1], color: 'slate'},
+  ambulance: {shape: 'art', size: [2.8, 1.5, 1.8], color: 'cream'},
+  pill: {shape: 'art', size: [1, 1, 1.8], color: 'butter'},
+  syringe: {shape: 'art', size: [2.6, 0.6, 0.7], color: 'sky'},
+  heartmonitor: {shape: 'art', size: [2.2, 0.9, 2], color: 'slate'},
+  microscope: {shape: 'art', size: [1.6, 1.4, 2.4], color: 'slate'},
+  testtubes: {shape: 'art', size: [2, 1.2, 1.8], color: 'mint'},
+  dna: {shape: 'art', size: [1.4, 1, 2.8], color: 'lavender'},
+  // school / education objects
+  school: {shape: 'art', size: [3.8, 2.6, 2.4], color: 'cream'},
+  teacher: {shape: 'art', size: [3.2, 1.4, 2.4], color: 'sky'},
+  desk: {shape: 'art', size: [2.4, 1.6, 1.2], color: 'butter'},
+  bookshelf: {shape: 'art', size: [2.2, 0.8, 3], color: 'peach'},
+  gradcap: {shape: 'art', size: [1.8, 1.8, 1.2], color: 'slate'},
+  backpack: {shape: 'art', size: [1.4, 1, 1.8], color: 'coral'},
+  standglobe: {shape: 'art', size: [1.8, 1.8, 2.8], color: 'sky'},
+  certificate: {shape: 'art', size: [2.4, 0.4, 1.6], color: 'cream'},
+  notebook: {shape: 'art', size: [2.4, 1.6, 0.4], color: 'mint'},
+  // finance / money objects
+  bank: {shape: 'art', size: [3.2, 2.4, 2.6], color: 'cream'},
+  coins: {shape: 'art', size: [1.4, 1.4, 1.6], color: 'butter'},
+  wallet: {shape: 'art', size: [2, 1.4, 0.7], color: 'coral'},
+  creditcard: {shape: 'art', size: [2.2, 1.4, 0.1], color: 'lavender'},
+  atm: {shape: 'art', size: [1.5, 1, 2.8], color: 'slate'},
+  safe: {shape: 'art', size: [2, 1.6, 2], color: 'slate'},
+  piggybank: {shape: 'art', size: [2, 1.4, 1.6], color: 'rose'},
+  cash: {shape: 'art', size: [2.2, 1.4, 0.6], color: 'mint'},
+  stockchart: {shape: 'art', size: [3.2, 0.8, 2.4], color: 'cream'},
+  calculator: {shape: 'art', size: [1.4, 2, 0.16], color: 'butter'},
+  receipt: {shape: 'art', size: [1.2, 0.3, 2.4], color: 'cream'},
+  // retail / business objects
+  shop: {shape: 'art', size: [3.2, 2, 2.8], color: 'cream'},
+  shoppingcart: {shape: 'art', size: [2, 1.4, 1.8], color: 'sky'},
+  conveyor: {shape: 'art', size: [3.4, 1.6, 1.6], color: 'slate'},
+  register: {shape: 'art', size: [2.4, 1.5, 1.8], color: 'peach'},
+  warehouse: {shape: 'art', size: [2.6, 1, 3.2], color: 'slate'},
+  pricetag: {shape: 'art', size: [1.8, 0.6, 1.8], color: 'butter'},
+  shoppingbag: {shape: 'art', size: [1.6, 1, 2], color: 'coral'},
+  factory: {shape: 'art', size: [3.2, 2, 2.8], color: 'slate'},
+  officedesk: {shape: 'art', size: [2.8, 1.6, 1.5], color: 'butter'},
+  handshake: {shape: 'art', size: [2.4, 1.4, 1.2], color: 'lavender'},
+  meetingtable: {shape: 'art', size: [3.4, 2.4, 1], color: 'cream'},
+  // transport / logistics objects
+  car: {shape: 'art', size: [2.8, 1.5, 1.5], color: 'coral'},
+  truck: {shape: 'art', size: [3.4, 1.6, 2], color: 'sky'},
+  bus: {shape: 'art', size: [4, 1.6, 2], color: 'butter'},
+  train: {shape: 'art', size: [4, 1.6, 1.8], color: 'lavender'},
+  airplane: {shape: 'art', size: [4, 2.6, 0.9], color: 'sky'},
+  ship: {shape: 'art', size: [4, 1.8, 1.8], color: 'slate'},
+  bicycle: {shape: 'art', size: [2.4, 1.4, 1.4], color: 'teal'},
+  trafficlight: {shape: 'art', size: [0.8, 0.8, 2.6], color: 'slate'},
+  fuelpump: {shape: 'art', size: [1.6, 1.2, 2.4], color: 'coral'},
+  mappin: {shape: 'art', size: [1.6, 0.5, 2.4], color: 'coral'},
   user: {shape: 'person', size: [0.8, 0.8, 1], color: 'sky'},
   people: {shape: 'people', size: [0, 0, 1], color: 'sky'},
   platform: {shape: 'slab', size: [6, 2.4, 0.28], color: 'cream'},
@@ -59,7 +121,7 @@ const objectSchema = z.object({
   label: z.string().max(24).optional(),
   at: z.tuple([z.number().min(-20).max(30), z.number().min(-20).max(30)]), // grid position [x, y]
   z: z.number().min(0).max(8).optional(), // height above the ground (e.g. on a platform: 0.3)
-  size: z.tuple([z.number().min(0.2).max(14), z.number().min(0.2).max(14), z.number().min(0.1).max(6)]).optional(), // [w, d, h]
+  size: z.tuple([z.number().min(0.2).max(30), z.number().min(0.2).max(30), z.number().min(0.1).max(6)]).optional(), // [w, d, h]
   color: z.enum(isoColorNames).optional(),
   count: z.number().int().min(1).max(60).optional(), // people
   status: z.number().min(0).max(100).optional(), // shows a ⚙ ▬ 59% pill
@@ -75,11 +137,85 @@ const linkSchema = z.object({
   from: z.string(),
   to: z.string(),
   label: z.string().max(22).optional(),
-  flow: z.enum(['dots', 'people', 'none']).default('dots'), // what travels along the arrow
+  flow: z.enum(['dots', 'people', 'car', 'none']).default('dots'), // what travels along the arrow
   dashed: z.boolean().default(false),
   appearAt: fraction.optional(), // default: when both ends have landed
   enter: z.enum(['draw', 'none']).default('draw'), // none: already drawn (carried over)
 }).strict();
+
+// Planners often write a synonym or an icon name as the kind ("users", "microphone", "printer"):
+// map synonyms to the real kind, and any other Lucide icon name to a tile showing that icon.
+const KIND_ALIASES: Record<string, string> = {
+  home: 'house', 'bar-chart': 'chart', 'chart-bar': 'chart', barchart: 'chart',
+  'pie-chart': 'piechart', 'chart-pie': 'piechart', 'chat-bubble': 'chatbubble', chat: 'chatbubble', 'message-circle': 'chatbubble',
+  'sun-and-cloud': 'weather', 'partly-cloudy': 'weather', bulb: 'lightbulb', 'light-bulb': 'lightbulb',
+  cog: 'gear', search: 'magnifier', 'magnifying-glass': 'magnifier', 'warning-sign': 'warning',
+  'check-badge': 'checkmark', check: 'checkmark', 'cross-badge': 'cross', 'x-badge': 'cross',
+  cook: 'chef', 'construction-worker': 'worker', 'police-officer': 'police',
+  users: 'people', crowd: 'people', audience: 'people', group: 'people', persons: 'people', team: 'people',
+  person: 'user', human: 'user', man: 'user', woman: 'user', reporter: 'user', editor: 'user', student: 'user',
+  microphone: 'mic', television: 'tv', monitor: 'client', computer: 'client', desktop: 'client', screen: 'client',
+  // medical synonyms (aliases only apply to names that are not real kinds)
+  'patient-bed': 'bed', patientbed: 'bed', hospitalbed: 'bed', 'hospital-bed': 'bed', patient: 'user',
+  'pill-bottle': 'pill', pillbottle: 'pill', medicine: 'pill', medication: 'pill',
+  'heart-monitor': 'heartmonitor', ecg: 'heartmonitor', ekg: 'heartmonitor', pulse: 'heartmonitor',
+  testtube: 'testtubes', 'test-tube': 'testtubes', 'testtube-rack': 'testtubes', tubes: 'testtubes',
+  helix: 'dna', genes: 'dna', genome: 'dna', surgeon: 'doctor', nurse: 'doctor',
+  // school synonyms (aliases only apply to names that are not real kinds)
+  schoolhouse: 'school', 'white-board': 'teacher', whiteboard: 'teacher', blackboard: 'teacher', chalkboard: 'teacher', professor: 'teacher', instructor: 'teacher',
+  'student-desk': 'desk', studentdesk: 'desk', 'classroom-desk': 'desk', 'school-desk': 'desk',
+  bookcase: 'bookshelf', shelf: 'bookshelf',
+  'graduation-cap': 'gradcap', graduationcap: 'gradcap', mortarboard: 'gradcap', 'graduation-hat': 'gradcap',
+  rucksack: 'backpack', schoolbag: 'backpack',
+  'globe-stand': 'standglobe', 'globe-on-a-stand': 'standglobe', globestand: 'standglobe',
+  diploma: 'certificate', scroll: 'certificate', award: 'certificate',
+  pencil: 'notebook', 'pencil-and-notebook': 'notebook', pencilnotebook: 'notebook', 'notebook-and-pencil': 'notebook', notepad: 'notebook',
+  // finance synonyms (aliases only apply to names that are not real kinds)
+  'bank-building': 'bank', 'coin-stack': 'coins', coinstack: 'coins', 'stack-of-coins': 'coins',
+  'credit-card': 'creditcard', 'atm-machine': 'atm', 'cash-machine': 'atm',
+  vault: 'safe', 'safe-box': 'safe', 'piggy-bank': 'piggybank', pig: 'piggybank',
+  'cash-bundle': 'cash', banknotes: 'cash', bills: 'cash', money: 'cash',
+  'stock-chart': 'stockchart', 'chart-board': 'stockchart', 'rising-chart': 'stockchart', stocks: 'stockchart',
+  'pocket-calculator': 'calculator', 'sales-receipt': 'receipt', bill: 'receipt', invoice: 'receipt',
+  // retail / business synonyms
+  'store-front': 'shop', store: 'shop', market: 'shop', boutique: 'shop',
+  cart: 'shoppingcart', trolley: 'shoppingcart',
+  'conveyor-belt': 'conveyor', 'delivery-package': 'conveyor',
+  'cash-register': 'register', checkout: 'register', 'checkout-counter': 'register',
+  'storage-shelves': 'warehouse', 'price-label': 'pricetag',
+  'shopping-bag': 'shoppingbag', tote: 'shoppingbag', plant: 'factory',
+  'office-workstation': 'officedesk', workstation: 'officedesk', 'hand-shake': 'handshake', 'shaking-hands': 'handshake',
+  'conference-table': 'meetingtable', 'boardroom-table': 'meetingtable',
+  // transport / logistics synonyms
+  vehicle: 'car', automobile: 'car', sedan: 'car',
+  lorry: 'truck', 'delivery-truck': 'truck',
+  street: 'twolane', lane: 'singlelane', 'single-lane': 'singlelane', 'single-lane-road': 'singlelane',
+  'two-lane': 'twolane', 'two-lane-road': 'twolane', 'four-lane': 'fourlane', 'four-lane-road': 'fourlane',
+  motorway: 'highway', freeway: 'highway', 'divided-highway': 'highway',
+  coach: 'bus', 'school-bus': 'bus',
+  railway: 'train', locomotive: 'train',
+  plane: 'airplane', aircraft: 'airplane',
+  boat: 'ship', vessel: 'ship',
+  bike: 'bicycle', cycle: 'bicycle',
+  'traffic-signal': 'trafficlight', stoplight: 'trafficlight',
+  'gas-pump': 'fuelpump', 'petrol-pump': 'fuelpump', 'gas-station': 'fuelpump',
+  'map-pin': 'mappin', pin: 'mappin', location: 'mappin', 'location-pin': 'mappin',
+  smartphone: 'phone', mobile: 'phone', 'cell-tower': 'tower', 'radio-tower': 'tower', antenna: 'tower', mast: 'tower',
+  document: 'file', paper: 'newspaper', news: 'newspaper', magazine: 'newspaper', office: 'building', company: 'building',
+  studio: 'building', newsroom: 'building', advert: 'billboard', ad: 'billboard', poster: 'billboard',
+  package: 'box', parcel: 'box', chip: 'cpu', db: 'database', disk: 'storage', earth: 'globe', world: 'globe', padlock: 'lock',
+  'load-balancer': 'loadbalancer', balancer: 'loadbalancer', stage: 'platform',
+};
+const fixKind = (raw: unknown) => {
+  if (!raw || typeof raw !== 'object') return raw;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.kind !== 'string' || o.kind in KINDS) return raw;
+  const k = o.kind.trim().toLowerCase().replace(/[\s_]+/g, '-');
+  if (k in KINDS) return {...o, kind: k};
+  if (KIND_ALIASES[k]) return {...o, kind: KIND_ALIASES[k]};
+  if (iconByName(k)) return {...o, kind: 'tile', icon: o.icon ?? k};
+  return raw; // unknown: the enum error lists the real kinds
+};
 
 const stepSchema = z.object({
   at: fraction, // when, as a fraction of the scene (0.5 = halfway through the narration)
@@ -116,7 +252,7 @@ export const isoSceneSchema = z.object({
   eyebrow: z.string().max(40).optional(),
   title: z.string().max(80).optional(),
   subtitle: z.string().max(140).optional(),
-  objects: z.array(objectSchema).max(24).default(() => EXAMPLE_OBJECTS),
+  objects: z.array(z.preprocess(fixKind, objectSchema)).max(24).default(() => EXAMPLE_OBJECTS),
   links: z.array(linkSchema).max(30).default(() => EXAMPLE_LINKS),
   steps: z.array(stepSchema).max(40).default(() => EXAMPLE_STEPS),
   points: z.array(z.string().max(70)).max(4).optional(), // short note cards beside the diagram
@@ -151,12 +287,27 @@ export const isoSceneSchema = z.object({
 });
 
 export const description =
-  'Isometric "paper" diagram: 3D-looking servers, databases, caches, clouds, people, platforms and arrows drop in and ' +
-  'animate on a paper grid. Steps (timed as a fraction of the narration) change loads (⚙ 59% pills), highlight, add ' +
-  'notes and move the camera. Use for systems, architecture, flows, networking, scaling, how-things-work. With no ' +
-  'objects it is a paper title card (title, subtitle, points).';
+  'Isometric "paper" diagram: 3D-looking servers, databases, caches, clouds, people, medical objects (hospital, ' +
+  'doctor, patient bed, ambulance, pill bottle, syringe, heart monitor, microscope, test tubes, DNA), school objects ' +
+  '(school, teacher with whiteboard, student desk, bookshelf, graduation cap, backpack, globe on a stand, certificate, ' +
+  'pencil and notebook), finance objects (bank, coin stack, wallet, credit card, ATM, safe, piggy bank, cash bundle, ' +
+  'stock chart board, calculator, receipt), retail and business objects (shop, shopping cart, delivery parcel on a ' +
+  'conveyor, cash register, warehouse, price tag, shopping bag, factory, office desk, handshake, meeting table) and ' +
+  'transport objects (car, truck, road, bus, train, airplane, ship, bicycle, traffic light, fuel pump, map pin), all ' +
+  'plus everyday objects (house, tree, clock, animated bar and pie charts, chat bubble, sun, weather, trophy, flag, ' +
+  'lightbulb, gear, magnifier, warning, checkmark, cross) and role figures (chef, worker, police). Clocks and gears ' +
+  'turn, charts grow, ECG traces pulse, ambulance lights flash, and links support car flow. All objects are ' +
+  'dropping in and animating on a paper grid. Steps (timed as a fraction of the narration) change loads (⚙ 59% pills), ' +
+  'highlight, add notes and move the camera. Use for systems, architecture, flows, networking, scaling, ' +
+  'how-things-work, healthcare, education, finance, retail and logistics. With no objects it is a paper title card ' +
+  '(title, subtitle, points).';
 export const tags = ['isometric', 'iso', 'diagram', 'architecture', 'system design', 'server', 'database', 'cache',
-  'load balancer', 'scaling', 'cloud', 'users', 'flow', 'paper', '3d', 'infographic'];
+  'load balancer', 'scaling', 'cloud', 'users', 'flow', 'paper', '3d', 'infographic',
+  'medical', 'healthcare', 'hospital', 'doctor', 'patient', 'ambulance', 'medicine', 'dna', 'science',
+  'education', 'school', 'teacher', 'student', 'classroom', 'books', 'graduation', 'backpack',
+  'finance', 'money', 'bank', 'coins', 'wallet', 'credit card', 'atm', 'safe', 'piggy bank', 'cash', 'stocks', 'chart',
+  'retail', 'business', 'shop', 'cart', 'conveyor', 'warehouse', 'factory', 'office', 'meeting', 'handshake',
+  'transport', 'logistics', 'car', 'truck', 'road', 'bus', 'train', 'airplane', 'ship', 'bicycle', 'map pin'];
 
 type Props = z.infer<typeof isoSceneSchema>;
 type Obj = Props['objects'][number];
@@ -371,8 +522,10 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     let body: React.ReactNode = null, topAt: Pt;
     if (g.shape === 'art' || g.shape === 'slab') {
       body = slab
-        ? <IsoBox id={`${ob.id}-${i}`} x={g.x} y={g.y} z={zz} w={g.w} d={g.d} h={g.h} color={color} T={T} o={o} sw={sw} radius={T * 0.45} />
-        : <IsoArt kind={ob.kind as ArtKind} id={`${ob.id}-${i}`} g={g} zz={zz} color={color} T={T} o={o} sw={sw} icon={ob.icon} />;
+        ? isRoadKind(ob.kind)
+          ? <Road kind={ob.kind} id={`${ob.id}-${i}`} g={g} zz={zz} color={color} T={T} o={o} sw={sw} />
+          : <IsoBox id={`${ob.id}-${i}`} x={g.x} y={g.y} z={zz} w={g.w} d={g.d} h={g.h} color={color} T={T} o={o} sw={sw} radius={T * 0.45} />
+        : <IsoArt kind={ob.kind as ArtKind} id={`${ob.id}-${i}`} g={g} zz={zz} color={color} T={T} o={o} sw={sw} icon={ob.icon} time={Math.max(0, f - Math.max(0, startOf[i])) / fps} highlight={s.hl} />;
       const r = rectOf(outline({...g, z: zz}, T, o));
       topAt = {x: (r.l + r.r) / 2, y: r.t};
     } else if (g.shape === 'person') {

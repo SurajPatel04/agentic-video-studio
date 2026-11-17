@@ -51,8 +51,10 @@ class SubtitleTest(unittest.TestCase):
         self.assertAlmostEqual(back[2].start, cues[2].start, places=3)
 
     def test_mode_from_argument_json_or_setting(self):
-        with mock.patch.object(settings, "CAPTIONS_MODE", "track"):
-            self.assertEqual(set_caption_mode({})["captions"], {"mode": "track"})
+        with mock.patch.object(settings, "CAPTIONS_PLAYER_TRACK", False):
+            self.assertEqual(set_caption_mode({})["captions"], {"mode": "burn"})  # default: drawn, no player track
+        with mock.patch.object(settings, "CAPTIONS_PLAYER_TRACK", True):
+            self.assertEqual(set_caption_mode({})["captions"], {"mode": "both"})
             self.assertEqual(set_caption_mode({"captions": {"mode": "burn"}})["captions"]["mode"], "burn")
             self.assertEqual(set_caption_mode({"captions": {"mode": "burn"}}, "both")["captions"]["mode"], "both")
             self.assertIs(set_caption_mode({"captions": False})["captions"], False)

@@ -35,10 +35,18 @@ Hard rules (they override softer advice, including scene suggestions from other 
 - Diagram scenes: a short eyebrow and title at the top; 2-7 objects; links for what goes where; steps that follow the narration.
 
 Objects (kinds are drawn as what they are; pick the real thing):
-- Tech: server (rack), database / storage, cache, cloud, loadbalancer, router, api, queue, client (monitor), laptop, phone, cpu, memory, globe, lock, file (document), code (editor), box (package).
-- Media and everyday: tv, radio, newspaper, tower (broadcast mast with waves), satellite, building (office / station / school), book, mic (microphone), camera, billboard (advert).
+- Tech: server, database, storage, cache, cloud, loadbalancer, router, api, queue, client (monitor), laptop, phone, cpu, memory, globe, lock, file, code, box.
+- Media: tv, radio, newspaper, tower (broadcast), satellite, building (office), book, mic, camera, billboard.
+- Health: hospital, doctor, bed, ambulance, pill, syringe, heartmonitor, microscope, testtubes, dna.
+- Education: school, teacher (at a whiteboard), desk, bookshelf, gradcap, backpack, standglobe, certificate, notebook.
+- Finance: bank, coins, wallet, creditcard, atm, safe, piggybank, cash, stockchart, calculator, receipt.
+- Retail and business: shop, shoppingcart, conveyor (parcel on a belt), register (till), warehouse, pricetag, shoppingbag, factory, officedesk, handshake, meetingtable.
+- Transport: car, truck, bus, train, airplane, ship, bicycle, trafficlight, fuelpump, mappin. Vehicles drive on a road (below); a link with "flow": "car" sends a car along a route.
+- General: house, tree, clock (moving hands), chart (growing bars), piechart, chatbubble, sun, weather (sun and cloud), trophy, flag, lightbulb, gear (turning), magnifier, warning, checkmark, cross.
+- Roads (ground slabs; vehicles on them at z: 0.12, highway 0.18): road, singlelane, twolane, fourlane, highway. Use size to lengthen or widen.
+- Roles: doctor, teacher, chef, worker (hard hat), police.
 - People: user (one person), people (a crowd, "count": 6-20), platform (a stage they stand on).
-- Anything else: "tile" with an "icon" - an upright card showing any Lucide icon: "megaphone", "message-circle", "thumbs-up", "share-2", "funnel" (filter / gatekeeping), "eye", "lightbulb", "graduation-cap", "briefcase", "newspaper", "heart", "dollar-sign", "shopping-cart", "users", "scale", "gavel", "stethoscope", "leaf", "chart-bar", "bell", "search", "target", "clock". Give tiles different colors.
+- Anything else: "tile" with an "icon" - an upright card showing any Lucide icon ("megaphone", "message-circle", "thumbs-up", "share-2", "funnel", "eye", "briefcase", "heart", "scale", "gavel", "leaf", "bell", "target"). Give tiles different colors.
 - Labels are 1-2 words ("Server A", "Editor", "Audience") and sit under the object. A user's own device: client / laptop / phone with the person's name as label.
 
 Layout on the grid (the scene centres and scales everything itself; you only choose relative positions):
@@ -51,10 +59,11 @@ Timing: every "at" / "appearAt" is a FRACTION of the scene (0 = start, 1 = end),
 
 Make it feel alive, matched to the narration, not decoration:
 - status (0-100) shows a level pill (load, reach, trust, sales); animate it with steps ("status": 95); >= 88 turns red and pulses.
+- Intrinsic animation is automatic: clocks/gears turn, charts grow on entry, heartmonitor pulses and ambulance lights flash. Highlighting a lightbulb also lights its glass.
 - highlight: true lifts and glows the object being talked about; set it false when the talk moves on.
 - note: a short bubble (max ~8 words) naming what is happening right now; one note is on screen at a time.
 - focus: true zooms the camera in on a detail; focus: false zooms back out. Use at most once per scene.
-- links: flow "dots" for messages/data/money, "people" for people moving, "none" for a static relation; dashed for optional or indirect paths (feedback, influence); label for what travels ("news", "ads", "likes").
+- links: flow "dots" for messages/data/money, "people" for people moving, "car" for a car driving along a route, "none" for a static relation; dashed for optional or indirect paths (feedback, influence); label for what travels ("news", "ads", "likes").
 - sound: steps get a fitting sound by themselves (hide: remove, overload: alert, highlight: chime, focus: rise, note: blip). Override only when the moment needs another one: "sound": "success" | "error" | "sparkle" | "impact" | "data" | "connect" | "disconnect" | "coin" | "tick" | "lock" | "swipe" | ... or "none".
 
 Links must say how things really work:

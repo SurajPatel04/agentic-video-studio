@@ -2,7 +2,7 @@
  * Subtitles from the narration's word timings (scene `voice.words`, filled by the backend).
  *
  * Composition JSON (all optional; captions are on by default when words exist):
- *   "captions": {"enabled": true, "position": "bottom", "offset": 125, "size": 44, "maxWords": 7,
+ *   "captions": {"enabled": true, "position": "bottom", "offset": 72, "size": 44, "maxWords": 7,
  *                "highlight": true, "highlightColor": "#ff5500", "background": true, "mode": "burn"}
  * mode: burn = drawn into the picture; track = not drawn (the backend adds a subtitle track the player
  * can switch on / off, plus captions.srt / .vtt); both = drawn + track.
@@ -11,7 +11,7 @@
 import type {FC} from 'react';
 import {interpolate, useCurrentFrame} from 'remotion';
 import {z} from 'zod';
-import {useTheme, useUnit} from '../theme';
+import {useUnit} from '../theme';
 
 export const captionWordSchema = z.object({t: z.string(), s: z.number().int().nonnegative(), e: z.number().int().nonnegative()}).strict();
 export type CaptionWord = z.infer<typeof captionWordSchema>;
@@ -21,12 +21,12 @@ const captionsObjectSchema = z
     enabled: z.boolean().default(true),
     mode: z.enum(['burn', 'track', 'both']).default('burn'),
     position: z.enum(['bottom', 'top']).default('bottom'),
-    offset: z.number().min(0).max(400).default(125), // px from the edge (clear of the scenes' own bottom captions)
+    offset: z.number().min(0).max(400).default(72), // px from the edge
     size: z.number().min(16).max(120).default(44),
     maxWords: z.number().int().min(1).max(20).default(7), // per line
     highlight: z.boolean().default(true), // colour the word being spoken
     color: z.string().default('#ffffff'),
-    highlightColor: z.string().optional(), // default: the brand colour (logo orange), else the theme accent
+    highlightColor: z.string().optional(), // default: the brand colour (logo orange #ff5500)
     background: z.boolean().default(true), // dark pill behind the text
   })
   .strict();
@@ -59,7 +59,6 @@ const toLines = (words: CaptionWord[], maxWords: number, fps: number) => {
 
 export const Captions: FC<{words: CaptionWord[]; settings: CaptionsSettings; fps: number}> = ({words, settings, fps}) => {
   const f = useCurrentFrame();
-  const theme = useTheme();
   const u = useUnit();
   if (!settings.enabled || settings.mode === 'track' || !words.length) return null;
   const lines = toLines(words, settings.maxWords, fps);
@@ -72,7 +71,7 @@ export const Captions: FC<{words: CaptionWord[]; settings: CaptionsSettings; fps
   if (idx < 0) return null;
   const line = lines[idx];
   const appear = interpolate(f - (line[0].s - 3), [0, 4], [0, 1], {extrapolateRight: 'clamp'});
-  const hl = settings.highlightColor ?? theme.accent;
+  const hl = settings.highlightColor ?? '#ff5500';
   return (
     <div style={{position: 'absolute', left: 0, right: 0, [settings.position]: settings.offset * u, display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 50}}>
       <div style={{maxWidth: '80%', textAlign: 'center', padding: settings.background ? `${10 * u}px ${24 * u}px` : 0, borderRadius: 16 * u,

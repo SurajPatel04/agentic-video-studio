@@ -1,0 +1,191 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "brand": false,
+  "defaultTransition": {
+    "type": "none"
+  },
+  "scenes": [
+    {
+      "id": "singlelane",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Single-lane road",
+        "objects": [
+          {
+            "id": "route",
+            "kind": "singlelane",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "tree",
+            "kind": "tree",
+            "at": [
+              1,
+              -2.5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "vehicle",
+            "kind": "car",
+            "at": [
+              4,
+              0.4
+            ],
+            "size": [
+              1.7,
+              0.8,
+              0.9
+            ],
+            "z": 0.12,
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "twolane",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Two-lane road",
+        "objects": [
+          {
+            "id": "route",
+            "kind": "twolane",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "tree",
+            "kind": "tree",
+            "at": [
+              1,
+              -2.5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "vehicle",
+            "kind": "car",
+            "at": [
+              4,
+              1.7
+            ],
+            "size": [
+              1.7,
+              0.8,
+              0.9
+            ],
+            "z": 0.12,
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "fourlane",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Four-lane road",
+        "objects": [
+          {
+            "id": "route",
+            "kind": "fourlane",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "tree",
+            "kind": "tree",
+            "at": [
+              1,
+              -2.5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "vehicle",
+            "kind": "car",
+            "at": [
+              4,
+              2.75
+            ],
+            "size": [
+              1.7,
+              0.8,
+              0.9
+            ],
+            "z": 0.12,
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "highway",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Divided highway",
+        "objects": [
+          {
+            "id": "route",
+            "kind": "highway",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "tree",
+            "kind": "tree",
+            "at": [
+              1,
+              -2.5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "vehicle",
+            "kind": "car",
+            "at": [
+              4,
+              3.15
+            ],
+            "size": [
+              1.7,
+              0.8,
+              0.9
+            ],
+            "z": 0.18,
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    }
+  ]
+}

@@ -4,7 +4,7 @@ The renderer can burn styled captions into the picture; a player cannot switch t
 writes the same lines as ``captions.srt`` / ``captions.vtt`` and muxes them into the MP4 as a subtitle
 track (mov_text), which every common player (VLC, mpv, QuickTime, phones) can switch on and off.
 
-Caption mode (JSON ``"captions": {"mode": ...}``, else ``CAPTIONS_MODE``):
+Caption mode (JSON ``"captions": {"mode": ...}``, else burn, or both with ``CAPTIONS_PLAYER_TRACK``):
   burn  - styled captions in the picture (current word in the highlight colour); no track
   track - no captions in the picture; a subtitle track the viewer switches on / off (on by default)
   both  - styled captions in the picture + the track (off by default)

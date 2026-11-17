@@ -86,8 +86,13 @@ def without_intro(spec: dict[str, Any]) -> dict[str, Any]:
     return spec
 
 
+def default_caption_mode() -> str:
+    """Drawn captions always; plus a player subtitle track when CAPTIONS_PLAYER_TRACK is on."""
+    return "both" if settings.CAPTIONS_PLAYER_TRACK else "burn"
+
+
 def set_caption_mode(spec: dict[str, Any], mode: str | None = None) -> dict[str, Any]:
-    """Write the caption mode into the JSON (renderer reads it): argument, else JSON, else CAPTIONS_MODE."""
+    """Write the caption mode into the JSON (renderer reads it): argument, else JSON, else from settings."""
     if not captions_enabled(spec):
         return spec
     c = spec.get("captions")
@@ -95,7 +100,7 @@ def set_caption_mode(spec: dict[str, Any], mode: str | None = None) -> dict[str,
     if mode in subtitles.MODES:
         c["mode"] = mode
     elif c.get("mode") not in subtitles.MODES:
-        c["mode"] = settings.CAPTIONS_MODE
+        c["mode"] = default_caption_mode()
     spec["captions"] = c
     return spec
 
@@ -196,7 +201,7 @@ async def render_video(
     """Voice the narration (Deepgram), validate, and render the composition to MP4.
 
     ``captions``: True / False forces subtitles on or off; None keeps the JSON's setting (default on).
-    ``captions_mode``: burn (in the picture) | track (player can switch it) | both; None = JSON, else CAPTIONS_MODE.
+    ``captions_mode``: burn (in the picture) | track (player can switch it) | both; None = JSON, else CAPTIONS_PLAYER_TRACK (burn / both).
     """
     job_id = job_id or uuid.uuid4().hex[:12]
     job_dir = settings.WORKSPACE_DIR / "jobs" / job_id
@@ -245,7 +250,7 @@ async def add_subtitles(spec: dict[str, Any], job_dir: Path, video: Path) -> tup
     items = subtitles.cues(spec)
     if not items:
         return None, ""
-    mode = subtitles.caption_mode(spec, settings.CAPTIONS_MODE)
+    mode = subtitles.caption_mode(spec, default_caption_mode())
     srt, _ = subtitles.write_files(items, job_dir)
     if mode in ("track", "both"):
         with step("subtitle track", mode=mode, lines=len(items)) as s:

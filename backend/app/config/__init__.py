@@ -79,9 +79,10 @@ class Settings(BaseSettings):
     RENDERING_DIR: Path = PROJECT_ROOT / "rendering"
     WORKSPACE_DIR: Path = PROJECT_ROOT / "workspace"
     RENDER_TIMEOUT_SECONDS: float = 1800.0
-    # Captions: burn = styled in the picture (current word highlighted, cannot be switched off);
-    # track = subtitle track the player switches on/off; both = the two. JSON "captions": {"mode"} wins.
-    CAPTIONS_MODE: str = "track"
+    # Captions are drawn into the picture (styled, current word in brand orange).
+    # CAPTIONS_PLAYER_TRACK=true also adds a subtitle track the player (VLC, mpv, phones) can switch
+    # on/off (starts off, so it never doubles the drawn captions). JSON "captions": {"mode"} wins.
+    CAPTIONS_PLAYER_TRACK: bool = False
     # Brand (logo intro + corner logo, rendering/src/brand.tsx). Used when the JSON has no "brand" key.
     BRAND_ENABLED: bool = True  # false = no intro and no corner logo
     BRAND_INTRO: bool = True  # animated logo before the first scene

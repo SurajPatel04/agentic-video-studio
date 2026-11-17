@@ -6,6 +6,7 @@ import type {FC} from 'react';
 import {PAPER, poly, type Pt} from './iso';
 import {along, pathTo, type Curve} from './curve';
 import {IsoPerson} from './shapes';
+import {IsoArt} from './objects';
 
 const PACKET_COLORS = ['#9fc4ec', '#f4c178', '#c9b6ec', '#9ed3a8', '#f2a37d', '#f3b9c6'];
 
@@ -18,13 +19,13 @@ const head = (tip: Pt, angle: number, size: number): Pt[] => [
 
 export const IsoLink: FC<{
   k: Curve; progress: number; phase: number; u: number; sw: number; T: number;
-  flow: 'dots' | 'people' | 'none'; dashed?: boolean; seed?: number; speed?: number;
+  flow: 'dots' | 'people' | 'car' | 'none'; dashed?: boolean; seed?: number; speed?: number;
 }> = ({k, progress, phase, u, sw, T, flow, dashed = false, seed = 0, speed = 1}) => {
   if (progress <= 0) return null;
   const drawn = progress >= 1;
   // one trip takes ~1.6 s whatever the length, so long and short links feel equally lively
   const period = 48 / speed;
-  const runners = drawn && flow !== 'none' ? [0, 1, 2].map((j) => ((phase / period + j / 3) % 1 + 1) % 1) : [];
+  const runners = drawn && flow !== 'none' ? (flow === 'car' ? [0] : [0, 1, 2]).map((j) => ((phase / period + j / 3) % 1 + 1) % 1) : [];
   const arrival = runners.reduce((m, s) => Math.max(m, s > 0.9 ? (s - 0.9) / 0.1 : 0), 0);
   const end = along(k, progress);
   const headSize = 19 * u * Math.min(1, progress * 3) * (1 + 0.3 * Math.sin(arrival * Math.PI));
@@ -49,6 +50,13 @@ export const IsoLink: FC<{
       {runners.map((s, j) => {
         const color = PACKET_COLORS[(j + seed) % PACKET_COLORS.length];
         const op = fadeEnds(s);
+        if (flow === 'car') {
+          const {p, angle} = along(k, s * 0.94);
+          const tile = Math.max(12 * u, Math.min(T * 0.3, 22 * u));
+          return <g key={j} opacity={op} transform={`translate(${p.x} ${p.y}) rotate(${angle * 180 / Math.PI - 30})`}>
+            <IsoArt kind="car" id={`link-car-${seed}`} g={{x: -1.4, y: -0.75, z: 0, w: 2.8, d: 1.5, h: 1.5}} zz={0} color={color} T={tile} o={{x:0,y:0}} sw={sw * 0.7} />
+          </g>;
+        }
         if (flow === 'people') {
           const {p} = along(k, s * 0.94);
           return <IsoPerson key={j} at={{x: p.x, y: p.y + 10 * u}} size={T * 0.2} color={color} sw={sw * 0.7} opacity={op} />;

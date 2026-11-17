@@ -12,7 +12,9 @@
     "validate": "node scripts/validate-composition.mjs",
     "check:visual": "node scripts/render-scene-checks.mjs",
     "previews": "node scripts/render-previews.mjs",
-    "sfx": "node scripts/make-sfx.mjs"
+    "sfx": "node scripts/make-sfx.mjs",
+    "check:iso": "node scripts/check-iso-art.mjs",
+    "previews:iso": "node scripts/preview-iso-collections.mjs"
   },
   "dependencies": {
     "@dagrejs/dagre": "3.1.3",

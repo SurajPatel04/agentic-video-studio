@@ -1,0 +1,403 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "brand": false,
+  "defaultTransition": {
+    "type": "none"
+  },
+  "scenes": [
+    {
+      "id": "general-0",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Everyday places",
+        "objects": [
+          {
+            "id": "house",
+            "kind": "house",
+            "label": "house",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "tree",
+            "kind": "tree",
+            "label": "tree",
+            "at": [
+              5,
+              -5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "cloud",
+            "kind": "cloud",
+            "label": "cloud",
+            "at": [
+              10,
+              -10
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "factory",
+            "kind": "factory",
+            "label": "factory",
+            "at": [
+              5,
+              5
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "general-1",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Time and information",
+        "objects": [
+          {
+            "id": "clock",
+            "kind": "clock",
+            "label": "clock",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "chart",
+            "kind": "chart",
+            "label": "chart",
+            "at": [
+              5,
+              -5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "piechart",
+            "kind": "piechart",
+            "label": "piechart",
+            "at": [
+              10,
+              -10
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "chatbubble",
+            "kind": "chatbubble",
+            "label": "chatbubble",
+            "at": [
+              5,
+              5
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "general-2",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Weather and achievements",
+        "objects": [
+          {
+            "id": "sun",
+            "kind": "sun",
+            "label": "sun",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "weather",
+            "kind": "weather",
+            "label": "weather",
+            "at": [
+              5,
+              -5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "trophy",
+            "kind": "trophy",
+            "label": "trophy",
+            "at": [
+              10,
+              -10
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "flag",
+            "kind": "flag",
+            "label": "flag",
+            "at": [
+              5,
+              5
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "general-3",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Ideas and symbols",
+        "objects": [
+          {
+            "id": "lightbulb",
+            "kind": "lightbulb",
+            "label": "lightbulb",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "gear",
+            "kind": "gear",
+            "label": "gear",
+            "at": [
+              5,
+              -5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "magnifier",
+            "kind": "magnifier",
+            "label": "magnifier",
+            "at": [
+              10,
+              -10
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "warning",
+            "kind": "warning",
+            "label": "warning",
+            "at": [
+              5,
+              5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "checkmark",
+            "kind": "checkmark",
+            "label": "checkmark",
+            "at": [
+              10,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "cross",
+            "kind": "cross",
+            "label": "cross",
+            "at": [
+              15,
+              -5
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "at": 0.2,
+            "target": "lightbulb",
+            "highlight": true
+          },
+          {
+            "at": 0.75,
+            "target": "lightbulb",
+            "highlight": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "general-4",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "People with roles",
+        "objects": [
+          {
+            "id": "doctor",
+            "kind": "doctor",
+            "label": "doctor",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "teacher",
+            "kind": "teacher",
+            "label": "teacher",
+            "at": [
+              5,
+              -5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "chef",
+            "kind": "chef",
+            "label": "chef",
+            "at": [
+              10,
+              -10
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "worker",
+            "kind": "worker",
+            "label": "worker",
+            "at": [
+              5,
+              5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "police",
+            "kind": "police",
+            "label": "police",
+            "at": [
+              10,
+              0
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "general-5",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Moving parts",
+        "objects": [
+          {
+            "id": "clock",
+            "kind": "clock",
+            "label": "clock",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "gear",
+            "kind": "gear",
+            "label": "gear",
+            "at": [
+              5,
+              -5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "heartmonitor",
+            "kind": "heartmonitor",
+            "label": "heartmonitor",
+            "at": [
+              10,
+              -10
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "ambulance",
+            "kind": "ambulance",
+            "label": "ambulance",
+            "at": [
+              5,
+              5
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "driving",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "A car follows the route",
+        "objects": [
+          {
+            "id": "home",
+            "kind": "house",
+            "label": "Home",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "work",
+            "kind": "factory",
+            "label": "Work",
+            "at": [
+              8,
+              -8
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [
+          {
+            "from": "home",
+            "to": "work",
+            "flow": "car",
+            "enter": "none"
+          }
+        ],
+        "steps": []
+      }
+    }
+  ]
+}
