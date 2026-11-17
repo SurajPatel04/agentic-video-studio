@@ -54,6 +54,6 @@ Project.brief.md
 Thumbs.db
 *.swp
 
-# Generated narration audio (re-made by `npm run voice`, cached by text)
+# Generated narration audio (re-made by the backend TTS, cached by text)
 rendering/public/audio/tts/
 rendering/examples/*.voiced.json

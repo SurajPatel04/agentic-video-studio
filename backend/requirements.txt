@@ -4,3 +4,5 @@ pydantic-settings
 langchain-core
 langchain-openai
 httpx
+
+PyYAML>=6.0

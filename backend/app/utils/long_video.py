@@ -1,0 +1,603 @@
+"""Long videos (20-40 min): outline -> plan each chapter -> render each chapter -> join.
+
+    state = await create_long_video("How Node.js works", minutes=30)  # outline: 1 LLM call, saved
+    await run_long_video(state.id)               # plans every chapter, then renders, then joins
+    redo_chapter(state.id, 3, "plan")            # re-plan only chapter 3; run again to finish
+
+Everything is saved in ``workspace/long/<id>/state.json`` after every step, so a restart (or a
+change to one chapter) continues where it stopped instead of starting over:
+
+    chapter status:  pending -> planned -> rendered      (failed = stage + error saved; run again retries it)
+    ch03.plan.json   chapter 3's composition (scenes + narration), editable
+    video.mp4        all chapters joined, with chapter markers; ``timestamps`` in the state
+
+Each chapter is planned by the normal planner (``plan_video``) with extra context: the whole
+outline, a shared glossary / running examples / visual style, what earlier chapters covered, and a
+word budget (minutes x LONG_WORDS_PER_MINUTE). Plans far off the budget are re-planned once.
+Chapters are rendered as normal jobs (``workspace/jobs/long-<id>-chNN``) and joined with ffmpeg.
+"""
+
+import asyncio
+import fcntl
+import inspect
+from contextlib import contextmanager
+from functools import wraps
+import json
+import logging
+import math
+import re
+import time
+import uuid
+from pathlib import Path
+from typing import Any, Literal
+
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from pydantic import BaseModel, Field, ValidationError
+
+from app.config import settings
+from app.utils import skills as teaching_skills
+from app.utils.llm import get_llm, text_of, usage_of
+from app.utils.planner import PlanError, _extract_json, plan_video
+from app.utils.render import RenderError, render_video, validate
+
+log = logging.getLogger(__name__)
+
+ID_RE = re.compile(r"^[a-f0-9]{10}$")
+
+
+# --------------------------------------------------------------------------- models
+
+
+class Term(BaseModel):
+    term: str
+    meaning: str
+
+
+class ChapterOutline(BaseModel):
+    title: str = Field(min_length=2, max_length=120)
+    goal: str = Field(min_length=5)  # intended viewer outcome for this chapter
+    key_points: list[str] = Field(min_length=1, max_length=8)
+    minutes: float = Field(gt=0, le=20)
+    words: int = 0  # narration budget, set by us from minutes
+
+
+class Outline(BaseModel):
+    title: str
+    audience: str = "beginners"
+    style: str = ""  # visual conventions every chapter follows
+    glossary: list[Term] = Field(default_factory=list)
+    examples: list[str] = Field(default_factory=list)  # running examples reused across chapters
+    chapters: list[ChapterOutline] = Field(min_length=1, max_length=24)
+
+
+class ChapterState(BaseModel):
+    n: int
+    status: Literal["pending", "planned", "rendered", "failed"] = "pending"
+    failed_stage: Literal["", "plan", "render"] = ""
+    error: str = ""
+    scenes: int = 0
+    words: int = 0  # narration words actually planned
+    seconds: float = 0  # length of the rendered chapter
+    handoff: str = ""  # what this chapter covered, given to the next chapters
+    llm_calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    job_id: str = ""
+
+
+class LongState(BaseModel):
+    id: str
+    topic: str
+    minutes: float
+    captions: bool = True
+    scale: float = 1.0
+    mode: str | None = None  # planner mode
+    model: str | None = None
+    skills: list[str] | None = None  # None migrates older jobs; [] explicitly disables guides
+    status: Literal["outlined", "running", "planned", "done", "failed"] = "outlined"
+    step: str = ""  # what it is doing / did last, for progress
+    progress: float = 0  # 0..1
+    error: str = ""
+    outline: Outline
+    chapters: list[ChapterState]
+    llm_calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    video: str = ""
+    seconds: float = 0
+    timestamps: list[str] = Field(default_factory=list)
+    created: float = Field(default_factory=time.time)
+    updated: float = Field(default_factory=time.time)
+
+
+# ---------------------------------------------------------------------------- state
+
+
+def _dir(job_id: str) -> Path:
+    if not ID_RE.fullmatch(job_id):
+        raise ValueError(f"bad long-video id: {job_id}")
+    return settings.WORKSPACE_DIR / "long" / job_id
+
+
+class JobBusyError(RuntimeError):
+    """Another process or request owns this job."""
+
+
+@contextmanager
+def _job_lock(job_id: str):
+    # File locks cover API workers, CLI runs, and edits; the OS releases them on exit.
+    directory = _dir(job_id)
+    if not (directory / "state.json").exists():
+        raise ValueError(f"no long video {job_id}")
+    with (directory / ".lock").open("a") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise JobBusyError("This video is running or being edited; try again when it finishes.") from exc
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
+def _exclusive(fn):
+    if inspect.iscoroutinefunction(fn):
+        @wraps(fn)
+        async def async_locked(job_id, *args, **kwargs):
+            with _job_lock(job_id):
+                return await fn(job_id, *args, **kwargs)
+        return async_locked
+
+    @wraps(fn)
+    def sync_locked(job_id, *args, **kwargs):
+        with _job_lock(job_id):
+            return fn(job_id, *args, **kwargs)
+    return sync_locked
+
+
+def load(job_id: str) -> LongState:
+    path = _dir(job_id) / "state.json"
+    if not path.exists():
+        raise ValueError(f"no long video {job_id}")
+    return LongState.model_validate_json(path.read_text())
+
+
+def save(state: LongState) -> None:
+    state.updated = time.time()
+    state.progress = _progress(state)
+    d = _dir(state.id)
+    d.mkdir(parents=True, exist_ok=True)
+    tmp = d / "state.json.tmp"
+    tmp.write_text(state.model_dump_json(indent=2))
+    tmp.replace(d / "state.json")  # atomic: a crash never leaves half a state file
+
+
+def list_long_videos() -> list[dict[str, Any]]:
+    root = settings.WORKSPACE_DIR / "long"
+    out = []
+    for p in sorted(root.glob("*/state.json"), key=lambda p: p.stat().st_mtime, reverse=True) if root.exists() else []:
+        s = LongState.model_validate_json(p.read_text())
+        out.append({"id": s.id, "topic": s.topic, "status": s.status, "progress": s.progress, "running": is_running(s.id)})
+    return out
+
+
+def _progress(s: LongState) -> float:
+    if s.status == "done":
+        return 1.0
+    n = len(s.chapters) or 1
+    planned = sum(c.status in ("planned", "rendered") or (c.status == "failed" and c.failed_stage == "render") for c in s.chapters)
+    rendered = sum(c.status == "rendered" for c in s.chapters)
+    return round(0.95 * (planned + 4 * rendered) / (5 * n), 3)  # rendering is ~4x the work of planning
+
+
+def plan_file(job_id: str, n: int) -> Path:
+    return _dir(job_id) / f"ch{n:02d}.plan.json"
+
+
+# -------------------------------------------------------------------------- outline
+
+
+OUTLINE_RULES = """You plan a LONG narrated video on any subject, split into purposeful chapters. Follow the requested format and audience.
+Reply with ONLY one JSON object, no prose, no code fences:
+{{
+  "title": "video title",
+  "audience": "who it is for",
+  "style": "visual conventions every chapter keeps: one colour per recurring thing, the diagram that keeps coming back",
+  "glossary": [{{"term": "...", "meaning": "one line"}}],
+  "examples": ["running example followed through the whole video"],
+  "chapters": [{{"title": "...", "goal": "one sentence: the intended viewer outcome, appropriate to the format",
+                 "key_points": ["3-6 concrete things to explain, show or demonstrate"], "minutes": 5}}]
+}}
+Rules:
+- About {chapters} chapters; their minutes add up to {minutes}.
+- Order chapters to serve the requested purpose. For lectures, build from prerequisites to explanation,
+  examples and application. For explainers, develop the central answer. For promotional videos, connect
+  needs, benefits, supported evidence and a next action. Do not force teaching exercises into other formats.
+- Open with relevant context and end by delivering the promised outcome. Use a quiz only when it helps learning.
+- glossary: shared terms when terminology matters (otherwise empty). examples: recurring examples or situations
+  when relevant, reused across chapters for continuity. Use examples from the requested subject, not automatically software.
+- No chapter overlaps another; no filler.
+"""
+
+
+async def make_outline(topic: str, minutes: float, *, chapters: int | None = None, model: str | None = None, skills: list[str] | None = None) -> tuple[Outline, int, int, int]:
+    """LLM writes the outline. Returns (outline, llm calls, input tokens, output tokens)."""
+    selected = teaching_skills.select(topic, skills, long_video=True)
+    want = chapters or max(2, round(minutes / settings.LONG_CHAPTER_MINUTES))
+    messages: list[Any] = [
+        SystemMessage(OUTLINE_RULES.format(chapters=want, minutes=minutes) + teaching_skills.guidance(selected)),
+        HumanMessage(f"Topic: {topic}\nTotal length: {minutes} minutes."),
+    ]
+    llm = get_llm(model or settings.LONG_MODEL or settings.PLANNER_MODEL or None)
+    calls = tin = tout = 0
+    problem = ""
+    for _ in range(settings.PLANNER_MAX_ATTEMPTS):
+        msg = await llm.ainvoke(messages)
+        calls += 1
+        i, o = usage_of(msg)
+        tin, tout = tin + i, tout + o
+        reply = text_of(msg)
+        try:
+            outline = Outline.model_validate(_extract_json(reply))
+        except (ValueError, ValidationError) as exc:
+            problem = str(exc)[:3000]
+            messages += [AIMessage(reply), HumanMessage(f"That outline is invalid:\n{problem}\nReply with ONLY the corrected JSON.")]
+            continue
+        return set_budgets(outline, minutes), calls, tin, tout
+    raise PlanError(f"outline invalid after {calls} tries", problem)
+
+
+def set_budgets(outline: Outline, minutes: float) -> Outline:
+    """Scale chapter minutes to add up to the target and give each a narration word budget."""
+    total = sum(c.minutes for c in outline.chapters) or 1
+    for c in outline.chapters:
+        c.minutes = round(c.minutes * minutes / total, 2)
+        c.words = round(c.minutes * settings.LONG_WORDS_PER_MINUTE)
+    return outline
+
+
+def _new_state(topic: str, minutes: float, outline: Outline, **opts: Any) -> LongState:
+    return LongState(id=uuid.uuid4().hex[:10], topic=topic, minutes=minutes, outline=outline,
+                     chapters=[ChapterState(n=i + 1) for i in range(len(outline.chapters))], **opts)
+
+
+async def create_long_video(topic: str, minutes: float, *, chapters: int | None = None, captions: bool = True,
+                            scale: float = 1.0, mode: str | None = None, model: str | None = None, skills: list[str] | None = None) -> LongState:
+    """Write and save the outline (nothing planned or rendered yet). Review it, then run."""
+    selected = teaching_skills.select(topic, skills, long_video=True)
+    outline, calls, tin, tout = await make_outline(topic, minutes, chapters=chapters, model=model, skills=selected)
+    state = _new_state(topic, minutes, outline, captions=captions, scale=scale, mode=mode, model=model, skills=selected)
+    state.llm_calls, state.input_tokens, state.output_tokens = calls, tin, tout
+    state.step = f"outline: {len(outline.chapters)} chapters"
+    save(state)
+    log.info("long.outline id=%s chapters=%d tokens_in=%d tokens_out=%d", state.id, len(outline.chapters), tin, tout)
+    return state
+
+
+@_exclusive
+def replace_outline(job_id: str, outline: Outline) -> LongState:
+    """Use an edited outline. Every chapter goes back to pending (nothing is rendered yet with it)."""
+    state = _editable(job_id)
+    state.outline = set_budgets(outline, sum(c.minutes for c in outline.chapters))
+    state.minutes = round(sum(c.minutes for c in state.outline.chapters), 2)
+    state.chapters = [ChapterState(n=i + 1) for i in range(len(outline.chapters))]
+    _clear_video(state)
+    state.status, state.step = "outlined", "outline replaced"
+    save(state)
+    return state
+
+
+# -------------------------------------------------------------------------- chapters
+
+
+def narration_words(spec: dict[str, Any]) -> int:
+    return sum(len(((s.get("narration") or {}).get("text") or "").split()) for s in spec.get("scenes", []))
+
+
+def chapter_context(state: LongState, n: int, note: str = "") -> str:
+    """Everything one chapter's planner call needs to fit into the whole video."""
+    o, total = state.outline, len(state.outline.chapters)
+    ch = o.chapters[n - 1]
+    scenes = max(4, math.ceil(ch.words / settings.LONG_WORDS_PER_SCENE))
+    lines = [
+        f'LONG VIDEO: "{o.title}" for {o.audience}. You plan ONLY chapter {n} of {total}.',
+        f"Original user brief (preserve its purpose, format and language): {state.topic}",
+        "Outline (stay inside your chapter; don't repeat what other chapters cover):",
+        *[f"  {i}. {c.title}: {c.goal}{'   <- THIS CHAPTER' if i == n else ''}" for i, c in enumerate(o.chapters, 1)],
+        f"This chapter: {ch.title}. Goal: {ch.goal}",
+        "Cover in a logical order for the requested format: " + "; ".join(ch.key_points),
+    ]
+    if o.glossary:
+        lines.append("Glossary (use exactly these words): " + "; ".join(f"{t.term} = {t.meaning}" for t in o.glossary))
+    if o.examples:
+        lines.append("Running examples (reuse them, don't invent new ones unless needed): " + "; ".join(o.examples))
+    if o.style:
+        lines.append("Visual style for the whole video: " + o.style)
+    done = [c.handoff for c in state.chapters[: n - 1] if c.handoff]
+    if done:
+        lines.append("Earlier chapters already covered (don't repeat; refer back briefly when useful):")
+        lines += [f"  - {h}" for h in done]
+    lines.append(
+        f"Narration budget: about {ch.words} words in total (~{ch.minutes:g} min), so about {scenes} scenes "
+        f"of ~{settings.LONG_WORDS_PER_SCENE} words each."
+    )
+    if n == 1:
+        lines.append("Start with a title scene for the whole video, then teach this chapter.")
+    else:
+        lines.append(f'Start with a short title scene "Chapter {n}: {ch.title}" (no intro for the whole video).')
+    if n == total:
+        lines.append("End by delivering the original brief’s promised outcome. For a lecture, connect the key ideas and use a learning check if helpful; for an ad, give a supported next action. Do not force a quiz into other formats.")
+    else:
+        lines.append(f'The last scene\'s narration leads into the next chapter: "{o.chapters[n].title}".')
+    if note:
+        lines.append(note)
+    return "\n".join(lines)
+
+
+def _handoff(state: LongState, n: int, spec: dict[str, Any]) -> str:
+    """Short, deterministic summary of a planned chapter for the chapters after it (no LLM call)."""
+    ch = state.outline.chapters[n - 1]
+    scenes = spec.get("scenes", [])
+    last = next(((s.get("narration") or {}).get("text", "") for s in reversed(scenes) if s.get("narration")), "")
+    used = sorted({s.get("component", "") for s in scenes} - {""})
+    return f"Ch {n} {ch.title}: {'; '.join(ch.key_points)}. Scenes used: {', '.join(used)}. It ended with: \"{last[:200]}\""
+
+
+async def plan_chapter(state: LongState, n: int) -> dict[str, Any]:
+    """Plan one chapter (planner + context); re-plan once if the narration is far off its word budget."""
+    ch, cs = state.outline.chapters[n - 1], state.chapters[n - 1]
+    scenes = max(4, math.ceil(ch.words / settings.LONG_WORDS_PER_SCENE))
+    best: dict[str, Any] | None = None
+    note = ""
+    for _ in range(2):
+        topic = f"{state.outline.title}: chapter {n}, {ch.title}"
+        plan = await plan_video(topic, scenes=scenes, mode=state.mode, model=state.model, context=chapter_context(state, n, note), skills=state.skills)  # type: ignore[arg-type]
+        cs.llm_calls += plan.llm_calls
+        cs.input_tokens += plan.input_tokens
+        cs.output_tokens += plan.output_tokens
+        words = narration_words(plan.spec)
+        if best is None or abs(words - ch.words) < abs(narration_words(best) - ch.words):
+            best = plan.spec
+        off = (words - ch.words) / max(ch.words, 1)
+        if abs(off) <= settings.LONG_BUDGET_TOLERANCE:
+            break
+        note = (f"IMPORTANT: a previous plan for this chapter had {words} narration words, but the budget is about "
+                f"{ch.words}. Make it {'longer: more scenes and fuller narration' if off < 0 else 'shorter: fewer scenes, tighter narration'}.")
+        log.warning("long.budget id=%s ch=%d words=%d budget=%d, re-planning", state.id, n, words, ch.words)
+    assert best is not None
+    words = narration_words(best)
+    if abs(words - ch.words) / max(ch.words, 1) > settings.LONG_BUDGET_TOLERANCE:
+        raise PlanError(
+            f"Chapter {n} narration is outside its word budget after 2 attempts",
+            f"Best attempt: {words} words; target: {ch.words} words "
+            f"(tolerance: {settings.LONG_BUDGET_TOLERANCE:.0%}). Retry planning this chapter.",
+        )
+    return best
+
+
+def _accept_plan(state: LongState, n: int, spec: dict[str, Any]) -> None:
+    cs = state.chapters[n - 1]
+    plan_file(state.id, n).write_text(json.dumps(spec, indent=2))
+    cs.status, cs.failed_stage, cs.error = "planned", "", ""
+    cs.scenes, cs.words = len(spec.get("scenes", [])), narration_words(spec)
+    cs.handoff = _handoff(state, n, spec)
+    cs.seconds, cs.job_id = 0, ""
+
+
+async def _render_chapter(state: LongState, n: int) -> None:
+    cs = state.chapters[n - 1]
+    spec = json.loads(plan_file(state.id, n).read_text())
+    cs.job_id = f"long-{state.id}-ch{n:02d}"
+    result = await render_video(spec, captions=state.captions, job_id=cs.job_id, scale=state.scale)
+    cs.seconds = await _duration(result.video)
+    cs.status, cs.failed_stage, cs.error = "rendered", "", ""
+
+
+# ----------------------------------------------------------------------------- join
+
+
+async def _ffmpeg(*args: str, timeout: float = 1800) -> tuple[int, str]:
+    proc = await asyncio.create_subprocess_exec(*args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    try:
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.wait()
+        raise RenderError(f"timed out: {args[0]}")
+    return proc.returncode or 0, out.decode(errors="replace")
+
+
+async def _duration(video: Path) -> float:
+    code, out = await _ffmpeg("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(video), timeout=60)
+    if code != 0:
+        raise RenderError("ffprobe failed", out[-1000:])
+    return round(float(out.strip().splitlines()[-1]), 3)
+
+
+def _stamp(seconds: float) -> str:
+    s = int(seconds)
+    return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}" if s >= 3600 else f"{s // 60:02d}:{s % 60:02d}"
+
+
+async def join_chapters(state: LongState) -> Path:
+    """Concatenate the chapter MP4s (stream copy; re-encode if that fails) and add chapter markers."""
+    d = _dir(state.id)
+    videos = [settings.WORKSPACE_DIR / "jobs" / c.job_id / "video.mp4" for c in state.chapters]
+    (d / "concat.txt").write_text("".join(f"file '{v.resolve()}'\n" for v in videos))
+    meta, stamps, start = [";FFMETADATA1", f"title={state.outline.title}"], [], 0.0
+    for c, ch in zip(state.chapters, state.outline.chapters):
+        end = start + c.seconds
+        meta += ["[CHAPTER]", "TIMEBASE=1/1000", f"START={round(start * 1000)}", f"END={round(end * 1000)}", f"title={ch.title}"]
+        stamps.append(f"{_stamp(start)} {ch.title}")
+        start = end
+    (d / "chapters.ffmeta").write_text("\n".join(meta) + "\n")
+    out = d / "video.mp4"
+    base = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(d / "concat.txt"), "-i", str(d / "chapters.ffmeta"),
+            "-map", "0", "-map_metadata", "1", "-map_chapters", "1"]
+    code, log_text = await _ffmpeg(*base, "-c", "copy", "-movflags", "+faststart", str(out))
+    if code != 0:  # chapters differ in format: re-encode once
+        code, log_text = await _ffmpeg(*base, "-c:v", "libx264", "-crf", "18", "-c:a", "aac", "-movflags", "+faststart", str(out))
+    (d / "join.log").write_text(log_text)
+    if code != 0 or not out.exists():
+        raise RenderError("joining chapters failed", log_text[-2000:])
+    state.video, state.seconds, state.timestamps = str(out), round(start, 1), stamps
+    (d / "chapters.txt").write_text("\n".join(stamps) + "\n")
+    return out
+
+
+# --------------------------------------------------------------------------- runner
+
+
+_tasks: dict[str, asyncio.Task] = {}
+
+
+def is_running(job_id: str) -> bool:
+    t = _tasks.get(job_id)
+    return bool(t and not t.done())
+
+
+def start(job_id: str, *, render: bool = True) -> bool:
+    """Run in the background (API). False if it is already running."""
+    load(job_id)  # raises if unknown
+    if is_running(job_id):
+        return False
+    loop = asyncio.get_running_loop()
+    reservation = _job_lock(job_id)
+    reservation.__enter__()  # Reserve before yielding, so an edit cannot slip in.
+
+    async def run_reserved():
+        return await _run_long_video(job_id, render=render)
+
+    try:
+        task = loop.create_task(run_reserved())
+    except BaseException:
+        reservation.__exit__(None, None, None)
+        raise
+    _tasks[job_id] = task
+
+    def finished(done):
+        reservation.__exit__(None, None, None)
+        if _tasks.get(job_id) is done:
+            _tasks.pop(job_id, None)
+
+    task.add_done_callback(finished)
+    return True
+
+
+def _total_tokens(state: LongState, outline_calls: tuple[int, int, int]) -> None:
+    calls, tin, tout = outline_calls
+    state.llm_calls = calls + sum(c.llm_calls for c in state.chapters)
+    state.input_tokens = tin + sum(c.input_tokens for c in state.chapters)
+    state.output_tokens = tout + sum(c.output_tokens for c in state.chapters)
+
+
+@_exclusive
+async def run_long_video(job_id: str, *, render: bool = True) -> LongState:
+    return await _run_long_video(job_id, render=render)
+
+
+async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
+    """Plan every chapter that isn't planned, then (``render``) render the rest and join.
+    Safe to call again after a crash or an edit: finished steps are skipped."""
+    state = load(job_id)
+    if state.skills is None:
+        state.skills = teaching_skills.select(state.topic, long_video=True)
+    outline_usage = (state.llm_calls - sum(c.llm_calls for c in state.chapters),
+                     state.input_tokens - sum(c.input_tokens for c in state.chapters),
+                     state.output_tokens - sum(c.output_tokens for c in state.chapters))
+    state.status, state.error = "running", ""
+    save(state)
+    current = None
+    try:
+        for cs in state.chapters:  # plan in order: each chapter sees what the earlier ones covered
+            if cs.status == "pending" or (cs.status == "failed" and cs.failed_stage == "plan"):
+                current = (cs, "plan")
+                state.step = f"planning chapter {cs.n}/{len(state.chapters)}: {state.outline.chapters[cs.n - 1].title}"
+                save(state)
+                _accept_plan(state, cs.n, await plan_chapter(state, cs.n))
+                _total_tokens(state, outline_usage)
+                save(state)
+        if not render:
+            state.status, state.step = "planned", "all chapters planned (not rendered)"
+            save(state)
+            return state
+        for cs in state.chapters:
+            if cs.status == "planned" or (cs.status == "failed" and cs.failed_stage == "render"):
+                current = (cs, "render")
+                state.step = f"rendering chapter {cs.n}/{len(state.chapters)}"
+                save(state)
+                await _render_chapter(state, cs.n)
+                save(state)
+        current = None
+        if not state.video or not Path(state.video).exists():
+            state.step = "joining chapters"
+            save(state)
+            await join_chapters(state)
+        state.status, state.step = "done", f"done: {_stamp(state.seconds)} (target {state.minutes:g} min)"
+        save(state)
+        log.info("long.done id=%s seconds=%.0f llm_calls=%d tokens_in=%d tokens_out=%d",
+                 job_id, state.seconds, state.llm_calls, state.input_tokens, state.output_tokens)
+    except Exception as exc:
+        details = getattr(exc, "details", "")
+        msg = f"{exc}\n{details}".strip()[:4000]
+        if current:
+            cs, stage = current
+            cs.status, cs.failed_stage, cs.error = "failed", stage, msg  # type: ignore[assignment]
+        state.status, state.error = "failed", msg
+        _total_tokens(state, outline_usage)
+        save(state)
+        log.exception("long.failed id=%s step=%s", job_id, state.step)
+    return state
+
+
+# ---------------------------------------------------------------------------- edits
+
+
+def _editable(job_id: str) -> LongState:
+    if is_running(job_id):
+        raise RuntimeError("it is running; wait until it stops")
+    return load(job_id)
+
+
+def _clear_video(state: LongState) -> None:
+    state.video, state.seconds, state.timestamps = "", 0, []
+    if state.status == "done":
+        state.status = "planned"
+
+
+@_exclusive
+def redo_chapter(job_id: str, n: int, stage: Literal["plan", "render"] = "plan", *, cascade: bool = False) -> LongState:
+    """Mark chapter ``n`` to be planned again (``plan``) or only rendered again (``render``).
+    ``cascade``: also re-plan every later chapter (they were planned knowing the old chapter n)."""
+    state = _editable(job_id)
+    if not 1 <= n <= len(state.chapters):
+        raise ValueError(f"chapter {n} does not exist")
+    targets = state.chapters[n - 1 :] if (cascade and stage == "plan") else [state.chapters[n - 1]]
+    for cs in targets:
+        if stage == "plan":
+            state.chapters[cs.n - 1] = ChapterState(n=cs.n)
+        elif cs.status in ("rendered", "failed") and plan_file(job_id, cs.n).exists():
+            cs.status, cs.failed_stage, cs.error, cs.seconds = "planned", "", "", 0
+    _clear_video(state)
+    state.step = f"chapter {n}: {stage} again" + (" (+ later chapters)" if cascade else "")
+    save(state)
+    return state
+
+
+@_exclusive
+async def set_chapter_plan(job_id: str, n: int, spec: dict[str, Any]) -> LongState:
+    """Replace chapter ``n``'s composition by hand (validated first); it will be rendered again."""
+    state = _editable(job_id)
+    if not 1 <= n <= len(state.chapters):
+        raise ValueError(f"chapter {n} does not exist")
+    tmp = _dir(job_id) / f"ch{n:02d}.check.json"
+    tmp.write_text(json.dumps(spec, indent=2))
+    try:
+        await validate(tmp)
+    finally:
+        tmp.unlink(missing_ok=True)
+    _accept_plan(state, n, spec)
+    _clear_video(state)
+    state.step = f"chapter {n}: plan edited"
+    save(state)
+    return state

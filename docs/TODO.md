@@ -121,6 +121,19 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] Planner (`app/utils/planner.py`): LLM writes the composition with narration per scene from a compact scene catalog; validated, errors fed back (3 tries). API `POST /plan`, `POST /video` (prompt → plan → voice → captions → MP4); CLI `plan`, `video`
 - [ ] Long renders: move `/render` onto the job queue (now it waits for the MP4)
 
+### Long videos (20-40 min) — `app/utils/long_video.py`
+- [x] Outline (1 LLM call): chapters, goals, key points, minutes → word budgets (150 wpm), glossary, running examples, visual style
+- [x] Each chapter planned by the normal planner + context (whole outline, glossary, examples, what earlier chapters covered, budget); re-planned once if >35% off its word budget; fails with a retryable chapter error if both attempts miss the budget
+- [x] Saved, resumable state (`workspace/long/<id>/state.json`, `chNN.plan.json`): pending → planned → rendered / failed; a rerun skips finished chapters
+- [x] Edit: replace the outline, replace a chapter's plan (validated), redo one chapter (plan or render, optional cascade)
+- [x] Render each chapter (sequential), join with ffmpeg (stream copy, re-encode fallback) + chapter markers + YouTube timestamps
+- [x] API `POST /long`, `GET /long[/{id}]`, `POST /long/{id}/run`, `PUT /long/{id}/outline`, `GET|PUT /long/{id}/chapters/{n}/plan`, `POST /long/{id}/chapters/{n}/redo`, `GET /long/{id}/video`; CLI `long`, `long-run`, `long-status`, `long-redo`
+- [x] Resume endpoint runs on the event loop; per-job file locks prevent overlapping runs and edits, including during plan validation
+- [ ] Background runs are in-process tasks: after a server restart call `/long/{id}/run` to resume (no auto-resume / real queue yet)
+- [ ] Parallel chapter rendering (bounded) once sequential is proven on a full-length run
+- [x] Planner variety: `teach-code` hard rules (CodeScene per chapter + terminal output), style check `PLANNER_MAX_TEXT_RUN=3` (one retry, valid plan never lost), catalog shows number limits (`width: num 300..1800`)
+- [ ] More CodeScenes per chapter (live run: 1 per chapter; skill asks for ~1 per concept)
+
 ## 5. Library contract & registry
 
 - [x] Zod props schema + description + tags for every scene (28 entries) in `src/registry.ts` → `sceneCatalog`

@@ -27,6 +27,7 @@ from app.agent.history import History, reserve_tokens
 from app.agent.sandbox import Sandbox, SandboxError
 from app.agent.staging import check_draft, existing_scene_names, publish, staged_names
 from app.config import settings
+from app.utils import skills as teaching_skills
 from app.utils.llm import get_tool_llm, text_of, usage_of
 
 log = logging.getLogger(__name__)
@@ -46,8 +47,8 @@ class ComponentResult:
     stills: list[str] = field(default_factory=list)
 
 
-SYSTEM = """You are a senior React + Remotion engineer adding ONE new scene component to an educational
-explainer-video library. Every frame is rendered from the frame number, so code must be deterministic.
+SYSTEM = """You are a senior React + Remotion engineer adding ONE new scene component to a narrated
+video library for educational, explanatory, promotional, and other requested formats. Every frame is rendered from the frame number, so code must be deterministic.
 
 Your draft folder: {job}/   (the ONLY place you can write)
 Write the scene as {job}/<Name>.tsx. Name: PascalCase ending in "Scene" (not one of the existing names).
@@ -97,7 +98,8 @@ Existing scene names (don't reuse): {existing}
 """
 
 
-async def build_component(request: str, *, name: str | None = None, model: str | None = None) -> ComponentResult:
+async def build_component(request: str, *, name: str | None = None, model: str | None = None, skills: list[str] | None = None) -> ComponentResult:
+    selected = teaching_skills.select(request, skills, role="component")
     job_id = "comp-" + uuid.uuid4().hex[:10]
     job_dir = settings.WORKSPACE_DIR / "jobs" / job_id
     box = Sandbox(job_dir)
@@ -156,11 +158,19 @@ async def build_component(request: str, *, name: str | None = None, model: str |
         StructuredTool.from_function(coroutine=check_component, name="check_component", description=check_component.__doc__),
         StructuredTool.from_function(coroutine=finish, name="finish", description=finish.__doc__),
     ]
+    loaded_skills: set[str] = set()
+    if skills != []:
+        tools += teaching_skills.tools("component", selected if skills is not None else None, loaded_skills)
+    skill_hint = ""
+    if skills != []:
+        skill_hint = "\nAvailable guides (use load_skill before applying):\n" + teaching_skills.index("component", selected if skills is not None else None)
+        if selected:
+            skill_hint += "\nLoad relevant guides before writing: " + ", ".join(selected)
     by_name = {t.name: t for t in tools}
     existing = ", ".join(sorted(existing_scene_names()))
     want = f"\nUse the name {name}." if name else ""
     messages: list[Any] = [
-        SystemMessage(SYSTEM.format(job=box.job_rel, existing=existing)),
+        SystemMessage(SYSTEM.format(job=box.job_rel, existing=existing) + skill_hint),
         HumanMessage(f"New scene request: {request}{want}"),
     ]
     llm = get_tool_llm(model or settings.AGENT_MODEL or None).bind_tools(tools)
@@ -202,6 +212,8 @@ async def build_component(request: str, *, name: str | None = None, model: str |
             tool = by_name.get(call["name"])
             if tool is None:
                 result = f"ERROR: unknown tool {call['name']}"
+            elif set(selected) - loaded_skills and call["name"] in {"write_file", "edit_file", "check_component", "finish"}:
+                result = "Load the selected guides with load_skill first: " + ", ".join(sorted(set(selected) - loaded_skills))
             else:
                 try:
                     result = await tool.ainvoke(call["args"])

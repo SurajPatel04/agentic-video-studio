@@ -59,7 +59,14 @@ def _type_of(schema: Any, defs: dict[str, Any], depth: int = 0) -> str:
         req = set(schema.get("required", []))
         inner = ", ".join(f"{k}{'' if k in req else '?'}: {_type_of(v, defs, depth + 1)}" for k, v in schema["properties"].items())
         return "{" + inner + "}"
-    return {"integer": "int", "number": "num", "boolean": "bool"}.get(t, t or "any")
+    name = {"integer": "int", "number": "num", "boolean": "bool"}.get(t, t or "any")
+    if t in ("integer", "number"):  # show limits, e.g. num 300..1600, so the LLM doesn't guess
+        lo, hi = schema.get("minimum", schema.get("exclusiveMinimum")), schema.get("maximum", schema.get("exclusiveMaximum"))
+        lo = None if lo is not None and lo <= -1e9 else lo  # zod int() adds +-MAX_SAFE_INTEGER: not a real limit
+        hi = None if hi is not None and hi >= 1e9 else hi
+        if lo is not None or hi is not None:
+            name += f" {'' if lo is None else f'{lo:g}'}..{'' if hi is None else f'{hi:g}'}"
+    return name
 
 
 def _fields(schema: dict[str, Any]) -> str:

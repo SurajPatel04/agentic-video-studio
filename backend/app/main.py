@@ -1,3 +1,4 @@
+import json
 import re
 from pathlib import Path
 from typing import Any, Literal
@@ -11,6 +12,7 @@ from app.config import settings
 from app.utils.llm import call_model
 from app.agent.component_agent import build_component
 from app.agent.staging import manifest, promote, unstage
+from app.utils import long_video, skills as teaching_skills
 from app.utils.planner import PlanError, plan_video
 from app.utils.render import RenderError, render_video
 from app.utils.tts import MAX_CHARS, synthesize
@@ -132,7 +134,21 @@ def render_composition_file(job_id: str) -> FileResponse:
 # ------------------------------------------------------------------------- planner
 
 
+def _check_skills(names: list[str] | None, role: teaching_skills.Role = "planner") -> None:
+    if names is not None:
+        try:
+            teaching_skills.select("", names, role=role)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/skills")
+def list_teaching_skills(role: Literal["planner", "component"] = "planner") -> list[dict[str, Any]]:
+    return [s.model_dump() for s in teaching_skills.discover(role).values()]
+
+
 class PlanRequest(BaseModel):
+    skills: list[str] | None = None  # omitted: automatic; []: disabled; names: explicit
     prompt: str = Field(min_length=3, max_length=4000)  # topic / what the video should teach
     scenes: int | None = Field(default=None, ge=2, le=20)  # rough number of scenes
     model: str | None = None  # MLflow gateway route; defaults to PLANNER_MODEL / DEFAULT_MODEL
@@ -140,6 +156,7 @@ class PlanRequest(BaseModel):
 
 
 class PlanResponse(BaseModel):
+    skills: list[str] = Field(default_factory=list)
     composition: dict[str, Any]
     attempts: int
     mode: str
@@ -151,13 +168,14 @@ class PlanResponse(BaseModel):
 @app.post("/plan", response_model=PlanResponse)
 async def plan(req: PlanRequest) -> PlanResponse:
     """LLM writes the composition JSON (scenes, props, narration). Nothing is rendered."""
+    _check_skills(req.skills)
     try:
-        p = await plan_video(req.prompt, scenes=req.scenes, model=req.model, mode=req.mode)
+        p = await plan_video(req.prompt, scenes=req.scenes, model=req.model, mode=req.mode, skills=req.skills)
     except PlanError as exc:
         raise HTTPException(status_code=422, detail={"error": str(exc), "details": exc.details}) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"planner failed: {exc}") from exc
-    return PlanResponse(composition=p.spec, attempts=p.attempts, mode=p.mode, llm_calls=p.llm_calls, input_tokens=p.input_tokens, output_tokens=p.output_tokens)
+    return PlanResponse(skills=p.skills, composition=p.spec, attempts=p.attempts, mode=p.mode, llm_calls=p.llm_calls, input_tokens=p.input_tokens, output_tokens=p.output_tokens)
 
 
 class VideoRequest(PlanRequest):
@@ -176,7 +194,7 @@ class VideoResponse(RenderResponse):
 @app.post("/video", response_model=VideoResponse)
 async def video(req: VideoRequest) -> VideoResponse:
     """Prompt → plan (LLM) → narration (Deepgram) → captions → render. Waits until the MP4 is ready."""
-    planned = await plan(PlanRequest(prompt=req.prompt, scenes=req.scenes, model=req.model, mode=req.mode))
+    planned = await plan(PlanRequest(prompt=req.prompt, scenes=req.scenes, model=req.model, mode=req.mode, skills=req.skills))
     rendered = await render(RenderRequest(composition=planned.composition, narrate=req.narrate, captions=req.captions, scale=req.scale))
     return VideoResponse(**rendered.model_dump(), plan_attempts=planned.attempts, plan_mode=planned.mode,
                          llm_input_tokens=planned.input_tokens, llm_output_tokens=planned.output_tokens)
@@ -186,6 +204,7 @@ async def video(req: VideoRequest) -> VideoResponse:
 
 
 class ComponentRequest(BaseModel):
+    skills: list[str] | None = None
     request: str = Field(min_length=10, max_length=4000)  # what the new scene should show
     name: str | None = Field(default=None, pattern=r"^[A-Z][A-Za-z0-9]{2,40}Scene$")
     model: str | None = None
@@ -195,7 +214,8 @@ class ComponentRequest(BaseModel):
 async def create_component(req: ComponentRequest) -> dict[str, Any]:
     """Agent writes a new scene, checks it (rules, typecheck, contract, 3 rendered frames) and stages it.
     A staged scene works in videos and the planner sees it; promote it to keep it for good."""
-    r = await build_component(req.request, name=req.name, model=req.model)
+    _check_skills(req.skills, "component")
+    r = await build_component(req.request, name=req.name, model=req.model, skills=req.skills)
     return {
         "ok": r.ok, "name": r.name, "job_id": r.job_id, "summary": r.summary, "report": r.report,
         "steps": r.steps, "input_tokens": r.input_tokens, "output_tokens": r.output_tokens,
@@ -236,3 +256,120 @@ async def delete_component(name: str) -> dict[str, str]:
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"removed": name}
+
+
+# ------------------------------------------------------------------- long videos
+
+
+class LongRequest(BaseModel):
+    skills: list[str] | None = None
+    prompt: str = Field(min_length=3, max_length=4000)  # topic, e.g. "How Node.js works"
+    minutes: float = Field(default=30, ge=3, le=120)  # target length
+    chapters: int | None = Field(default=None, ge=2, le=24)  # default: minutes / LONG_CHAPTER_MINUTES
+    captions: bool = True
+    scale: float = Field(default=1.0, gt=0.1, le=2.0)
+    mode: Literal["auto", "catalog", "tools"] | None = None
+    model: str | None = None
+    run: bool = True  # start planning + rendering right away (False = only write the outline to review)
+    render: bool = True  # False = stop after planning every chapter (review the scripts first)
+
+
+def _long(job_id: str):
+    try:
+        return long_video.load(job_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+def _long_view(state) -> dict[str, Any]:
+    return {**state.model_dump(), "running": long_video.is_running(state.id),
+            "video_url": f"/long/{state.id}/video" if state.status == "done" else None}
+
+
+@app.post("/long")
+async def create_long(req: LongRequest) -> dict[str, Any]:
+    """Long video (20-40 min): writes the outline now (1 LLM call), then plans + renders chapters in the
+    background. Poll GET /long/{id} for progress; everything is saved, so it can resume."""
+    _check_skills(req.skills)
+    try:
+        state = await long_video.create_long_video(req.prompt, req.minutes, chapters=req.chapters, captions=req.captions,
+                                                   scale=req.scale, mode=req.mode, model=req.model, skills=req.skills)
+    except PlanError as exc:
+        raise HTTPException(status_code=422, detail={"error": str(exc), "details": exc.details}) from exc
+    if req.run:
+        long_video.start(state.id, render=req.render)
+    return _long_view(state)
+
+
+@app.get("/long")
+def list_long() -> list[dict[str, Any]]:
+    return long_video.list_long_videos()
+
+
+@app.get("/long/{job_id}")
+def get_long(job_id: str) -> dict[str, Any]:
+    """Status, progress, outline, every chapter's status/tokens/length, timestamps."""
+    return _long_view(_long(job_id))
+
+
+@app.post("/long/{job_id}/run")
+async def run_long(job_id: str, render: bool = True) -> dict[str, Any]:
+    """Start or resume: skips finished chapters, retries failed ones."""
+    _long(job_id)
+    try:
+        started = long_video.start(job_id, render=render)
+    except long_video.JobBusyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"started": started, "running": True}
+
+
+@app.put("/long/{job_id}/outline")
+def put_long_outline(job_id: str, outline: long_video.Outline) -> dict[str, Any]:
+    """Replace the outline with an edited one (all chapters go back to pending)."""
+    _long(job_id)
+    try:
+        return _long_view(long_video.replace_outline(job_id, outline))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/long/{job_id}/chapters/{n}/plan")
+def get_long_chapter_plan(job_id: str, n: int) -> dict[str, Any]:
+    _long(job_id)
+    path = long_video.plan_file(job_id, n)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"chapter {n} is not planned yet")
+    return json.loads(path.read_text())
+
+
+@app.put("/long/{job_id}/chapters/{n}/plan")
+async def put_long_chapter_plan(job_id: str, n: int, composition: dict[str, Any]) -> dict[str, Any]:
+    """Replace one chapter's composition by hand (validated); run again to re-render and re-join."""
+    _long(job_id)
+    try:
+        return _long_view(await long_video.set_chapter_plan(job_id, n, composition))
+    except RuntimeError as exc:
+        status = 422 if isinstance(exc, RenderError) else 409
+        raise HTTPException(status_code=status, detail={"error": str(exc), "details": getattr(exc, "details", "")}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/long/{job_id}/chapters/{n}/redo")
+def redo_long_chapter(job_id: str, n: int, stage: Literal["plan", "render"] = "plan", cascade: bool = False) -> dict[str, Any]:
+    """Re-plan (or only re-render) one chapter; cascade=true also re-plans the chapters after it."""
+    _long(job_id)
+    try:
+        return _long_view(long_video.redo_chapter(job_id, n, stage, cascade=cascade))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/long/{job_id}/video", response_class=FileResponse)
+def long_video_file(job_id: str) -> FileResponse:
+    state = _long(job_id)
+    if state.status != "done" or not Path(state.video).exists():
+        raise HTTPException(status_code=404, detail="video not ready")
+    return FileResponse(state.video, media_type="video/mp4", filename=f"long-{job_id}.mp4")

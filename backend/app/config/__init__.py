@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     PLANNER_MODE: str = "auto"  # auto | catalog | tools
     PLANNER_TOOLS_THRESHOLD: int = 80  # auto: use tools once the library has more scenes than this
     PLANNER_MAX_STEPS: int = 30  # tools mode: max LLM calls (lookups + answers)
+    PLANNER_MAX_TEXT_RUN: int = 3  # max Definition/Explain/BulletList scenes in a row (1 style retry, then accepted)
 
     # Component agent (writes new scenes when nothing in the library fits).
     AGENT_MODEL: str = ""  # MLflow gateway route; empty = DEFAULT_MODEL
@@ -45,6 +46,13 @@ class Settings(BaseSettings):
     AGENT_HISTORY_TURNS: int = Field(default=3, ge=1)  # complete recent assistant/tool turns
     AGENT_MAX_CONTEXT_TOKENS: int = Field(default=60_000, ge=1)  # conservative reservation per call
     AGENT_VISION: bool = True  # show the agent its rendered frames after a passing check
+
+    # Long videos (outline -> chapters -> render each -> join).
+    LONG_MODEL: str = ""  # outline LLM route; empty = PLANNER_MODEL / DEFAULT_MODEL
+    LONG_WORDS_PER_MINUTE: int = 150  # narration speed used for word budgets
+    LONG_CHAPTER_MINUTES: float = 5.0  # target length of one chapter
+    LONG_WORDS_PER_SCENE: int = 30  # narration words per scene -> scenes per chapter
+    LONG_BUDGET_TOLERANCE: float = 0.35  # chapter narration may be +-35% of its word budget, else re-plan once
 
     # Rendering (Remotion project + where jobs and videos go).
     RENDERING_DIR: Path = PROJECT_ROOT / "rendering"

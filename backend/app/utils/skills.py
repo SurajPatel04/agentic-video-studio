@@ -1,0 +1,136 @@
+"""Project teaching playbooks. Metadata is discovered eagerly; bodies load on demand."""
+import logging
+import re
+from pathlib import Path
+from typing import Literal
+
+import yaml
+from langchain_core.tools import StructuredTool
+from pydantic import BaseModel, Field
+
+from app.config import PROJECT_ROOT
+
+ROOT = PROJECT_ROOT / "skills"
+log = logging.getLogger(__name__)
+Role = Literal["planner", "component"]
+
+
+class Metadata(BaseModel):
+    category: Literal["foundation", "format", "subject"] = "subject"
+    roles: list[Role] = Field(default_factory=lambda: ["planner"])
+    tags: list[str] = Field(default_factory=list)
+    scenes: list[str] = Field(default_factory=list)
+    overlays: list[str] = Field(default_factory=list)
+    long_video: bool = False
+
+
+class Skill(BaseModel):
+    name: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=63)
+    description: str = Field(min_length=1, max_length=500)
+    metadata: Metadata = Field(default_factory=Metadata)
+
+
+def discover(role: Role = "planner") -> dict[str, Skill]:
+    result = {}
+    for path in sorted(ROOT.glob("*/SKILL.md")):
+        try:
+            if not path.resolve().is_relative_to(ROOT.resolve()):
+                continue
+            with path.open() as stream:
+                if stream.readline().strip() != "---":
+                    raise ValueError("missing YAML frontmatter")
+                header = []
+                for line in stream:
+                    if line.strip() == "---":
+                        break
+                    header.append(line)
+                    if sum(map(len, header)) > 16000:
+                        raise ValueError("metadata too large")
+                else:
+                    raise ValueError("unclosed frontmatter")
+            skill = Skill.model_validate(yaml.safe_load("".join(header)))
+            if skill.name != path.parent.name:
+                raise ValueError("name must match directory")
+            if role in skill.metadata.roles:
+                result[skill.name] = skill
+        except (ValueError, OSError, yaml.YAMLError) as exc:
+            log.warning("Skipping skill %s: %s", path, exc)
+    return result
+
+
+def load(name: str, role: Role = "planner") -> str:
+    if name not in discover(role):
+        raise ValueError(f"Unknown {role} skill: {name}")
+    path = ROOT / name / "SKILL.md"
+    if not path.resolve().is_relative_to(ROOT.resolve()):
+        raise ValueError("Skill path outside skills directory")
+    lines = path.read_text().splitlines(keepends=True)
+    end = next(i for i, line in enumerate(lines[1:], 1) if line.strip() == "---")
+    body = "".join(lines[end + 1:]).strip()
+    if not body or len(body) > 7000:
+        raise ValueError(f"Skill {name} must have a nonempty body under 7000 characters")
+    return f"### Teaching guide: {name}\n{body}"
+
+
+def select(topic: str, requested: list[str] | None = None, *, role: Role = "planner", long_video: bool = False) -> list[str]:
+    available = discover(role)
+    if requested is not None:
+        unknown = set(requested) - available.keys()
+        if unknown:
+            raise ValueError("Unknown or inapplicable skills: " + ", ".join(sorted(unknown)))
+        return list(dict.fromkeys(requested))
+    words = " " + " ".join(re.findall(r"[a-z0-9]+", topic.lower())) + " "
+    ranked = []
+    chosen = [name for name, skill in available.items() if skill.metadata.category == "foundation"]
+    for name, skill in available.items():
+        if skill.metadata.long_video or skill.metadata.category == "foundation":
+            continue
+        score = sum(bool(re.search(r"(?<!\w)" + re.escape(" ".join(re.findall(r"[a-z0-9]+", tag.lower()))) + r"(?!\w)", words))
+                    for tag in skill.metadata.tags)
+        if score:
+            ranked.append((score, name))
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    # Format and subject guides have separate slots: technical words cannot crowd out pedagogy.
+    chosen += [name for _, name in ranked if available[name].metadata.category == "format"][:1]
+    chosen += [name for _, name in ranked if available[name].metadata.category == "subject"][:2]
+    if long_video:
+        chosen += [name for name, skill in available.items() if skill.metadata.long_video]
+    return chosen
+
+
+def index(role: Role = "planner", allowed: list[str] | None = None) -> str:
+    return "\n".join(f"- {name}: {s.description}" for name, s in discover(role).items()
+                     if allowed is None or name in allowed)
+
+
+def guidance(names: list[str], role: Role = "planner") -> str:
+    if not names:
+        return ""
+    return "\nTeaching guides (adapt to the task; scene contracts and user instructions take precedence):\n" + "\n\n".join(load(n, role) for n in names)
+
+
+def tools(role: Role = "planner", allowed: list[str] | None = None, loaded: set[str] | None = None):
+    def list_skills() -> str:
+        """List available teaching guides by name and description."""
+        return index(role, allowed) or "No skills enabled."
+
+    def load_skill(name: str) -> str:
+        """Load a teaching guide by its exact name before applying it."""
+        if allowed is not None and name not in allowed:
+            return f"Skill {name!r} is not enabled for this request."
+        try:
+            body = load(name, role)
+        except ValueError as exc:
+            return str(exc)
+        if loaded is not None:
+            loaded.add(name)
+        return body
+
+    async def list_async() -> str:
+        return list_skills()
+
+    async def load_async(name: str) -> str:
+        return load_skill(name)
+
+    return [StructuredTool.from_function(list_skills, coroutine=list_async),
+            StructuredTool.from_function(load_skill, coroutine=load_async)]
