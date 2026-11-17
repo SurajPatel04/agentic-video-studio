@@ -114,7 +114,7 @@ export const InfrastructureScene: React.FC<InfrastructureSceneProps> = (input) =
     {props.showLabels && <div style={{position: 'absolute', top: height * 0.81, left: '5%', right: '5%', display: 'flex'}}>
       {states.map(({o, visibility}, i) => <div key={i} style={{flex: 1, textAlign: 'center', opacity: visibility, color: '#b9c8d4', fontSize: 23 * u, letterSpacing: 0.4 * u}}>{o.label ?? o.kind}</div>)}
     </div>}
-    <div style={{position: 'absolute', left: '7.5%', right: '7.5%', bottom: height * 0.065, borderTop: '1px solid #344353', paddingTop: 24 * u, fontSize: 22 * u, color: '#8296a8'}}>{props.caption}</div>
+    {props.caption ? <div style={{position: 'absolute', left: '7.5%', right: '7.5%', bottom: height * 0.065, borderTop: '1px solid #344353', paddingTop: 24 * u, fontSize: 22 * u, color: '#8296a8'}}>{props.caption}</div> : null}
   </AbsoluteFill>;
 };
 

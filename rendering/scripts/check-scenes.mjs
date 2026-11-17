@@ -24,6 +24,13 @@ for (const count of [3, 5, 8]) {
     if (topology === 'star') assert(layout.paths.every(p => p[0] === layout.positions[0]));
   }
 }
+// Definitions must not silently reuse a networking badge or footer on unrelated topics.
+const definition = sceneCatalog.DefinitionScene.schema.parse({term:'Callback',meaning:'A function called later.'});
+assert.equal(definition.abbreviation, '');
+assert.equal(definition.detail, '');
+assert.equal(sceneCatalog.DefinitionScene.schema.parse({abbreviation:'LAN'}).abbreviation, 'LAN');
+assert.equal(sceneCatalog.BlankScene.schema.parse({}).focusOverlay, true);
+assert.equal(sceneCatalog.BlankScene.schema.parse({focusOverlay:false}).focusOverlay, false);
 assert(!sceneCatalog.ComparisonTableScene.schema.safeParse({columns:['A','B'],rows:[['one']]}).success);
 assert(!sceneCatalog.QuizScene.schema.safeParse({correctIndex:4}).success);
 assert(!sceneCatalog.NetworkScene.schema.safeParse({packetFrames:0}).success);

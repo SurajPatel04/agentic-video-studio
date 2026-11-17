@@ -1575,6 +1575,12 @@
           "type": "string",
           "maxLength": 40
         },
+        "fontSize": {
+          "default": 30,
+          "type": "number",
+          "minimum": 20,
+          "maximum": 60
+        },
         "lines": {
           "default": [
             {

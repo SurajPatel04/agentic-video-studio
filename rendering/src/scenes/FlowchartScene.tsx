@@ -39,7 +39,7 @@ export const flowchartSceneSchema = z.object({
   startAt: nonnegative.default(10),
   stagger: nonnegative.default(14),
   revealFrames: positive.default(16),
-  footer: z.string().default('Reuse first; write a new component only when the library has no match.'),
+  footer: z.string().default(''),
 }).superRefine((p, ctx) => {
   const ids = new Set(p.nodes.map((n) => n.id));
   const duplicates = p.nodes.map((n) => n.id).filter((id, i, all) => all.indexOf(id) !== i);
@@ -68,14 +68,39 @@ export const FlowchartScene: React.FC<z.input<typeof flowchartSceneSchema>> = (i
   graph.setGraph({
     rankdir: p.direction === 'horizontal' ? 'LR' : 'TB',
     nodesep: 28,
-    ranksep: 64,
+    ranksep: 70,
     marginx: 20,
     marginy: 20,
   });
   graph.setDefaultEdgeLabel(() => ({}));
-  for (const node of p.nodes) graph.setNode(node.id, {width: 260, height: node.detail ? 104 : 82});
-  for (const edge of p.edges) graph.setEdge(edge.from, edge.to);
+  for (const node of p.nodes) graph.setNode(node.id, {width: 320, height: node.detail ? 180 : 130});
+  for (const edge of p.edges) graph.setEdge(edge.from, edge.to, edge.label
+    ? {labelpos: 'c', width: 140, height: 76} : {});
   dagre.layout(graph);
+
+  // A long linear explanation reads better as two rows than a tiny five-box strip.
+  // Only fold genuine chains; branching and vertical graphs retain dagre routing.
+  const folded = p.direction === 'horizontal' && p.nodes.length >= 4 && p.nodes.length <= 6 &&
+    p.edges.length === p.nodes.length - 1 && p.nodes.slice(1).every((node, i) =>
+      p.edges.some((edge) => edge.from === p.nodes[i].id && edge.to === node.id));
+  if (folded) {
+    const columns = Math.ceil(p.nodes.length / 2);
+    p.nodes.forEach((node, i) => {
+      const row = Math.floor(i / columns);
+      const column = row === 0 ? i : columns - 1 - (i % columns);
+      Object.assign(graph.node(node.id), {x: 180 + column * 480, y: 110 + row * 290, width: 340, height: 190});
+    });
+    p.edges.forEach((edge) => {
+      const a = graph.node(edge.from), b = graph.node(edge.to);
+      const across = a.y === b.y;
+      const sign = b.x > a.x ? 1 : -1;
+      const points = across
+        ? [{x: a.x + sign * a.width / 2, y: a.y}, {x: b.x - sign * b.width / 2, y: b.y}]
+        : [{x: a.x, y: a.y + a.height / 2}, {x: b.x, y: b.y - b.height / 2}];
+      Object.assign(graph.edge(edge.from, edge.to), {points, x: across ? (a.x + b.x) / 2 : a.x + 95,
+        y: across ? a.y - 36 : (a.y + b.y) / 2, width: across ? 126 : 160, height: 76});
+    });
+  }
 
   const laidOut = p.nodes.map((node) => {
     const pos = graph.node(node.id) as {x: number; y: number; width: number; height: number};
@@ -89,7 +114,7 @@ export const FlowchartScene: React.FC<z.input<typeof flowchartSceneSchema>> = (i
   const graphH = Math.max(1, maxY - minY);
   const scale = Math.min(1360 / graphW, 500 / graphH, 1.08);
   const offsetX = (1440 - graphW * scale) / 2 - minX * scale;
-  const offsetY = (575 - graphH * scale) / 2 - minY * scale;
+  const offsetY = (510 - graphH * scale) / 2 - minY * scale;
 
   const kindStyle = (kind: string) => {
     if (kind === 'start') return {border: theme.accent, background: `${theme.accent}20`, color: theme.accent};
@@ -109,14 +134,14 @@ export const FlowchartScene: React.FC<z.input<typeof flowchartSceneSchema>> = (i
               </marker>
             </defs>
             {p.edges.map((edge, i) => {
-              const layout = graph.edge(edge.from, edge.to) as {points: Pt[]};
+              const layout = graph.edge(edge.from, edge.to) as {points: Pt[]; x?: number; y?: number; width?: number; height?: number};
               const points = layout.points;
               const d = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
               const sourceIndex = p.nodes.findIndex((n) => n.id === edge.from);
               const progress = clamp((frame - p.startAt - (sourceIndex + 1) * p.stagger) / p.revealFrames);
               const mid = points[Math.floor(points.length / 2)];
               return (
-                <g key={`${edge.from}-${edge.to}-${i}`}>
+                <g key={`${edge.from}-${edge.to}-${i}`} opacity={progress}>
                   <path
                     d={d}
                     fill="none"
@@ -130,17 +155,13 @@ export const FlowchartScene: React.FC<z.input<typeof flowchartSceneSchema>> = (i
                     strokeDashoffset={1 - progress}
                   />
                   {edge.label ? (
-                    <text
-                      x={mid.x}
-                      y={mid.y - 8}
-                      textAnchor="middle"
-                      fill={theme.muted}
-                      fontSize={17}
-                      fontWeight={600}
-                      style={{paintOrder: 'stroke', stroke: '#0f172a', strokeWidth: 8, strokeLinejoin: 'round'}}
-                    >
-                      {edge.label}
-                    </text>
+                    <foreignObject x={(layout.x ?? mid.x) - (layout.width ?? 140) / 2}
+                      y={(layout.y ?? mid.y) - 38} width={layout.width ?? 140} height={76} opacity={progress}>
+                      <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                        <div style={{padding: '6px 8px', background: '#0f172a', border: '1px solid #324658', borderRadius: 9,
+                          color: '#cbd5e1', textAlign: 'center', fontSize: 17, lineHeight: 1.25, overflowWrap: 'anywhere'}}>{edge.label}</div>
+                      </div>
+                    </foreignObject>
                   ) : null}
                 </g>
               );
@@ -165,8 +186,8 @@ export const FlowchartScene: React.FC<z.input<typeof flowchartSceneSchema>> = (i
                   justifyContent: 'center',
                   alignItems: 'center',
                   textAlign: 'center',
-                  padding: '10px 16px',
-                  borderRadius: node.kind === 'start' || node.kind === 'end' ? 999 : 16,
+                  padding: '22px 24px',
+                  borderRadius: 20,
                   border: `2px solid ${style.border}`,
                   background: style.background,
                   opacity: reveal,
@@ -174,8 +195,9 @@ export const FlowchartScene: React.FC<z.input<typeof flowchartSceneSchema>> = (i
                   boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
                 }}
               >
-                <div style={{fontSize: 24, lineHeight: 1.12, fontWeight: 680, color: style.color}}>{node.label}</div>
-                {node.detail ? <div style={{fontSize: 16, lineHeight: 1.25, color: theme.muted, marginTop: 5}}>{node.detail}</div> : null}
+                <div style={{fontSize: 13, fontWeight: 800, letterSpacing: 2, color: style.color, marginBottom: 10}}>{String(i + 1).padStart(2, '0')}</div>
+                <div style={{fontSize: node.label.length > 45 ? 23 : 27, lineHeight: 1.15, fontWeight: 700, color: style.color, overflowWrap: 'anywhere'}}>{node.label}</div>
+                {node.detail ? <div style={{fontSize: 20, lineHeight: 1.3, color: '#bdcbd8', marginTop: 12, overflowWrap: 'anywhere'}}>{node.detail}</div> : null}
               </div>
             );
           })}

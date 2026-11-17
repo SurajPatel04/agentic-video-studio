@@ -5,6 +5,7 @@ import {AnimatedText} from '../motion/AnimatedText';
 import {useTheme, useUnit} from '../theme';
 
 export const blankSceneSchema = z.object({
+  focusOverlay: z.boolean().default(true), // enlarge a lone centered terminal; false preserves overlay sizing
   title: z.string().optional(), // markup ok
   caption: z.string().optional(),
   titleAt: z.enum(['top', 'center']).default('top'),

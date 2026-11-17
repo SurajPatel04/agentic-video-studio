@@ -1844,19 +1844,19 @@
       "type": "object",
       "properties": {
         "term": {
-          "default": "Local Area Network",
+          "default": "A key concept",
           "type": "string"
         },
         "abbreviation": {
-          "default": "LAN",
+          "default": "",
           "type": "string"
         },
         "meaning": {
-          "default": "A network that connects devices within a ==limited area==, such as a home, school, or office.",
+          "default": "Explain the idea in plain language, then connect it to a concrete example.",
           "type": "string"
         },
         "detail": {
-          "default": "Think: **nearby devices** sharing a connection.",
+          "default": "",
           "type": "string"
         },
         "revealAt": {
@@ -1881,10 +1881,10 @@
       "additionalProperties": false
     },
     "example": {
-      "term": "Local Area Network",
-      "abbreviation": "LAN",
-      "meaning": "A network that connects devices within a ==limited area==, such as a home, school, or office.",
-      "detail": "Think: **nearby devices** sharing a connection.",
+      "term": "A key concept",
+      "abbreviation": "",
+      "meaning": "Explain the idea in plain language, then connect it to a concrete example.",
+      "detail": "",
       "revealAt": 20,
       "textAnimation": "words"
     }
@@ -2846,7 +2846,7 @@
           "maximum": 9007199254740991
         },
         "footer": {
-          "default": "Reuse first; write a new component only when the library has no match.",
+          "default": "",
           "type": "string"
         }
       },
@@ -2910,7 +2910,7 @@
       "startAt": 10,
       "stagger": 14,
       "revealFrames": 16,
-      "footer": "Reuse first; write a new component only when the library has no match."
+      "footer": ""
     }
   },
   {
@@ -6098,6 +6098,10 @@
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
+        "focusOverlay": {
+          "default": true,
+          "type": "boolean"
+        },
         "title": {
           "type": "string"
         },
@@ -6116,6 +6120,7 @@
       "additionalProperties": false
     },
     "example": {
+      "focusOverlay": true,
       "titleAt": "top"
     }
   },

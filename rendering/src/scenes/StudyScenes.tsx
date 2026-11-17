@@ -18,10 +18,10 @@ const U = 1;
 /* ------------------------------------------------------------------ Definition */
 
 export const definitionSceneSchema = z.object({
-  term: z.string().default('Local Area Network'),
-  abbreviation: z.string().default('LAN'),
-  meaning: z.string().default('A network that connects devices within a ==limited area==, such as a home, school, or office.'),
-  detail: z.string().default('Think: **nearby devices** sharing a connection.'),
+  term: z.string().default('A key concept'),
+  abbreviation: z.string().default(''),
+  meaning: z.string().default('Explain the idea in plain language, then connect it to a concrete example.'),
+  detail: z.string().default(''),
   revealAt: nonnegative.default(20),
   textAnimation,
 });
@@ -31,12 +31,17 @@ export const DefinitionScene: React.FC<z.input<typeof definitionSceneSchema>> = 
   const {fps} = useVideoConfig();
   const footerAt = p.revealAt + wordCount(p.meaning) * 3 + 15;
   return <StudyFrame title={p.term} eyebrow="DEFINITION / THE CORE IDEA" footer={p.detail} footerAt={footerAt} textAnimation={p.textAnimation}>
-    <div style={{display: 'flex', gap: 65, alignItems: 'center', height: '100%'}}>
-      <div style={{fontSize: 100, fontWeight: 750, color: '#76d3ed', padding: 55, background: '#16334a', borderRadius: 24, ...entrance('pop', f - 8, fps, U)}}>
-        {p.abbreviation}
+    <div style={{display: 'flex', gap: 36, alignItems: 'stretch', marginTop: 65, minHeight: 290, maxHeight: 440}}>
+      {p.abbreviation.trim() ? <div style={{flex: '0 0 250px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: Math.min(78, 300 / Math.max(4, p.abbreviation.length)), fontWeight: 750, color: '#76d3ed',
+        padding: 24, overflowWrap: 'anywhere', textAlign: 'center', background: '#16334a', borderRadius: 24,
+        boxSizing: 'border-box', ...entrance('pop', f - 8, fps, U)}}>{p.abbreviation}</div> : null}
+      <div style={{flex: 1, minWidth: 0, padding: '36px 44px', border: '1px solid #35576f', borderLeft: '5px solid #38bdf8',
+        borderRadius: 22, background: 'linear-gradient(125deg, #152d42, #122236)', display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
+        <div style={{fontSize: 15, letterSpacing: 3, fontWeight: 700, color: '#76d3ed', marginBottom: 22}}>IN PLAIN WORDS</div>
+        <AnimatedText text={p.meaning} mode={p.textAnimation} startAt={p.revealAt} stagger={3}
+          style={{fontSize: p.meaning.length > 220 ? 30 : p.meaning.length > 140 ? 36 : 43, lineHeight: 1.4, overflowWrap: 'anywhere'}} />
       </div>
-      <AnimatedText text={p.meaning} mode={p.textAnimation} startAt={p.revealAt} stagger={3}
-        style={{fontSize: 43, lineHeight: 1.45, maxWidth: 900}} />
     </div>
   </StudyFrame>;
 };

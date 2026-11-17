@@ -29,6 +29,16 @@ const SceneFrame: React.FC<{scene: SceneSpec; baseTheme: Theme; audio: AudioSett
   const overlays = useMemo(() => (scene.overlays ? overlaysSchema.safeParse(scene.overlays) : null), [scene.overlays]);
   if (overlays && !overlays.success) throw new Error(`Scene ${scene.id} overlays: ${overlays.error.message}`);
 
+  // A terminal on an otherwise blank canvas is the main visual, not a small accessory.
+  const overlayItems = overlays?.success ? overlays.data.map((item) => {
+    const focus = scene.component === 'BlankScene' && scene.props?.focusOverlay !== false &&
+      scene.props?.titleAt !== 'center' && overlays.data.length === 1 && item.type === 'terminal' &&
+      item.at.x === 50 && item.at.y === 50;
+    if (!focus || item.type !== 'terminal') return item;
+    return {...item, width: Math.max(item.width, 1200),
+      fontSize: Math.max(item.fontSize, item.lines.length <= 6 ? 42 : 30)};
+  }) : [];
+
   const voice = useMemo(() => (scene.voice ? voiceSchema.safeParse(scene.voice) : null), [scene.voice]);
   if (voice && !voice.success) throw new Error(`Scene ${scene.id} voice: ${voice.error.message}`);
   const cues = useMemo(() => (scene.sfx ? sfxCuesSchema.safeParse(scene.sfx) : null), [scene.sfx]);
@@ -40,7 +50,7 @@ const SceneFrame: React.FC<{scene: SceneSpec; baseTheme: Theme; audio: AudioSett
     <ThemeProvider value={theme}>
       <AbsoluteFill style={{background: theme.background, color: theme.text, fontFamily: theme.fontFamily}}>
         {content}
-        {overlays?.success && overlays.data.length ? <Overlays items={overlays.data} scene={content} /> : null}
+        {overlays?.success && overlays.data.length ? <Overlays items={overlayItems} scene={content} /> : null}
         {voice?.success ? <Voice voice={voice.data} volume={audio.voiceVolume} /> : null}
         {cues?.success ? <SfxCues cues={cues.data} /> : null}
         {voice?.success && voice.data.words ? <Captions words={voice.data.words} settings={captions} fps={fps} /> : null}

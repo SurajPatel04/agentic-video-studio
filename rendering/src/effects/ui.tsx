@@ -27,6 +27,7 @@ export const terminalSchema = z
     at: pointSchema.default({...ANCHORS.center}),
     width: z.number().min(300).max(1800).default(1000),
     title: z.string().max(40).default('Terminal'),
+    fontSize: z.number().min(20).max(60).default(30),
     lines: z
       .array(
         z.object({
@@ -75,7 +76,7 @@ export const Terminal: FC<TerminalProps> = (input) => {
   return (
     <div style={{...placeAt(p.at, W, H), width: p.width * u, opacity: pop}}>
       <AppWindow title={p.title} style={{background: 'rgba(3,7,18,0.95)'}}>
-        <div style={{fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 30 * u, lineHeight: 1.5, color: '#e2e8f0', display: 'flex', flexDirection: 'column'}}>
+        <div style={{fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: p.fontSize * u, lineHeight: 1.5, color: '#e2e8f0', display: 'flex', flexDirection: 'column'}}>
           {rows.map(({l, n}, i) => (n < 0 ? null : (
             <span key={i} style={{color: l.color ?? (l.prompt ? '#e2e8f0' : '#94a3b8'), whiteSpace: 'pre-wrap'}}>
               {l.prompt ? <span style={{color: theme.accent}}>$ </span> : null}
