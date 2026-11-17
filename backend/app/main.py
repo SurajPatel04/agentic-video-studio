@@ -1,15 +1,19 @@
 import json
+import logging
 import re
+import time
+import uuid
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from app.config import settings
-from app.utils.llm import call_model
+from app.utils.console import fmt_seconds, paint, request_id, setup_logging
+from app.utils.llm import call_model, resolve_base_url
 from app.agent.component_agent import build_component
 from app.agent.staging import manifest, promote, unstage
 from app.utils import long_video, skills as teaching_skills
@@ -17,7 +21,57 @@ from app.utils.planner import PlanError, plan_video
 from app.utils.render import RenderError, render_video
 from app.utils.tts import MAX_CHARS, synthesize
 
+setup_logging()
+log = logging.getLogger("app.http")
 app = FastAPI(title="Agentic Video Studio API")
+
+
+@app.on_event("startup")
+async def banner() -> None:
+    from urllib.parse import urlparse
+    host = urlparse(resolve_base_url()).hostname or "?"  # host only: the URL can hold credentials
+    log.info("%s  llm=%s via %s  planner=%s  prompts=%s  level=%s", paint("Agentic Video Studio ready", "green", True),
+             settings.PLANNER_MODEL or settings.DEFAULT_MODEL, host, settings.PLANNER_MODE,
+             "on" if settings.LOG_PROMPTS else "off", settings.LOG_LEVEL)
+
+
+class RequestLog:
+    """Pure ASGI middleware: → POST /plan … ← 200 POST /plan 12.3s, request id on every line in between.
+    (Not BaseHTTPMiddleware: that one buffers responses and can break streaming / background tasks.)"""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        headers = dict(scope.get("headers") or [])
+        rid = headers.get(b"x-request-id", b"").decode(errors="ignore")[:12] or uuid.uuid4().hex[:6]
+        token = request_id.set(rid)
+        method, path = scope["method"], scope["path"] + (f"?{scope['query_string'].decode()}" if scope.get("query_string") else "")
+        started, status = time.perf_counter(), 500
+
+        async def send_with_id(message):
+            nonlocal status
+            if message["type"] == "http.response.start":
+                status = message["status"]
+                message["headers"] = [*message.get("headers", []), (b"x-request-id", rid.encode())]
+            await send(message)
+
+        log.info("%s %s %s", paint("→", "blue", True), paint(method, "blue", True), path)
+        try:
+            await self.app(scope, receive, send_with_id)
+        except Exception:
+            log.exception("%s %s %s %s", paint("✗ 500", "red", True), method, path, paint(fmt_seconds(time.perf_counter() - started), "yellow"))
+            raise
+        else:
+            color = "green" if status < 400 else "yellow" if status < 500 else "red"
+            log.info("%s %s %s %s", paint(f"← {status}", color, True), method, path, paint(fmt_seconds(time.perf_counter() - started), "yellow"))
+        finally:
+            request_id.reset(token)
+
+
+app.add_middleware(RequestLog)
 
 
 class ChatRequest(BaseModel):

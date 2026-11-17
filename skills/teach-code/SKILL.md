@@ -28,8 +28,8 @@ metadata:
 ---
 
 Hard rules for programming topics (they override softer advice below):
-- Every chapter (or every short video) has at least one CodeScene, and normally one per main concept. Show the code that produces the behavior you explain; a diagram alone is not enough.
-- When code produces output, add a "terminal" overlay on that CodeScene (or the next scene) showing the expected output.
+- At least 1 CodeScene in every 5 scenes (a 15-scene chapter has 3 or more): one per main concept, each a step of the same running example. Show the code that produces the behavior you explain; a diagram alone is not enough.
+- When code produces output, show it in the NEXT scene: a BlankScene (title like "Output") with a "terminal" overlay at "center". Never put a terminal on a CodeScene or a text scene: it covers the code / text. Two outputs side by side: two terminals at {"x": 27, "y": 55} and {"x": 73, "y": 55}, width about 760.
 - Never more than 2 DefinitionScene / ExplainScene in a row; break them with code, a diagram, or a comparison.
 - Pattern per concept: CodeScene (what we write) -> diagram (what the runtime does) -> output (what we see).
 

@@ -58,7 +58,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         budget = self.state.outline.chapters[n - 1].words
         return Plan(spec_with(budget, f"ch{n}"), 1, "catalog", 1, 1000, 500)
 
-    async def fake_render(self, spec, *, captions, job_id, scale):
+    async def fake_render(self, spec, *, captions, job_id, scale, concurrency=None):
         self.rendered.append(job_id)
         video = make_video(settings.WORKSPACE_DIR / "jobs" / job_id / "video.mp4", 1.0)
         self.addCleanup(shutil.rmtree, video.parent, True)
@@ -161,8 +161,9 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
                 response = await client.post(f"/long/{self.state.id}/run?render=false")
                 self.assertEqual(response.status_code, 200, response.text)
                 self.assertTrue(response.json()["started"])
-                task = lv._tasks[self.state.id]
-                await task
+                task = lv._tasks.get(self.state.id)  # may already be done (fake plan is instant)
+                if task:
+                    await task
                 await asyncio.sleep(0)
         self.assertEqual(lv.load(self.state.id).status, "planned")
 
@@ -227,6 +228,69 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
                 await lv.set_chapter_plan(self.state.id, 1, spec_with(376))
         lv.redo_chapter(self.state.id, 1)
         self.assertFalse((lv._dir(self.state.id) / "ch01.check.json").exists())
+
+    async def test_render_overlaps_planning_and_respects_worker_limit(self):
+        events, active, peak = [], 0, 0
+
+        async def slow_plan(topic, **kw):
+            n = int(topic.split("chapter ")[1].split(",")[0])
+            events.append(f"plan{n}")
+            await asyncio.sleep(0.05)
+            return await self.fake_plan(topic, **kw)
+
+        async def slow_render(spec, *, job_id, **kw):
+            nonlocal active, peak
+            events.append("render" + job_id[-1])
+            active += 1
+            peak = max(peak, active)
+            await asyncio.sleep(0.12)
+            active -= 1
+            return await self.fake_render(spec, job_id=job_id, **kw)
+
+        with patch("app.utils.long_video.plan_video", side_effect=slow_plan), \
+                patch("app.utils.long_video.render_video", side_effect=slow_render), \
+                patch.object(settings, "LONG_RENDER_WORKERS", 1):
+            state = await lv.run_long_video(self.state.id)
+        self.assertEqual(state.status, "done", state.error)
+        self.assertLess(events.index("render1"), events.index("plan3"))  # chapter 1 rendered while 2/3 planned
+        self.assertEqual(peak, 1)  # never more renders than workers
+
+    async def test_failed_plan_stops_later_plans_but_finishes_started_renders(self):
+        async def plan(topic, **kw):
+            if "chapter 2" in topic:
+                raise RuntimeError("bad plan")
+            return await self.fake_plan(topic, **kw)
+
+        with patch("app.utils.long_video.plan_video", side_effect=plan), \
+                patch("app.utils.long_video.render_video", side_effect=self.fake_render):
+            state = await lv.run_long_video(self.state.id)
+        self.assertEqual(state.status, "failed")
+        self.assertEqual([c.status for c in state.chapters], ["rendered", "failed", "pending"])
+        self.assertIn("chapter 2 plan: bad plan", state.error)
+
+    async def test_parallel_planning_plans_all_at_once(self):
+        running, peak = 0, 0
+
+        async def plan(topic, **kw):
+            nonlocal running, peak
+            running += 1
+            peak = max(peak, running)
+            await asyncio.sleep(0.05)
+            running -= 1
+            return await self.fake_plan(topic, **kw)
+
+        with patch("app.utils.long_video.plan_video", side_effect=plan), \
+                patch.object(settings, "LONG_PARALLEL_PLANNING", True):
+            state = await lv.run_long_video(self.state.id, render=False)
+        self.assertEqual(state.status, "planned", state.error)
+        self.assertEqual(peak, 3)
+
+    def test_render_threads_split_between_workers(self):
+        with patch.object(settings, "LONG_RENDER_WORKERS", 2), patch.object(settings, "LONG_RENDER_CONCURRENCY", 0), \
+                patch("os.cpu_count", return_value=16):
+            self.assertEqual(lv.render_concurrency(), 8)
+        with patch.object(settings, "LONG_RENDER_CONCURRENCY", 5):
+            self.assertEqual(lv.render_concurrency(), 5)
 
     def test_ids_are_checked(self):
         with self.assertRaises(ValueError):

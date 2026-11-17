@@ -25,12 +25,14 @@ from pathlib import Path
 from app.agent.component_agent import build_component
 from app.agent.staging import manifest, promote, unstage
 from app.utils import long_video
+from app.utils.console import setup_logging
 from app.utils.planner import PlanError, plan_video
 from app.utils.render import RenderError, add_narration, render_video
 from app.utils.tts import synthesize
 
 
 async def main() -> None:
+    setup_logging()
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     sub = parser.add_subparsers(dest="cmd", required=True)
     v = sub.add_parser("voice", help="add Deepgram narration audio to a composition JSON")

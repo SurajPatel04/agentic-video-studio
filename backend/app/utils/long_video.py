@@ -18,6 +18,7 @@ Chapters are rendered as normal jobs (``workspace/jobs/long-<id>-chNN``) and joi
 """
 
 import asyncio
+import os
 import fcntl
 import inspect
 from contextlib import contextmanager
@@ -36,6 +37,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from app.config import settings
 from app.utils import skills as teaching_skills
+from app.utils.console import step
 from app.utils.llm import get_llm, text_of, usage_of
 from app.utils.planner import PlanError, _extract_json, plan_video
 from app.utils.render import RenderError, render_video, validate
@@ -265,7 +267,9 @@ async def create_long_video(topic: str, minutes: float, *, chapters: int | None 
                             scale: float = 1.0, mode: str | None = None, model: str | None = None, skills: list[str] | None = None) -> LongState:
     """Write and save the outline (nothing planned or rendered yet). Review it, then run."""
     selected = teaching_skills.select(topic, skills, long_video=True)
-    outline, calls, tin, tout = await make_outline(topic, minutes, chapters=chapters, model=model, skills=selected)
+    with step("outline", topic=topic, minutes=minutes, skills=",".join(selected)) as s:
+        outline, calls, tin, tout = await make_outline(topic, minutes, chapters=chapters, model=model, skills=selected)
+        s.update(chapters=len(outline.chapters), tokens_in=tin, tokens_out=tout)
     state = _new_state(topic, minutes, outline, captions=captions, scale=scale, mode=mode, model=model, skills=selected)
     state.llm_calls, state.input_tokens, state.output_tokens = calls, tin, tout
     state.step = f"outline: {len(outline.chapters)} chapters"
@@ -384,11 +388,19 @@ def _accept_plan(state: LongState, n: int, spec: dict[str, Any]) -> None:
     cs.seconds, cs.job_id = 0, ""
 
 
+def render_concurrency() -> int:
+    """Remotion threads per chapter render: LONG_RENDER_CONCURRENCY, or the cores shared by the workers."""
+    if settings.LONG_RENDER_CONCURRENCY > 0:
+        return settings.LONG_RENDER_CONCURRENCY
+    return max(1, (os.cpu_count() or 2) // max(1, settings.LONG_RENDER_WORKERS))
+
+
 async def _render_chapter(state: LongState, n: int) -> None:
     cs = state.chapters[n - 1]
     spec = json.loads(plan_file(state.id, n).read_text())
     cs.job_id = f"long-{state.id}-ch{n:02d}"
-    result = await render_video(spec, captions=state.captions, job_id=cs.job_id, scale=state.scale)
+    result = await render_video(spec, captions=state.captions, job_id=cs.job_id, scale=state.scale,
+                                concurrency=render_concurrency())
     cs.seconds = await _duration(result.video)
     cs.status, cs.failed_stage, cs.error = "rendered", "", ""
 
@@ -497,56 +509,128 @@ async def run_long_video(job_id: str, *, render: bool = True) -> LongState:
 
 
 async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
-    """Plan every chapter that isn't planned, then (``render``) render the rest and join.
-    Safe to call again after a crash or an edit: finished steps are skipped."""
+    """Plan every chapter that isn't planned, render the rest, join. Finished steps are skipped,
+    so this is safe to call again after a crash or an edit.
+
+    Speed: a chapter starts rendering as soon as it is planned, while the next one is planned
+    (planning waits on the LLM, rendering uses the CPU). Up to LONG_RENDER_WORKERS chapters render at
+    once. LONG_PARALLEL_PLANNING plans all chapters at once (faster; each chapter then knows the outline
+    but not what earlier chapters actually said)."""
     state = load(job_id)
     if state.skills is None:
         state.skills = teaching_skills.select(state.topic, long_video=True)
     outline_usage = (state.llm_calls - sum(c.llm_calls for c in state.chapters),
                      state.input_tokens - sum(c.input_tokens for c in state.chapters),
                      state.output_tokens - sum(c.output_tokens for c in state.chapters))
-    state.status, state.error = "running", ""
-    save(state)
-    current = None
-    try:
-        for cs in state.chapters:  # plan in order: each chapter sees what the earlier ones covered
-            if cs.status == "pending" or (cs.status == "failed" and cs.failed_stage == "plan"):
-                current = (cs, "plan")
-                state.step = f"planning chapter {cs.n}/{len(state.chapters)}: {state.outline.chapters[cs.n - 1].title}"
-                save(state)
-                _accept_plan(state, cs.n, await plan_chapter(state, cs.n))
-                _total_tokens(state, outline_usage)
-                save(state)
-        if not render:
-            state.status, state.step = "planned", "all chapters planned (not rendered)"
-            save(state)
-            return state
-        for cs in state.chapters:
-            if cs.status == "planned" or (cs.status == "failed" and cs.failed_stage == "render"):
-                current = (cs, "render")
-                state.step = f"rendering chapter {cs.n}/{len(state.chapters)}"
-                save(state)
-                await _render_chapter(state, cs.n)
-                save(state)
-        current = None
-        if not state.video or not Path(state.video).exists():
-            state.step = "joining chapters"
-            save(state)
-            await join_chapters(state)
-        state.status, state.step = "done", f"done: {_stamp(state.seconds)} (target {state.minutes:g} min)"
+    total = len(state.chapters)
+    planning: set[int] = set()
+    rendering: set[int] = set()
+    errors: list[str] = []
+    renders: list[asyncio.Task] = []
+    render_slots = asyncio.Semaphore(max(1, settings.LONG_RENDER_WORKERS))
+
+    def mark(text: str = "") -> None:
+        busy = ([f"planning ch {', '.join(map(str, sorted(planning)))}"] if planning else []) + \
+               ([f"rendering ch {', '.join(map(str, sorted(rendering)))}"] if rendering else [])
+        state.step = text or " · ".join(busy) or state.step
+        _total_tokens(state, outline_usage)
         save(state)
+
+    def fail(cs: ChapterState, stage: str, exc: BaseException) -> None:
+        msg = f"{exc}\n{getattr(exc, 'details', '')}".strip()[:4000]
+        cs.status, cs.failed_stage, cs.error = "failed", stage, msg  # type: ignore[assignment]
+        errors.append(f"chapter {cs.n} {stage}: {msg.splitlines()[0] if msg else type(exc).__name__}")
+        log.error("long.chapter_failed id=%s ch=%d stage=%s", job_id, cs.n, stage)
+
+    def needs_plan(cs: ChapterState) -> bool:
+        return cs.status == "pending" or (cs.status == "failed" and cs.failed_stage == "plan")
+
+    def needs_render(cs: ChapterState) -> bool:
+        return cs.status == "planned" or (cs.status == "failed" and cs.failed_stage == "render")
+
+    async def render_one(cs: ChapterState) -> None:
+        async with render_slots:
+            rendering.add(cs.n)
+            mark()
+            try:
+                with step(f"chapter {cs.n}/{total} render", title=state.outline.chapters[cs.n - 1].title) as s:
+                    await _render_chapter(state, cs.n)
+                    s.update(length=f"{cs.seconds / 60:.1f}min", target=f"{state.outline.chapters[cs.n - 1].minutes:g}min")
+            except Exception as exc:
+                fail(cs, "render", exc)
+            finally:
+                rendering.discard(cs.n)
+                mark()
+
+    def start_render(cs: ChapterState) -> None:
+        if render and needs_render(cs):
+            renders.append(asyncio.create_task(render_one(cs)))
+
+    async def plan_one(cs: ChapterState) -> bool:
+        planning.add(cs.n)
+        mark()
+        try:
+            with step(f"chapter {cs.n}/{total} plan", title=state.outline.chapters[cs.n - 1].title,
+                      budget_words=state.outline.chapters[cs.n - 1].words) as s:
+                _accept_plan(state, cs.n, await plan_chapter(state, cs.n))
+                s.update(scenes=cs.scenes, words=cs.words, tokens_in=cs.input_tokens, tokens_out=cs.output_tokens)
+        except Exception as exc:
+            fail(cs, "plan", exc)
+            return False
+        finally:
+            planning.discard(cs.n)
+            mark()
+        start_render(cs)  # render this chapter while the next one is planned
+        return True
+
+    state.status, state.error = "running", ""
+    mark("starting")
+    try:
+        for cs in state.chapters:  # already planned (earlier run / edit): render right away
+            if not needs_plan(cs):
+                start_render(cs)
+        todo = [cs for cs in state.chapters if needs_plan(cs)]
+        if settings.LONG_PARALLEL_PLANNING:
+            plan_slots = asyncio.Semaphore(max(1, settings.LONG_PLAN_WORKERS))
+
+            async def bounded(cs: ChapterState) -> bool:
+                async with plan_slots:
+                    return await plan_one(cs)
+            await asyncio.gather(*(bounded(cs) for cs in todo))
+        else:
+            for cs in todo:  # in order: each chapter sees what the earlier ones actually said
+                if not await plan_one(cs):
+                    break  # later chapters need this one's handoff; renders already started continue
+        if renders:
+            await asyncio.gather(*renders)
+        unfinished = [cs.n for cs in state.chapters if needs_plan(cs) and cs.status != "failed"]
+        if errors or unfinished:
+            state.status = "failed"
+            state.error = "\n".join(errors) + (f"\nnot planned yet: chapters {unfinished}" if unfinished else "")
+            mark("stopped: " + (errors[0] if errors else "chapters left"))
+            return state
+        if not render:
+            state.status = "planned"
+            mark("all chapters planned (not rendered)")
+            return state
+        if not state.video or not Path(state.video).exists():
+            mark("joining chapters")
+            with step("join chapters (ffmpeg)", chapters=total) as s:
+                await join_chapters(state)
+                s.update(video=state.video, length=f"{state.seconds / 60:.1f}min", target=f"{state.minutes:g}min")
+        state.status = "done"
+        mark(f"done: {_stamp(state.seconds)} (target {state.minutes:g} min)")
         log.info("long.done id=%s seconds=%.0f llm_calls=%d tokens_in=%d tokens_out=%d",
                  job_id, state.seconds, state.llm_calls, state.input_tokens, state.output_tokens)
     except Exception as exc:
-        details = getattr(exc, "details", "")
-        msg = f"{exc}\n{details}".strip()[:4000]
-        if current:
-            cs, stage = current
-            cs.status, cs.failed_stage, cs.error = "failed", stage, msg  # type: ignore[assignment]
+        msg = f"{exc}\n{getattr(exc, 'details', '')}".strip()[:4000]
         state.status, state.error = "failed", msg
-        _total_tokens(state, outline_usage)
-        save(state)
+        mark()
         log.exception("long.failed id=%s step=%s", job_id, state.step)
+    finally:
+        for t in renders:  # cancelled run: don't leave renders behind
+            if not t.done():
+                t.cancel()
     return state
 
 

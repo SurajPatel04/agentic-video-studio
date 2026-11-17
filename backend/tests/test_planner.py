@@ -40,6 +40,48 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(llm.ainvoke.call_count, 2)  # second texty plan accepted, no third call
         self.assertEqual(len(plan.spec["scenes"]), len(TEXTY["scenes"]))
 
+    def test_panel_overlay_only_on_blank_scene(self):
+        term = {"type": "terminal", "lines": [{"text": "hi"}]}
+        bad = spec(["TitleScene", "ExplainScene"]); bad["scenes"][1]["overlays"] = [term]
+        ok = spec(["TitleScene", "BlankScene"]); ok["scenes"][1]["overlays"] = [term, {"type": "badge"}]
+        self.assertIn("'s1' (ExplainScene: terminal)", planner._lint(bad))
+        self.assertEqual(planner._lint(ok), "")
+        self.assertIn("chat, terminal", planner._rules())
+
+    def test_example_footers_are_blanked_unless_set(self):
+        s = planner._normalize({"scenes": [{"component": "CodeScene", "props": {}},
+                                           {"component": "ChartScene", "props": {"footer": "mine"}},
+                                           {"component": "TitleScene", "props": {}}]})
+        self.assertEqual(s["scenes"][0]["props"]["footer"], "")
+        self.assertEqual(s["scenes"][1]["props"]["footer"], "mine")
+        self.assertNotIn("footer", s["scenes"][2]["props"])
+
+    def test_text_share_and_code_density(self):
+        mostly_text = spec(["TitleScene", "ExplainScene", "FlowchartScene", "DefinitionScene", "ChartScene",
+                            "ExplainScene", "FlowchartScene", "DefinitionScene", "SummaryScene", "QuizScene"])
+        self.assertIn("4 of 10 scenes are text-only", planner._lint(mostly_text))
+        one_code = spec(["TitleScene", "CodeScene", "FlowchartScene", "ExplainScene", "ChartScene",
+                         "FlowchartScene", "ComparisonTableScene", "BlankScene", "SummaryScene", "QuizScene"])
+        self.assertEqual(planner._lint(one_code), "")  # not a programming topic: fine
+        self.assertIn("at least 2 CodeScene", planner._lint(one_code, ["teach-code"]))
+        one_code["scenes"][5]["component"] = "CodeScene"
+        self.assertEqual(planner._lint(one_code, ["teach-code"]), "")
+        self.assertIn("30%", planner._rules())
+
+    def test_title_with_panel_becomes_blank_scene(self):
+        s = planner._normalize({"scenes": [{"component": "TitleScene", "props": {"title": "Output", "subtitle": "x"},
+                                            "overlays": [{"type": "terminal"}]}]})
+        self.assertEqual(s["scenes"][0]["component"], "BlankScene")
+        self.assertEqual(s["scenes"][0]["props"], {"title": "Output", "titleAt": "top"})
+
+    async def test_fewest_problems_wins_when_retries_run_out(self):
+        two = spec(["TitleScene"] + ["ExplainScene", "DefinitionScene"] * 3)  # long run + text share
+        two["scenes"][1]["overlays"] = [{"type": "terminal"}]
+        one = spec(["TitleScene", "ExplainScene", "DefinitionScene", "ExplainScene", "DefinitionScene", "ChartScene"])
+        plan, llm = await self.run_catalog([one, two])
+        self.assertEqual(llm.ainvoke.call_count, 2)
+        self.assertEqual(len(plan.spec["scenes"]), len(one["scenes"]))  # the earlier, better plan is kept
+
     def test_catalog_shows_number_limits(self):
         self.assertIn("300..", catalog.overlay_text("terminal"))
 

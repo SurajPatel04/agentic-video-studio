@@ -57,3 +57,6 @@ Thumbs.db
 # Generated narration audio (re-made by the backend TTS, cached by text)
 rendering/public/audio/tts/
 rendering/examples/*.voiced.json
+
+# Frame grabs for visual checks
+test_picture/

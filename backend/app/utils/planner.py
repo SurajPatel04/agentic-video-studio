@@ -25,6 +25,7 @@ from langchain_core.tools import tool
 
 from app.config import settings
 from app.utils import catalog, skills as teaching_skills
+from app.utils.console import step
 from app.utils.llm import get_llm, get_tool_llm, text_of, usage_of
 from app.utils.render import RenderError, validate
 
@@ -68,7 +69,11 @@ Shape:
 
 Rules:
 - Use ONLY scene names from the library, and ONLY the fields listed for each scene (unknown keys are errors).
-  Copy the shape of the example props; leave out fields you don't need (defaults apply).
+  Copy the shape of the example props. Supply topic-specific content explicitly; sample labels, abbreviations,
+  meanings and footers are not facts about this topic. Use defaults for layout/timing, not unrelated example content.
+  For DefinitionScene, omit abbreviation unless it is a real abbreviation of the supplied term.
+- Keep diagram labels concise, avoid paragraph-sized nodes and edge labels, and split dense explanations into focused scenes.
+  A centered terminal on BlankScene is main content; use focusOverlay:false only when deliberately keeping it small.
 - Every scene MUST have "narration.text": 1-3 short spoken sentences (max ~40 words), plain words,
   no markup, no emojis. It is read aloud and shown as captions; it should explain what the scene shows.
 - The narration is shown as subtitles at the bottom, so keep scene "caption"/"footer" props short (or leave them out) and never repeat the narration on screen.
@@ -78,6 +83,11 @@ Rules:
 - Choose visuals that support the meaning: examples, steps, comparisons, timelines, images or diagrams as appropriate. Avoid unrelated technical imagery and repetitive text slides.
 - Optional "overlays" are drawn on top of any scene; positions {"x": 0-100, "y": 0-100} or "top-left" ... "bottom-right".
   Overlay types: OVERLAYS. Use them sparingly and only with fields you are sure of.
+- Show, don't just tell: at most TEXTSHARE of the scenes may be text-only (DefinitionScene / ExplainScene /
+  BulletListScene), and never more than TEXTRUN in a row. Prefer diagrams, code, comparisons, charts, devices.
+- PANEL overlays (PANELS) are big windows: put them only on a BlankScene (its title stays at the top), never on a
+  scene that already shows text, code or a diagram, where they would cover it. Small overlays (callout, badge,
+  check, highlight...) are fine on any scene.
 """
 
 
@@ -103,6 +113,15 @@ def _normalize(spec: dict[str, Any]) -> dict[str, Any]:
             sid += "-2"
         seen.add(sid)
         scene["id"] = sid
+        props = scene.get("props")
+        kinds = {o.get("type") for o in scene.get("overlays") or [] if isinstance(o, dict)}
+        if scene.get("component") == "TitleScene" and kinds & PANEL_OVERLAYS and isinstance(props, dict):
+            # a centred title would sit behind the panel: same title, at the top of an empty canvas
+            scene["component"], props = "BlankScene", {"title": props.get("title") or "", "titleAt": "top"}
+            scene["props"] = props
+        if isinstance(props, dict):  # no example footer/caption text in real videos
+            for key in catalog.filler_fields(str(scene.get("component", ""))):
+                props.setdefault(key, "")
     return spec
 
 
@@ -126,19 +145,70 @@ async def _check(reply: str) -> tuple[dict[str, Any] | None, str]:
 TEXT_SCENES = {"DefinitionScene", "ExplainScene", "BulletListScene"}
 
 
-def _lint(spec: dict[str, Any]) -> str:
+def _rules() -> str:
+    return (RULES.replace("OVERLAYS", catalog.overlay_list()).replace("PANELS", ", ".join(sorted(PANEL_OVERLAYS)))
+            .replace("TEXTSHARE", f"{settings.PLANNER_MAX_TEXT_SHARE:.0%}").replace("TEXTRUN", str(settings.PLANNER_MAX_TEXT_RUN)))
+
+
+PANEL_OVERLAYS = {"terminal", "chat"}  # big windows that cover whatever is under them
+PANEL_HOSTS = {"BlankScene"}  # scenes with free space for them
+
+
+CODE_SKILLS = {"teach-code"}  # with these guides, the plan must show code regularly
+
+
+def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = ()) -> str:
     """Style problems in a VALID plan (one retry is spent on them; a valid plan is never lost)."""
+    problems = []
+    scenes = spec.get("scenes", [])
+    texts = sum(s.get("component") in TEXT_SCENES for s in scenes)
+    cap = max(2, int(len(scenes) * settings.PLANNER_MAX_TEXT_SHARE))
+    if scenes and texts > cap:
+        problems.append(f"{texts} of {len(scenes)} scenes are text-only (Definition/Explain/BulletList); the most allowed is "
+                        f"{cap}. Turn {texts - cap} of them into scenes that SHOW the idea (code, flowchart, cycle, comparison, "
+                        "chart, timeline, devices, connection).")
+    if settings.PLANNER_CODE_EVERY and CODE_SKILLS & set(skills):
+        need = -(-len(scenes) // settings.PLANNER_CODE_EVERY)  # ceil
+        have = sum(s.get("component") == "CodeScene" for s in scenes)
+        if have < need:
+            problems.append(f"this is a programming topic: it needs at least {need} CodeScene (one per main concept, about "
+                            f"1 in every {settings.PLANNER_CODE_EVERY} scenes) but has {have}. Show the code that produces "
+                            "each behavior you explain, using the same running example.")
     run, worst, at = 0, 0, ""
     for s in spec.get("scenes", []):
         run = run + 1 if s.get("component") in TEXT_SCENES else 0
         if run > worst:
             worst, at = run, s.get("id", "")
     if worst > settings.PLANNER_MAX_TEXT_RUN:
-        return (f"The plan is valid, but it has {worst} text-only scenes in a row (Definition/Explain/BulletList, "
-                f"ending at '{at}'); the limit is {settings.PLANNER_MAX_TEXT_RUN}. Replace some with a visual scene "
-                "(code, diagram, flowchart, comparison, chart, devices) that shows the same idea. "
-                "Reply with ONLY the full corrected JSON.")
-    return ""
+        problems.append(f"{worst} text-only scenes in a row (Definition/Explain/BulletList, ending at '{at}'); the limit is "
+                        f"{settings.PLANNER_MAX_TEXT_RUN}. Replace some with a visual scene (code, diagram, flowchart, "
+                        "comparison, chart, devices) that shows the same idea.")
+    covered = [f"'{s.get('id')}' ({s.get('component')}: {', '.join(sorted(kinds))})" for s in spec.get("scenes", [])
+               if s.get("component") not in PANEL_HOSTS
+               and (kinds := {o.get("type") for o in s.get("overlays") or [] if isinstance(o, dict)} & PANEL_OVERLAYS)]
+    if covered:
+        problems.append("panel overlays would cover the scene's content in " + "; ".join(covered) + ". Move each panel "
+                        "into its own BlankScene (short title, panel at \"center\", the narration about it) right after.")
+    if not problems:
+        return ""
+    return "The plan is valid, but:\n- " + "\n- ".join(problems) + "\nReply with ONLY the full corrected JSON."
+
+
+class _Best:
+    """Valid plans that still have style problems. After PLANNER_STYLE_RETRIES retries the plan with the
+    fewest problems wins (a later plan wins a tie: it has seen the feedback)."""
+
+    def __init__(self) -> None:
+        self.spec: dict[str, Any] | None = None
+        self.attempt, self.problems, self.seen = 0, 0, 0
+
+    def add(self, spec: dict[str, Any], attempt: int, style: str) -> bool:
+        """Remember ``spec``; True when no style retries are left (use ``self.spec``)."""
+        n = style.count("\n- ")
+        if self.spec is None or n <= self.problems:
+            self.spec, self.attempt, self.problems = spec, attempt, n
+        self.seen += 1
+        return self.seen > settings.PLANNER_STYLE_RETRIES
 
 
 # ------------------------------------------------------------------- tools (lookup)
@@ -176,13 +246,13 @@ LOOKUP_TOOLS = {t.name: t for t in (search_scenes, get_scene, list_device_kinds,
 # --------------------------------------------------------------------------- modes
 
 
-async def _plan_catalog(topic: str, hint: str, model: str | None) -> Plan:
-    system = RULES.replace("OVERLAYS", catalog.overlay_list()) + hint + "\nOutput ONLY the JSON object, no prose, no code fences.\n\nScene library:\n" + catalog.catalog_text(topic)
+async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[str] | tuple[str, ...] = ()) -> Plan:
+    system = _rules() + hint + "\nOutput ONLY the JSON object, no prose, no code fences.\n\nScene library:\n" + catalog.catalog_text(topic)
     messages: list[Any] = [SystemMessage(system), HumanMessage(f"Topic: {topic}")]
     llm = get_llm(model or settings.PLANNER_MODEL or None)
     tin = tout = calls = 0
     problem = ""
-    fallback: tuple[dict[str, Any], int] | None = None  # valid plan kept while a style retry runs
+    best = _Best()  # valid plans with style problems: the one with the fewest is kept
     for attempt in range(1, settings.PLANNER_MAX_ATTEMPTS + 1):
         msg = await llm.ainvoke(messages)
         calls += 1
@@ -191,20 +261,23 @@ async def _plan_catalog(topic: str, hint: str, model: str | None) -> Plan:
         reply = text_of(msg)
         spec, problem = await _check(reply)
         if spec:
-            style = "" if fallback else _lint(spec)
+            style = _lint(spec, skills)
             if not style:
                 return Plan(spec, attempt, "catalog", calls, tin, tout)
-            fallback, problem = (spec, attempt), style
+            if best.add(spec, attempt, style):
+                return Plan(best.spec, best.attempt, "catalog", calls, tin, tout)
+            problem = style
         log.warning("planner.retry mode=catalog attempt=%d problem=%s", attempt, problem[:300])
         messages += [AIMessage(reply), HumanMessage(problem)]
-    if fallback:
-        return Plan(fallback[0], fallback[1], "catalog", calls, tin, tout)
+    if best.spec:
+        return Plan(best.spec, best.attempt, "catalog", calls, tin, tout)
     raise PlanError(f"planner gave invalid JSON {settings.PLANNER_MAX_ATTEMPTS} times", problem)
 
 
 async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[str], allowed: list[str] | None) -> Plan:
+    skills = selected
     system = (
-        RULES.replace("OVERLAYS", catalog.overlay_list())
+        _rules()
         + hint
         + "\nYou do NOT know the library yet. Use the tools: search_scenes to find candidates, get_scene for the exact fields of "
         "every scene you use (always, before using it), list_device_kinds when a field needs a device, get_overlay before using an overlay.\n"
@@ -219,7 +292,7 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
     llm = get_tool_llm(model or settings.PLANNER_MODEL or None).bind_tools(list(lookup.values()))
     tin = tout = calls = attempts = 0
     problem = ""
-    fallback: tuple[dict[str, Any], int] | None = None
+    best = _Best()
     for _ in range(settings.PLANNER_MAX_STEPS):
         msg = await llm.ainvoke(messages)
         calls += 1
@@ -230,6 +303,7 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
             for call in msg.tool_calls:
                 fn = lookup.get(call["name"])
                 result = fn.invoke(call["args"]) if fn else f"Unknown tool {call['name']}"
+                log.info("tool %s(%s) -> %d chars", call["name"], json.dumps(call["args"])[:120], len(str(result)))
                 messages.append(ToolMessage(str(result)[:8000], tool_call_id=call["id"]))
             continue
         missing = set(selected) - loaded
@@ -239,21 +313,33 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
         attempts += 1
         spec, problem = await _check(text_of(msg))
         if spec:
-            style = "" if fallback else _lint(spec)
+            style = _lint(spec, skills)
             if not style:
                 return Plan(spec, attempts, "tools", calls, tin, tout, sorted(loaded))
-            fallback, problem = (spec, attempts), style
+            if best.add(spec, attempts, style):
+                return Plan(best.spec, best.attempt, "tools", calls, tin, tout, sorted(loaded))
+            problem = style
         log.warning("planner.retry mode=tools attempt=%d problem=%s", attempts, problem[:300])
         if attempts >= settings.PLANNER_MAX_ATTEMPTS:
             break
         messages.append(HumanMessage(problem + " Use get_scene to check fields if unsure."))
-    if fallback:
-        return Plan(fallback[0], fallback[1], "tools", calls, tin, tout, sorted(loaded))
+    if best.spec:
+        return Plan(best.spec, best.attempt, "tools", calls, tin, tout, sorted(loaded))
     raise PlanError(f"planner did not produce valid JSON (mode=tools, {attempts} attempts, {calls} calls)", problem)
 
 
 async def plan_video(topic: str, *, scenes: int | None = None, model: str | None = None, mode: Mode | None = None,
                      context: str = "", skills: list[str] | None = None) -> Plan:
+    """Ask the LLM for a valid composition about ``topic`` (printed as one step with its result)."""
+    with step("plan", topic=topic, scenes=scenes, mode=mode or settings.PLANNER_MODE) as s:
+        plan = await _plan_video(topic, scenes=scenes, model=model, mode=mode, context=context, skills=skills)
+        s.update(mode=plan.mode, skills=",".join(plan.skills), scenes=len(plan.spec.get("scenes", [])),
+                 attempts=plan.attempts, llm_calls=plan.llm_calls, tokens_in=plan.input_tokens, tokens_out=plan.output_tokens)
+        return plan
+
+
+async def _plan_video(topic: str, *, scenes: int | None = None, model: str | None = None, mode: Mode | None = None,
+                      context: str = "", skills: list[str] | None = None) -> Plan:
     """Ask the LLM for a valid composition about ``topic``.
 
     ``context``: extra instructions added to the rules, e.g. a long video's outline and what earlier
@@ -280,8 +366,6 @@ async def plan_video(topic: str, *, scenes: int | None = None, model: str | None
         extra_overlays = dict.fromkeys(n for name in selected for n in available[name].metadata.overlays)
         hint += "\n" + "\n".join(catalog.scene_text(n) for n in extra_scenes if n in scene_names)
         hint += "\n" + "\n".join(catalog.overlay_text(n) for n in extra_overlays)
-        plan = await _plan_catalog(topic, hint, model)
+        plan = await _plan_catalog(topic, hint, model, selected)
         plan.skills = selected
-    log.info("planner.ok mode=%s attempts=%d calls=%d tokens_in=%d tokens_out=%d scenes=%d",
-             plan.mode, plan.attempts, plan.llm_calls, plan.input_tokens, plan.output_tokens, len(plan.spec.get("scenes", [])))
     return plan

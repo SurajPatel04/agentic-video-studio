@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 from langchain_openai import ChatOpenAI
 
 from app.config import settings
+from app.utils.console import LLM_LOGGER
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ def get_llm(model: str | None = None, **kwargs: Any) -> ChatOpenAI:
     key = (resolved_model, tuple(sorted(kwargs.items())))
     if key not in _LLM_CACHE:
         kwargs.setdefault("timeout", settings.LLM_TIMEOUT_SECONDS)
+        kwargs.setdefault("callbacks", [LLM_LOGGER])  # prints prompt, reply, tokens, time
         _LLM_CACHE[key] = ChatOpenAI(
             api_key=_GATEWAY_API_KEY,
             base_url=resolve_base_url(),

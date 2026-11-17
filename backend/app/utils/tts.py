@@ -6,9 +6,11 @@ same sentence is never requested twice.
 """
 
 import asyncio
+import difflib
 import hashlib
 import json
 import logging
+import re
 import struct
 import time
 from dataclasses import dataclass
@@ -17,6 +19,7 @@ from pathlib import Path
 import httpx
 
 from app.config import settings
+from app.utils.console import fmt_seconds, short
 
 log = logging.getLogger(__name__)
 
@@ -95,7 +98,7 @@ async def synthesize(text: str, voice: str | None = None) -> SpeechClip:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
     seconds = wav_seconds(data)
-    log.info("tts.ok voice=%s chars=%d audio_s=%.1f duration_ms=%.0f", voice, len(text), seconds, (time.perf_counter() - started) * 1000)
+    log.info("tts  %s  audio=%.1fs chars=%d voice=%s  “%s”", fmt_seconds(time.perf_counter() - started), seconds, len(text), voice, short(text, 90))
     return SpeechClip(path, src, seconds, cached=False)
 
 
@@ -136,6 +139,51 @@ def _estimate(text: str, seconds: float) -> list[Word]:
     return words
 
 
+def _norm(word: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", word.lower())
+
+
+def align(tokens: list[str], heard: list[dict]) -> list[Word]:
+    """Timings from the transcript, spelling from the narration.
+
+    Speech-to-text writes what it heard ("refile" for "readFile", "1" for "one"), so captions always
+    show the narration's own words: matching words take their heard times; a mismatched stretch
+    (e.g. narration "readFile" vs heard "read", "file") shares the heard stretch's time span; a word
+    nobody heard gets a slot between its neighbours.
+    """
+    said = [(_norm(h.get("word") or h.get("punctuated_word") or ""), float(h["start"]), float(h["end"])) for h in heard]
+    times: list[tuple[float, float] | None] = [None] * len(tokens)
+    sm = difflib.SequenceMatcher(a=[_norm(t) for t in tokens], b=[s[0] for s in said], autojunk=False)
+    for op, a0, a1, b0, b1 in sm.get_opcodes():
+        if op == "equal":
+            for k in range(a1 - a0):
+                times[a0 + k] = (said[b0 + k][1], said[b0 + k][2])
+        elif op == "replace":  # share the heard span by word length
+            start, end = said[b0][1], said[b1 - 1][2]
+            weights = [len(t) + 1 for t in tokens[a0:a1]]
+            t = start
+            for k, w in enumerate(weights):
+                d = (end - start) * w / sum(weights)
+                times[a0 + k] = (t, t + d)
+                t += d
+    # words that were not heard at all: squeeze between the neighbours' times
+    i = 0
+    while i < len(times):
+        if times[i] is not None:
+            i += 1
+            continue
+        j = i
+        while j < len(times) and times[j] is None:
+            j += 1
+        prev = times[i - 1][1] if i > 0 else said[0][1]  # type: ignore[index]
+        nxt = times[j][0] if j < len(times) else said[-1][2]  # type: ignore[index]
+        d = max(0.05, (nxt - prev) / (j - i))
+        for k in range(i, j):
+            times[k] = (prev + (k - i) * d, prev + (k - i + 1) * d)
+        i = j
+    return [Word(tok, round(s, 3), round(max(e, s + 0.05), 3)) for tok, (s, e) in zip(tokens, times)]  # type: ignore[misc]
+
+
 async def word_timings(clip: SpeechClip, text: str) -> list[Word]:
     """When each word is spoken in ``clip``. Uses Deepgram speech-to-text on the clip (cached next to it).
 
@@ -143,18 +191,16 @@ async def word_timings(clip: SpeechClip, text: str) -> list[Word]:
     transcript has the same number of words; otherwise the transcript's own words.
     """
     text = " ".join(text.split())
-    cache = clip.path.with_suffix(".words.json")
+    cache = clip.path.with_suffix(".words-v2.json")  # v2: narration spelling (align)
     if cache.exists():
         return [Word(**w) for w in json.loads(cache.read_text())]
     try:
+        started = time.perf_counter()
         heard = await _transcribe(clip.path.read_bytes())
-        tokens = text.split()
-        if len(heard) == len(tokens):
-            words = [Word(tok, round(h["start"], 3), round(h["end"], 3)) for tok, h in zip(tokens, heard)]
-        else:
-            words = [Word(h.get("punctuated_word") or h["word"], round(h["start"], 3), round(h["end"], 3)) for h in heard]
-        if not words:
+        log.info("stt  %s  words=%d (for captions)", fmt_seconds(time.perf_counter() - started), len(heard))
+        if not heard:
             raise RuntimeError("empty transcript")
+        words = align(text.split(), heard)
     except Exception as exc:  # captions must never break a render
         log.warning("tts.words.estimate reason=%s", exc)
         words = _estimate(text, clip.seconds)

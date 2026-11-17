@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import settings
+from app.utils.console import step
 from app.utils.tts import synthesize, word_timings
 
 log = logging.getLogger(__name__)
@@ -88,13 +89,17 @@ async def add_narration(spec: dict[str, Any], *, captions: bool | None = None) -
     lines: list[str] = []
 
     jobs = [(i, s) for i, s in enumerate(scenes) if (s.get("narration") or {}).get("text")]
-    clips = await asyncio.gather(*(synthesize(s["narration"]["text"], s["narration"].get("voice") or default_voice) for _, s in jobs))
-
-    timings = (
-        await asyncio.gather(*(word_timings(clip, s["narration"]["text"]) for (_, s), clip in zip(jobs, clips)))
-        if want_words
-        else [None] * len(jobs)
-    )
+    clips, timings = [], []
+    if jobs:
+        with step("voice (Deepgram TTS)", clips=len(jobs), voice=default_voice) as st:
+            clips = await asyncio.gather(*(synthesize(sc["narration"]["text"], sc["narration"].get("voice") or default_voice) for _, sc in jobs))
+            st.update(new=sum(not c.cached for c in clips), cached=sum(c.cached for c in clips), audio=f"{sum(c.seconds for c in clips):.0f}s")
+    if jobs and want_words:
+        with step("caption timings (Deepgram STT)", clips=len(jobs)) as st:
+            timings = await asyncio.gather(*(word_timings(clip, sc["narration"]["text"]) for (_, sc), clip in zip(jobs, clips)))
+            st["words"] = sum(len(t) for t in timings)
+    else:
+        timings = [None] * len(jobs)
 
     for (i, scene), clip, words in zip(jobs, clips, timings):
         delay = int(scene["narration"].get("delay", 10))
@@ -132,10 +137,13 @@ async def _run(cmd: list[str], timeout: float) -> tuple[int, str]:
 
 async def validate(composition_file: Path) -> None:
     """Check the JSON against every scene contract (rendering/scripts/validate-composition.mjs)."""
-    code, out = await _run(["node", "scripts/validate-composition.mjs", str(composition_file)], timeout=120)
-    if code != 0:
-        errors = "\n".join(l for l in out.splitlines() if l.startswith("  ") or l.startswith("✗"))
-        raise RenderError("composition is invalid", errors or out[-2000:])
+    with step("validate", file=composition_file.name) as s:
+        code, out = await _run(["node", "scripts/validate-composition.mjs", str(composition_file)], timeout=120)
+        if code != 0:
+            errors = "\n".join(l for l in out.splitlines() if l.startswith("  ") or l.startswith("✗"))
+            log.warning("validation errors:\n%s", errors or out[-2000:])
+            raise RenderError("composition is invalid", errors or out[-2000:])
+        s["ok"] = True
 
 
 async def render_video(
@@ -145,6 +153,7 @@ async def render_video(
     captions: bool | None = None,
     job_id: str | None = None,
     scale: float = 1.0,
+    concurrency: int | None = None,
 ) -> RenderResult:
     """Voice the narration (Deepgram), validate, and render the composition to MP4.
 
@@ -170,11 +179,16 @@ async def render_video(
     cmd = ["npx", "remotion", "render", "src/index.ts", "VideoComposition", str(video), f"--props={composition}", "--gl=angle"]
     if scale != 1.0:
         cmd.append(f"--scale={scale}")
-    code, out = await _run(cmd, timeout=settings.RENDER_TIMEOUT_SECONDS)
-    (job_dir / "render.log").write_text(out)
-    if code != 0 or not video.exists():
-        tail = "\n".join(l for l in out.splitlines() if "Deprecation" not in l and "require(" not in l)[-3000:]
-        raise RenderError("Remotion render failed", tail)
+    if concurrency:
+        cmd.append(f"--concurrency={concurrency}")  # Remotion threads (default: half the cores)
+    frames = sum(int(sc.get("durationInFrames", 0)) for sc in spec.get("scenes", []))
+    with step("remotion render", job=job_id, scenes=len(spec.get("scenes", [])), frames=frames, scale=scale, threads=concurrency) as s:
+        code, out = await _run(cmd, timeout=settings.RENDER_TIMEOUT_SECONDS)
+        (job_dir / "render.log").write_text(out)
+        if code != 0 or not video.exists():
+            tail = "\n".join(l for l in out.splitlines() if "Deprecation" not in l and "require(" not in l)[-3000:]
+            raise RenderError("Remotion render failed", tail)
+        s.update(video=str(video), size=f"{video.stat().st_size / 1e6:.1f}MB")
 
     seconds = time.perf_counter() - started
     log.info("render.ok job=%s voice_new=%d voice_cached=%d took_s=%.1f", job_id, made, cached, seconds)

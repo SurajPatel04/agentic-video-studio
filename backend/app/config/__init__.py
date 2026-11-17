@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     PLANNER_MODE: str = "auto"  # auto | catalog | tools
     PLANNER_TOOLS_THRESHOLD: int = 80  # auto: use tools once the library has more scenes than this
     PLANNER_MAX_STEPS: int = 30  # tools mode: max LLM calls (lookups + answers)
+    PLANNER_MAX_TEXT_SHARE: float = 0.3  # at most 30% of scenes may be text-only
+    PLANNER_CODE_EVERY: int = 5  # programming topics: >= 1 CodeScene per 5 scenes (0 = off)
+    PLANNER_STYLE_RETRIES: int = 1  # retries for style problems; then the plan with the fewest problems is used
     PLANNER_MAX_TEXT_RUN: int = 3  # max Definition/Explain/BulletList scenes in a row (1 style retry, then accepted)
 
     # Component agent (writes new scenes when nothing in the library fits).
@@ -52,7 +55,18 @@ class Settings(BaseSettings):
     LONG_WORDS_PER_MINUTE: int = 150  # narration speed used for word budgets
     LONG_CHAPTER_MINUTES: float = 5.0  # target length of one chapter
     LONG_WORDS_PER_SCENE: int = 30  # narration words per scene -> scenes per chapter
+    LONG_RENDER_WORKERS: int = 2  # chapters rendering at the same time (each render is CPU-heavy)
+    LONG_RENDER_CONCURRENCY: int = 0  # Remotion threads per render; 0 = CPU cores / LONG_RENDER_WORKERS
+    LONG_PARALLEL_PLANNING: bool = False  # plan all chapters at once (faster; chapters see the outline, not each other)
+    LONG_PLAN_WORKERS: int = 4  # LLM calls at once when planning in parallel
     LONG_BUDGET_TOLERANCE: float = 0.35  # chapter narration may be +-35% of its word budget, else re-plan once
+
+    # Console output (app/utils/console.py).
+    LOG_LEVEL: str = "INFO"
+    LOG_PROMPTS: bool = True  # print LLM prompts and replies (truncated)
+    LOG_MAX_CHARS: int = 1500  # per printed message
+    LOG_LAST_MESSAGES: int = 3  # long conversations (agent): print only the newest messages
+    LOG_COLOR: bool = True  # off automatically when output is not a terminal
 
     # Rendering (Remotion project + where jobs and videos go).
     RENDERING_DIR: Path = PROJECT_ROOT / "rendering"

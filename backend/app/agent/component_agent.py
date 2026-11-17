@@ -28,6 +28,7 @@ from app.agent.sandbox import Sandbox, SandboxError
 from app.agent.staging import check_draft, existing_scene_names, publish, staged_names
 from app.config import settings
 from app.utils import skills as teaching_skills
+from app.utils.console import step
 from app.utils.llm import get_tool_llm, text_of, usage_of
 
 log = logging.getLogger(__name__)
@@ -123,7 +124,9 @@ async def build_component(request: str, *, name: str | None = None, model: str |
         if state["checks"] > settings.AGENT_MAX_CHECKS:
             return "ERROR: too many checks; stop and call finish with what you have, or give up."
         draft = job_dir / f"{name}.tsx"
-        report = await check_draft(name, draft, job_dir, request)
+        with step("check component", name=name, check=state["checks"]) as s:
+            report = await check_draft(name, draft, job_dir, request)
+            s.update(ok=report.ok, steps=" | ".join(x.split(":")[0] + (" ✗" if "FAILED" in x else " ✓") for x in report.steps if x[:1].isdigit()))
         if report.ok:
             state["passed"][name] = draft.read_text()
             state["stills"] = [str(p) for p in report.stills]
@@ -140,7 +143,8 @@ async def build_component(request: str, *, name: str | None = None, model: str |
         if draft.read_text() != state["passed"][name]:
             return "ERROR: the draft changed after the last passing check; run check_component again."
         try:
-            published = await publish(name, draft, job_dir, request)
+            with step("publish component", name=name):
+                published = await publish(name, draft, job_dir, request)
         except RuntimeError as exc:
             state["passed"].pop(name, None)
             return f"ERROR: publishing failed (nothing was published): {exc}\nFix the draft and run check_component again."

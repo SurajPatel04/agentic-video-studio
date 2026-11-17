@@ -108,6 +108,17 @@ def device_kinds() -> list[str]:
     return list(_load()["kinds"])
 
 
+FILLER_FIELDS = ("footer", "caption")
+
+
+def filler_fields(name: str) -> list[str]:
+    """Footer/caption fields whose default is example text (e.g. "Line numbers and highlights draw
+    attention…"). Fine in previews, wrong in a real video: the planner blanks them unless it sets them."""
+    e = _load()["scenes"].get(name)
+    props = (e or {}).get("propsSchema", {}).get("properties", {})
+    return [k for k in FILLER_FIELDS if isinstance((props.get(k) or {}).get("default"), str) and props[k]["default"]]
+
+
 def scene_text(name: str) -> str:
     """Everything the LLM needs to use one scene: description, fields, example props."""
     e = _load()["scenes"].get(name)
