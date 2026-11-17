@@ -13,6 +13,11 @@ from app.config import settings
 
 
 class SelectionTests(unittest.TestCase):
+    def setUp(self):  # these check topic matching; the house style slot is tested in StyleSelectionTests
+        p = patch.object(settings, 'PLANNER_DEFAULT_STYLE', '')
+        p.start()
+        self.addCleanup(p.stop)
+
     def test_auto_explicit_disabled_and_boundaries(self):
         self.assertEqual(skills.select('How Node.js works'), ['video-foundation', 'make-explainer', 'teach-code'])
         self.assertEqual(skills.select('Python APIs'), ['video-foundation', 'teach-code'])
@@ -83,7 +88,7 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn('### CodeScene', prompt)
             self.assertIn('highlightLines', prompt)
             self.assertIn('overlay "terminal"', prompt)
-            self.assertEqual(plan.skills, ['video-foundation', 'make-explainer', 'teach-code'])
+            self.assertEqual(plan.skills, ['video-foundation', 'make-explainer', 'iso-diagrams', 'teach-code'])  # house style by default
             await planner.plan_video('How Node.js works', mode='catalog', skills=[])
             self.assertNotIn('Teaching guide:', model.ainvoke.call_args.args[0][0].content)
 
@@ -91,7 +96,7 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         model = AsyncMock(); model.ainvoke.return_value = AIMessage('{}')
         with patch.object(planner, 'get_llm', return_value=model), patch.object(planner, '_check', AsyncMock(return_value=({'scenes': []}, ''))):
             plan = await planner.plan_video('An ad for a local bakery', mode='catalog')
-            self.assertEqual(plan.skills, ['video-foundation', 'make-ad'])
+            self.assertEqual(plan.skills, ['video-foundation', 'make-ad', 'iso-diagrams'])
             prompt = model.ainvoke.call_args.args[0][0].content
             self.assertIn('Teaching guide: make-ad', prompt)
             self.assertNotIn('Teaching guide: teach-code', prompt)
@@ -108,7 +113,8 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         model.ainvoke.side_effect = [AIMessage('{}'), AIMessage('', tool_calls=[
             {'name': 'load_skill', 'args': {'name': 'teach-code'}, 'id': 'load-1', 'type': 'tool_call'},
             {'name': 'load_skill', 'args': {'name': 'video-foundation'}, 'id': 'load-2', 'type': 'tool_call'}]), AIMessage('{}')]
-        with patch.object(planner, 'get_tool_llm') as get, patch.object(planner, '_check', AsyncMock(return_value=({'scenes': []}, ''))) as check:
+        with patch.object(planner, 'get_tool_llm') as get, patch.object(planner, '_check', AsyncMock(return_value=({'scenes': []}, ''))) as check, \
+                patch.object(settings, 'PLANNER_DEFAULT_STYLE', ''):  # no house style: only the two guides below
             get.return_value.bind_tools.return_value = model
             result = await planner.plan_video('Node.js', mode='tools')
         self.assertEqual(result.skills, ['teach-code', 'video-foundation'])
@@ -130,7 +136,7 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         llm = AsyncMock(); llm.ainvoke.return_value = AIMessage(json.dumps(outline))
         with tempfile.TemporaryDirectory() as root, patch.object(settings, 'WORKSPACE_DIR', Path(root)), patch.object(long_video, 'get_llm', return_value=llm):
             state = await long_video.create_long_video('Node.js', 5)
-            self.assertEqual(long_video.load(state.id).skills, ['video-foundation', 'teach-code', 'long-video-pacing'])
+            self.assertEqual(long_video.load(state.id).skills, ['video-foundation', 'iso-diagrams', 'teach-code', 'long-video-pacing'])
             self.assertIn('Teaching guide: teach-code', llm.ainvoke.call_args.args[0][0].content)
             spec = {'scenes': [{'narration': {'text': 'word ' * 750}}]}
             with patch.object(long_video, 'plan_video', AsyncMock(return_value=planner.Plan(spec, 1, 'catalog', 1, 10, 10))) as plan:
@@ -164,3 +170,14 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class StyleSelectionTests(unittest.TestCase):
+    def test_house_style_for_any_topic_and_media_beats_side_mentions(self):
+        from app.utils import skills
+        picked = skills.select("Explain mass communication: print, radio, television, internet and social media, journalism")
+        self.assertIn("iso-diagrams", picked)
+        self.assertIn("teach-media", picked)
+        self.assertNotIn("teach-networking", picked)  # "internet" is a side mention here
+        with patch.object(settings, "PLANNER_DEFAULT_STYLE", ""):
+            self.assertNotIn("iso-diagrams", skills.select("history of the printing press"))

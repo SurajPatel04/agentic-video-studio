@@ -6359,6 +6359,566 @@
     }
   },
   {
+    "name": "IsoScene",
+    "version": "1.0.0",
+    "description": "Isometric \"paper\" diagram: 3D-looking servers, databases, caches, clouds, people, platforms and arrows drop in and animate on a paper grid. Steps (timed as a fraction of the narration) change loads (⚙ 59% pills), highlight, add notes and move the camera. Use for systems, architecture, flows, networking, scaling, how-things-work. With no objects it is a paper title card (title, subtitle, points).",
+    "tags": [
+      "isometric",
+      "iso",
+      "diagram",
+      "architecture",
+      "system design",
+      "server",
+      "database",
+      "cache",
+      "load balancer",
+      "scaling",
+      "cloud",
+      "users",
+      "flow",
+      "paper",
+      "3d",
+      "infographic"
+    ],
+    "path": "rendering/src/scenes/IsoScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "objects": {
+          "default": [
+            {
+              "id": "stage",
+              "kind": "platform",
+              "at": [
+                0,
+                0
+              ],
+              "size": [
+                8,
+                2.6,
+                0.3
+              ],
+              "enter": "drop",
+              "ghost": false,
+              "highlight": false
+            },
+            {
+              "id": "users",
+              "kind": "people",
+              "at": [
+                1.6,
+                0.35
+              ],
+              "z": 0.3,
+              "count": 22,
+              "label": "Users",
+              "enter": "drop",
+              "ghost": false,
+              "highlight": false
+            },
+            {
+              "id": "a",
+              "kind": "server",
+              "label": "Server A",
+              "at": [
+                4.4,
+                -5
+              ],
+              "status": 59,
+              "enter": "drop",
+              "ghost": false,
+              "highlight": false
+            },
+            {
+              "id": "b",
+              "kind": "server",
+              "label": "Server B",
+              "at": [
+                9.6,
+                -3.2
+              ],
+              "status": 59,
+              "enter": "drop",
+              "ghost": false,
+              "highlight": false
+            }
+          ],
+          "maxItems": 24,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "default": "box",
+                "type": "string",
+                "enum": [
+                  "server",
+                  "database",
+                  "storage",
+                  "cache",
+                  "cloud",
+                  "loadbalancer",
+                  "router",
+                  "api",
+                  "queue",
+                  "client",
+                  "laptop",
+                  "phone",
+                  "cpu",
+                  "memory",
+                  "globe",
+                  "lock",
+                  "file",
+                  "code",
+                  "box",
+                  "tile",
+                  "tv",
+                  "radio",
+                  "newspaper",
+                  "tower",
+                  "satellite",
+                  "building",
+                  "book",
+                  "mic",
+                  "camera",
+                  "billboard",
+                  "user",
+                  "people",
+                  "platform"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 24
+              },
+              "at": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "minimum": -20,
+                    "maximum": 30
+                  },
+                  {
+                    "type": "number",
+                    "minimum": -20,
+                    "maximum": 30
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "z": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 8
+              },
+              "size": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "minimum": 0.2,
+                    "maximum": 14
+                  },
+                  {
+                    "type": "number",
+                    "minimum": 0.2,
+                    "maximum": 14
+                  },
+                  {
+                    "type": "number",
+                    "minimum": 0.1,
+                    "maximum": 6
+                  }
+                ],
+                "items": false,
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "color": {
+                "type": "string",
+                "enum": [
+                  "lavender",
+                  "peach",
+                  "mint",
+                  "sky",
+                  "butter",
+                  "rose",
+                  "teal",
+                  "coral",
+                  "slate",
+                  "cream"
+                ]
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 60
+              },
+              "status": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "appearAt": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "enter": {
+                "default": "drop",
+                "type": "string",
+                "enum": [
+                  "drop",
+                  "none"
+                ]
+              },
+              "ghost": {
+                "default": false,
+                "type": "boolean"
+              },
+              "highlight": {
+                "default": false,
+                "type": "boolean"
+              },
+              "icon": {
+                "type": "string",
+                "maxLength": 40
+              }
+            },
+            "required": [
+              "id",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "links": {
+          "default": [
+            {
+              "from": "users",
+              "to": "a",
+              "flow": "dots",
+              "dashed": false,
+              "enter": "draw"
+            },
+            {
+              "from": "users",
+              "to": "b",
+              "flow": "dots",
+              "dashed": false,
+              "enter": "draw"
+            }
+          ],
+          "maxItems": 30,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 22
+              },
+              "flow": {
+                "default": "dots",
+                "type": "string",
+                "enum": [
+                  "dots",
+                  "people",
+                  "none"
+                ]
+              },
+              "dashed": {
+                "default": false,
+                "type": "boolean"
+              },
+              "appearAt": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "enter": {
+                "default": "draw",
+                "type": "string",
+                "enum": [
+                  "draw",
+                  "none"
+                ]
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "steps": {
+          "default": [
+            {
+              "at": 0.45,
+              "target": "a",
+              "status": 94,
+              "note": "Server A is almost full"
+            },
+            {
+              "at": 0.7,
+              "target": "b",
+              "highlight": true,
+              "status": 72,
+              "note": "New requests go to B"
+            }
+          ],
+          "maxItems": 40,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "target": {
+                "type": "string"
+              },
+              "status": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "highlight": {
+                "type": "boolean"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 24
+              },
+              "color": {
+                "type": "string",
+                "enum": [
+                  "lavender",
+                  "peach",
+                  "mint",
+                  "sky",
+                  "butter",
+                  "rose",
+                  "teal",
+                  "coral",
+                  "slate",
+                  "cream"
+                ]
+              },
+              "hide": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "focus": {
+                "type": "boolean"
+              },
+              "sound": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "click",
+                      "pop",
+                      "whoosh",
+                      "typing",
+                      "ding",
+                      "success",
+                      "error",
+                      "lock",
+                      "notify",
+                      "drop",
+                      "chime",
+                      "blip",
+                      "alert",
+                      "remove",
+                      "rise",
+                      "swipe",
+                      "tick",
+                      "sparkle",
+                      "impact",
+                      "data",
+                      "connect",
+                      "disconnect",
+                      "coin",
+                      "shutter",
+                      "logo"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "const": "none"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "at",
+              "target"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "points": {
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 70
+          }
+        },
+        "zoom": {
+          "default": 1,
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 1.6
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        },
+        "continued": {
+          "type": "boolean"
+        },
+        "continue": {
+          "type": "boolean"
+        },
+        "remove": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "objects": [
+        {
+          "id": "stage",
+          "kind": "platform",
+          "at": [
+            0,
+            0
+          ],
+          "size": [
+            8,
+            2.6,
+            0.3
+          ],
+          "enter": "drop",
+          "ghost": false,
+          "highlight": false
+        },
+        {
+          "id": "users",
+          "kind": "people",
+          "at": [
+            1.6,
+            0.35
+          ],
+          "z": 0.3,
+          "count": 22,
+          "label": "Users",
+          "enter": "drop",
+          "ghost": false,
+          "highlight": false
+        },
+        {
+          "id": "a",
+          "kind": "server",
+          "label": "Server A",
+          "at": [
+            4.4,
+            -5
+          ],
+          "status": 59,
+          "enter": "drop",
+          "ghost": false,
+          "highlight": false
+        },
+        {
+          "id": "b",
+          "kind": "server",
+          "label": "Server B",
+          "at": [
+            9.6,
+            -3.2
+          ],
+          "status": 59,
+          "enter": "drop",
+          "ghost": false,
+          "highlight": false
+        }
+      ],
+      "links": [
+        {
+          "from": "users",
+          "to": "a",
+          "flow": "dots",
+          "dashed": false,
+          "enter": "draw"
+        },
+        {
+          "from": "users",
+          "to": "b",
+          "flow": "dots",
+          "dashed": false,
+          "enter": "draw"
+        }
+      ],
+      "steps": [
+        {
+          "at": 0.45,
+          "target": "a",
+          "status": 94,
+          "note": "Server A is almost full"
+        },
+        {
+          "at": 0.7,
+          "target": "b",
+          "highlight": true,
+          "status": 72,
+          "note": "New requests go to B"
+        }
+      ],
+      "zoom": 1,
+      "sound": true
+    }
+  },
+  {
     "name": "BubbleSortScene",
     "version": "1.0.0",
     "description": "Visualizes bubble sort as numbered vertical bars, highlighting each comparison and animating adjacent swaps. Use it to introduce passes, comparisons, and the final sorted result.",

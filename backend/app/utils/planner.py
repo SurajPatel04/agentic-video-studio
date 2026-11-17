@@ -26,6 +26,7 @@ from langchain_core.tools import tool
 from app.config import settings
 from app.utils import catalog, skills as teaching_skills
 from app.utils.console import step
+from app.utils.iso import expand_continuations
 from app.utils.llm import get_llm, get_tool_llm, text_of, usage_of
 from app.utils.render import RenderError, validate
 
@@ -103,6 +104,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 
 def _normalize(spec: dict[str, Any]) -> dict[str, Any]:
+    expand_continuations(spec)  # IsoScene "continue": carry the previous picture over
     spec.setdefault("fps", 30)
     spec.setdefault("width", 1920)
     spec.setdefault("height", 1080)
@@ -189,6 +191,7 @@ def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = ()) -> str
     if covered:
         problems.append("panel overlays would cover the scene's content in " + "; ".join(covered) + ". Move each panel "
                         "into its own BlankScene (short title, panel at \"center\", the narration about it) right after.")
+    problems += _lint_iso(scenes)
     if not problems:
         return ""
     return "The plan is valid, but:\n- " + "\n- ".join(problems) + "\nReply with ONLY the full corrected JSON."
@@ -209,6 +212,46 @@ class _Best:
             self.spec, self.attempt, self.problems = spec, attempt, n
         self.seen += 1
         return self.seen > settings.PLANNER_STYLE_RETRIES
+
+
+HUBS = {"loadbalancer", "router", "api"}  # these send to each target directly
+EVENT_LABEL = re.compile(r"^(request|req|response|packet|call|turn)\b", re.I)
+
+
+def _lint_iso(scenes: list[dict[str, Any]]) -> list[str]:
+    """IsoScene problems the validator can't see: chains behind a hub, one layout repeated, event labels."""
+    problems: list[str] = []
+    run: list[str] = []
+    last = None
+    for s in scenes:
+        if s.get("component") != "IsoScene":
+            run, last = [], None
+            continue
+        props = s.get("props") or {}
+        objs = {o.get("id"): o for o in props.get("objects") or [] if isinstance(o, dict)}
+        kinds = {i: o.get("kind") for i, o in objs.items()}
+        if HUBS & set(kinds.values()):
+            chain = [f"{l.get('from')}->{l.get('to')}" for l in props.get("links") or []
+                     if kinds.get(l.get("from")) == "server" and kinds.get(l.get("to")) == "server"]
+            if chain:
+                problems.append(f"scene '{s.get('id')}': {', '.join(chain)} chains servers, but servers don't pass requests on; "
+                                "link the hub (load balancer / router / api) to EACH server instead.")
+        bad = [f"{i} ('{o.get('label')}')" for i, o in objs.items() if o.get("label") and o.get("kind") not in ("people", "user")
+               and EVENT_LABEL.match(str(o.get("label")))]
+        if bad:
+            problems.append(f"scene '{s.get('id')}': labels name the object, not an event: {', '.join(bad)}. "
+                            "Keep 'Server A'; say what happens in a step note.")
+        layout = tuple(sorted((i, tuple(round(v, 1) for v in o.get("at", []))) for i, o in objs.items()))
+        if props.get("continued"):  # a continuation reuses the picture on purpose (and cheaply)
+            run, last = [], layout
+            continue
+        run = run + [s.get("id", "")] if layout and layout == last else [s.get("id", "")]
+        last = layout
+        if len(run) == settings.PLANNER_MAX_SAME_LAYOUT + 1:
+            problems.append(f"scenes {', '.join(run)} rewrite the same layout from scratch. If it is the same picture, write "
+                            "the later scenes with \"continue\": true and ONLY the changes (new objects / links / steps, \"remove\"); "
+                            "otherwise change the picture (close-up, rearrange, add or remove objects).")
+    return problems
 
 
 # ------------------------------------------------------------------- tools (lookup)

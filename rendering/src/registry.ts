@@ -33,6 +33,7 @@ import * as Explain from './scenes/ExplainScene';
 import * as Connection from './scenes/ConnectionScene';
 import * as DeviceDemo from './scenes/DeviceDemoScene';
 import * as Blank from './scenes/BlankScene';
+import * as Iso from './scenes/IsoScene';
 
 // A single contract for scene lookup, validation, and LLM discovery.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -73,6 +74,7 @@ const baseCatalog: Record<string, SceneEntry> = {
   WirelessScene: {component: Connection.ConnectionScene, schema: Connection.wirelessSceneSchema, description: Connection.wirelessDescription, tags: ['wireless', 'wifi', 'radio', 'waves', 'router', 'phone', '3d']},
   BlankScene: {...Blank, component: Blank.BlankScene, schema: Blank.blankSceneSchema},
   DeviceDemoScene: {...DeviceDemo, component: DeviceDemo.DeviceDemoScene, schema: DeviceDemo.deviceDemoSceneSchema},
+  IsoScene: {...Iso, component: Iso.IsoScene, schema: Iso.isoSceneSchema},
   // <promoted-scenes> (the backend adds promoted agent-made scenes above this line)
   ...stagingCatalog,
 };

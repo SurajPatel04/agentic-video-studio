@@ -8,7 +8,7 @@ import yaml
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from app.config import PROJECT_ROOT
+from app.config import PROJECT_ROOT, settings
 
 ROOT = PROJECT_ROOT / "skills"
 log = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ Role = Literal["planner", "component"]
 
 
 class Metadata(BaseModel):
-    category: Literal["foundation", "format", "subject"] = "subject"
+    category: Literal["foundation", "format", "style", "subject"] = "subject"
     roles: list[Role] = Field(default_factory=lambda: ["planner"])
     tags: list[str] = Field(default_factory=list)
     scenes: list[str] = Field(default_factory=list)
@@ -90,9 +90,19 @@ def select(topic: str, requested: list[str] | None = None, *, role: Role = "plan
         if score:
             ranked.append((score, name))
     ranked.sort(key=lambda item: (-item[0], item[1]))
-    # Format and subject guides have separate slots: technical words cannot crowd out pedagogy.
+    # Format, style and subject guides have separate slots: technical words cannot crowd out pedagogy.
     chosen += [name for _, name in ranked if available[name].metadata.category == "format"][:1]
-    chosen += [name for _, name in ranked if available[name].metadata.category == "subject"][:2]
+    # one visual style: the best match, else the house style (PLANNER_DEFAULT_STYLE, "" = none)
+    styles = [name for _, name in ranked if available[name].metadata.category == "style"]
+    default_style = settings.PLANNER_DEFAULT_STYLE
+    if not styles and default_style in available and available[default_style].metadata.category == "style":
+        styles = [default_style]
+    chosen += styles[:1]
+    # subjects: a guide matching far fewer words than the best one is a side mention ("internet" in a
+    # media topic), not the subject
+    subjects = [(score, name) for score, name in ranked if available[name].metadata.category == "subject"]
+    top = subjects[0][0] if subjects else 0
+    chosen += [name for score, name in subjects if score * 3 >= top][:2]
     if long_video:
         chosen += [name for name, skill in available.items() if skill.metadata.long_video]
     return chosen

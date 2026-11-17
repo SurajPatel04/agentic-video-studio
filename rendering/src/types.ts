@@ -37,5 +37,6 @@ export type CompositionSpec = {
   defaultTransition?: TransitionSpec;
   captions?: boolean | Record<string, unknown>; // subtitles from narration; false / {enabled: false} = off (see src/audio/Captions.tsx)
   audio?: Record<string, unknown>; // music, effects on/off, volumes, voice (see src/audio)
+  brand?: boolean | Record<string, unknown>; // logo intro + corner logo (see src/brand.tsx); false = off
   scenes: SceneSpec[];
 };

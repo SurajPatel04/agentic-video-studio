@@ -1,10 +1,11 @@
 import {linearTiming, TransitionSeries} from '@remotion/transitions';
 import {Fragment, useMemo} from 'react';
-import {AbsoluteFill} from 'remotion';
+import {AbsoluteFill, Sequence} from 'remotion';
+import {BrandIntro, BrandWatermark, brandTiming, resolveBrand} from './brand';
 import {audioSettingsSchema, Captions, resolveCaptions, type CaptionsSettings, Music, SfxContext, SfxCues, sfxCuesSchema, Sfx, Voice, voiceSchema, type AudioSettings} from './audio';
 import {Overlays, overlaysSchema} from './effects/overlays';
 import {registry, sceneCatalog} from './registry';
-import {defaultTheme, ThemeProvider} from './theme';
+import {defaultTheme, SceneLengthProvider, ThemeProvider} from './theme';
 import {presentationFor, transitionFrames, transitionInto} from './transitions';
 import type {CompositionSpec, SceneSpec, Theme} from './types';
 
@@ -48,6 +49,7 @@ const SceneFrame: React.FC<{scene: SceneSpec; baseTheme: Theme; audio: AudioSett
 
   return (
     <ThemeProvider value={theme}>
+     <SceneLengthProvider value={scene.durationInFrames}>
       <AbsoluteFill style={{background: theme.background, color: theme.text, fontFamily: theme.fontFamily}}>
         {content}
         {overlays?.success && overlays.data.length ? <Overlays items={overlayItems} scene={content} /> : null}
@@ -55,6 +57,7 @@ const SceneFrame: React.FC<{scene: SceneSpec; baseTheme: Theme; audio: AudioSett
         {cues?.success ? <SfxCues cues={cues.data} /> : null}
         {voice?.success && voice.data.words ? <Captions words={voice.data.words} settings={captions} fps={fps} /> : null}
       </AbsoluteFill>
+     </SceneLengthProvider>
     </ThemeProvider>
   );
 };
@@ -80,6 +83,10 @@ export const VideoComposition: React.FC<CompositionSpec> = (spec) => {
       throw new Error(`captions: ${(e as Error).message}`);
     }
   }, [spec.captions]);
+  const brand = useMemo(() => resolveBrand(spec.brand), [spec.brand]);
+  // the word being spoken takes the brand colour unless the JSON names another
+  const shownCaptions = useMemo(() => ({...captions, highlightColor: captions.highlightColor ?? brand?.color}), [captions, brand]);
+  const {intro, offset} = brandTiming(spec.brand, spec.fps);
   const starts = sceneStarts(spec);
   // When narration plays (for ducking the music).
   const speaking: [number, number][] = spec.scenes.flatMap((s, i) => {
@@ -91,6 +98,7 @@ export const VideoComposition: React.FC<CompositionSpec> = (spec) => {
   return (
     <SfxContext.Provider value={{enabled: audio.effects, volume: audio.effectsVolume}}>
     <AbsoluteFill style={{background: baseTheme.background}}>
+     <Sequence from={offset} name="video">
       {audio.music ? <Music music={audio.music} speaking={speaking} /> : null}
       {audio.transitions
         ? spec.scenes.map((_, i) => (transitionFrames(spec, i) > 0 ? <Sfx key={`w${i}`} sound="whoosh" at={Math.max(0, starts[i] - 4)} volume={0.6} /> : null))
@@ -107,12 +115,23 @@ export const VideoComposition: React.FC<CompositionSpec> = (spec) => {
                 />
               ) : null}
               <TransitionSeries.Sequence durationInFrames={scene.durationInFrames}>
-                <SceneFrame scene={scene} baseTheme={baseTheme} audio={audio} captions={captions} fps={spec.fps} />
+                <SceneFrame scene={scene} baseTheme={baseTheme} audio={audio} captions={shownCaptions} fps={spec.fps} />
               </TransitionSeries.Sequence>
             </Fragment>
           );
         })}
       </TransitionSeries>
+     </Sequence>
+      {brand && intro ? (
+        <Sequence durationInFrames={intro} name="brand intro">
+          <BrandIntro brand={brand} frames={intro} />
+        </Sequence>
+      ) : null}
+      {brand?.watermark ? (
+        <Sequence from={intro} name="brand logo">
+          <BrandWatermark brand={brand} fadeIn={!intro} />
+        </Sequence>
+      ) : null}
     </AbsoluteFill>
     </SfxContext.Provider>
   );

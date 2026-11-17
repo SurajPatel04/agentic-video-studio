@@ -31,6 +31,14 @@ assert.equal(definition.detail, '');
 assert.equal(sceneCatalog.DefinitionScene.schema.parse({abbreviation:'LAN'}).abbreviation, 'LAN');
 assert.equal(sceneCatalog.BlankScene.schema.parse({}).focusOverlay, true);
 assert.equal(sceneCatalog.BlankScene.schema.parse({focusOverlay:false}).focusOverlay, false);
+// IsoScene: objects that cover each other on screen, and links/steps to unknown ids, are rejected with a fix hint.
+const iso = sceneCatalog.IsoScene.schema;
+const crowded = iso.safeParse({objects: [{id: 'a', kind: 'server', at: [0, 0]}, {id: 'b', kind: 'server', at: [1, 1]}], links: [], steps: []});
+assert.equal(crowded.success, false);
+assert.match(crowded.error.issues[0].message, /covers "a" on screen/);
+assert.equal(iso.safeParse({objects: [{id: 'a', kind: 'server', at: [0, 0]}, {id: 'b', kind: 'database', at: [3.5, -3.5]}], links: [{from: 'a', to: 'b'}], steps: [{at: 0.5, target: 'b', highlight: true}]}).success, true);
+assert.equal(iso.safeParse({objects: [{id: 'a', kind: 'server', at: [0, 0]}], links: [{from: 'a', to: 'x'}], steps: []}).success, false);
+assert.equal(iso.parse({objects: [], links: [], steps: [], title: 'Card'}).objects.length, 0);
 assert(!sceneCatalog.ComparisonTableScene.schema.safeParse({columns:['A','B'],rows:[['one']]}).success);
 assert(!sceneCatalog.QuizScene.schema.safeParse({correctIndex:4}).success);
 assert(!sceneCatalog.NetworkScene.schema.safeParse({packetFrames:0}).success);

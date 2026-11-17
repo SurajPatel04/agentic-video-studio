@@ -16,7 +16,7 @@ const root = path.resolve(import.meta.dirname, '..');
 await mkdir(path.join(root, 'out'), {recursive: true});
 const bundled = path.join(root, 'out', 'validate-catalog.mjs');
 await build({
-  stdin: {contents: `export {sceneCatalog, overlaysSchema} from './src/registry'; export {audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} from './src/audio';`, resolveDir: root, loader: 'ts'},
+  stdin: {contents: `export {sceneCatalog, overlaysSchema} from './src/registry'; export {brandSchema} from './src/brand'; export {audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} from './src/audio';`, resolveDir: root, loader: 'ts'},
   outfile: bundled,
   bundle: true,
   platform: 'node',
@@ -31,7 +31,7 @@ await build({
   }],
   logLevel: 'silent',
 });
-const {sceneCatalog, overlaysSchema, audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} = await import(pathToFileURL(bundled));
+const {sceneCatalog, overlaysSchema, brandSchema, audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} = await import(pathToFileURL(bundled));
 
 const fmtPath = (parts) => parts.map((p) => (typeof p === 'number' ? `[${p}]` : `.${p}`)).join('');
 
@@ -48,6 +48,10 @@ export const validateComposition = (spec) => {
   if (spec.audio !== undefined) {
     const r = audioSettingsSchema.safeParse(spec.audio);
     if (!r.success) for (const issue of r.error.issues) errors.push(`audio${fmtPath(issue.path)}: ${issue.message}`);
+  }
+  if (spec.brand !== undefined) {
+    const r = typeof spec.brand === 'boolean' ? {success: true} : brandSchema.safeParse(spec.brand);
+    if (!r.success) for (const issue of r.error.issues) errors.push(`brand${fmtPath(issue.path)}: ${issue.message}`);
   }
   if (spec.captions !== undefined) {
     const r = captionsSettingsSchema.safeParse(spec.captions);

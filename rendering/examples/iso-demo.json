@@ -1,0 +1,149 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "defaultTransition": {
+    "type": "fade",
+    "durationInFrames": 15
+  },
+  "scenes": [
+    {
+      "id": "lb-basic",
+      "component": "IsoScene",
+      "durationInFrames": 240,
+      "props": {
+        "eyebrow": "Load balancing",
+        "title": "Two servers share the traffic"
+      }
+    },
+    {
+      "id": "card",
+      "component": "IsoScene",
+      "durationInFrames": 150,
+      "props": {
+        "eyebrow": "System design",
+        "title": "How a load balancer works",
+        "subtitle": "Why big websites never run on one server",
+        "objects": [],
+        "links": [],
+        "steps": [],
+        "points": [
+          "Spread the traffic",
+          "Skip broken servers",
+          "Grow by adding servers"
+        ]
+      }
+    },
+    {
+      "id": "arch",
+      "component": "IsoScene",
+      "durationInFrames": 300,
+      "props": {
+        "eyebrow": "Architecture",
+        "title": "A request's path",
+        "objects": [
+          {
+            "id": "phone",
+            "kind": "phone",
+            "label": "App",
+            "at": [
+              0,
+              0
+            ]
+          },
+          {
+            "id": "lb",
+            "kind": "loadbalancer",
+            "label": "Balancer",
+            "at": [
+              3.5,
+              -3.5
+            ]
+          },
+          {
+            "id": "s1",
+            "kind": "server",
+            "label": "API 1",
+            "at": [
+              6.5,
+              -8.5
+            ],
+            "status": 40
+          },
+          {
+            "id": "s2",
+            "kind": "server",
+            "label": "API 2",
+            "at": [
+              10.5,
+              -3.5
+            ],
+            "status": 35
+          },
+          {
+            "id": "cache",
+            "kind": "cache",
+            "label": "Cache",
+            "at": [
+              11,
+              -12.5
+            ]
+          },
+          {
+            "id": "db",
+            "kind": "database",
+            "label": "Database",
+            "at": [
+              14.5,
+              -7.5
+            ]
+          }
+        ],
+        "links": [
+          {
+            "from": "phone",
+            "to": "lb",
+            "label": "HTTPS"
+          },
+          {
+            "from": "lb",
+            "to": "s1"
+          },
+          {
+            "from": "lb",
+            "to": "s2"
+          },
+          {
+            "from": "s1",
+            "to": "cache",
+            "flow": "none",
+            "dashed": true
+          },
+          {
+            "from": "s2",
+            "to": "db"
+          }
+        ],
+        "steps": [
+          {
+            "at": 0.55,
+            "target": "lb",
+            "highlight": true,
+            "note": "Picks the least busy server"
+          },
+          {
+            "at": 0.75,
+            "target": "lb",
+            "highlight": false
+          },
+          {
+            "at": 0.75,
+            "target": "db",
+            "focus": true,
+            "note": "Data lives here"
+          }
+        ]
+      }
+    }
+  ]
+}

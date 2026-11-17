@@ -45,6 +45,7 @@ async def main() -> None:
     cap = r.add_mutually_exclusive_group()
     cap.add_argument("--captions", dest="captions", action="store_true", default=None)
     cap.add_argument("--no-captions", dest="captions", action="store_false")
+    r.add_argument("--captions-mode", choices=["burn", "track", "both"], help="burn = in the picture; track = player can switch it; both")
     p = sub.add_parser("plan", help="LLM writes a composition JSON for a topic")
     p.add_argument("prompt")
     p.add_argument("--scenes", type=int)
@@ -54,6 +55,7 @@ async def main() -> None:
     vd.add_argument("prompt")
     vd.add_argument("--scenes", type=int)
     vd.add_argument("--no-captions", action="store_true")
+    vd.add_argument("--captions-mode", choices=["burn", "track", "both"], help="burn = in the picture; track = player can switch it; both")
     vd.add_argument("--no-narrate", action="store_true")
     vd.add_argument("--scale", type=float, default=1.0)
     vd.add_argument("--mode", choices=["auto", "catalog", "tools"])
@@ -125,11 +127,14 @@ async def main() -> None:
             print(out)
             return
         try:
-            result = await render_video(spec, narrate=not args.no_narrate, captions=not args.no_captions, scale=args.scale)
+            result = await render_video(spec, narrate=not args.no_narrate, captions=not args.no_captions, scale=args.scale,
+                                        captions_mode=args.captions_mode)
         except RenderError as exc:
             raise SystemExit(f"{exc}\n{exc.details}")
         print("\n".join(result.log))
         print(f"{result.video}  ({result.seconds:.0f}s)")
+        if result.subtitles:
+            print(f"{result.subtitles}  (captions: {result.captions_mode})")
         return
     if args.cmd == "tts":
         clip = await synthesize(args.text, args.voice)
@@ -144,11 +149,14 @@ async def main() -> None:
     else:
         spec = json.loads(args.file.read_text())
         try:
-            result = await render_video(spec, narrate=not args.no_narrate, captions=args.captions, scale=args.scale)
+            result = await render_video(spec, narrate=not args.no_narrate, captions=args.captions, scale=args.scale,
+                                        captions_mode=args.captions_mode)
         except RenderError as exc:
             raise SystemExit(f"{exc}\n{exc.details}")
         print("\n".join(result.log))
         print(f"{result.video}  ({result.seconds:.0f}s, {result.voice_clips} new / {result.voice_cached} cached voice clips)")
+        if result.subtitles:
+            print(f"{result.subtitles}  (captions: {result.captions_mode})")
 
 
 def print_long(state: long_video.LongState) -> None:

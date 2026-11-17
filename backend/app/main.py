@@ -29,9 +29,12 @@ app = FastAPI(title="Agentic Video Studio API")
 @app.on_event("startup")
 async def banner() -> None:
     from urllib.parse import urlparse
-    host = urlparse(resolve_base_url()).hostname or "?"  # host only: the URL can hold credentials
+    if settings.LLM_PROFILE == "test":
+        host, model = "OpenAI (TEST key)", settings.TEST_MODEL
+    else:
+        host, model = urlparse(resolve_base_url()).hostname or "?", settings.PLANNER_MODEL or settings.DEFAULT_MODEL  # host only: the URL can hold credentials
     log.info("%s  llm=%s via %s  planner=%s  prompts=%s  level=%s", paint("Agentic Video Studio ready", "green", True),
-             settings.PLANNER_MODEL or settings.DEFAULT_MODEL, host, settings.PLANNER_MODE,
+             model, host, settings.PLANNER_MODE,
              "on" if settings.LOG_PROMPTS else "off", settings.LOG_LEVEL)
 
 
@@ -133,6 +136,8 @@ class RenderRequest(BaseModel):
     composition: dict[str, Any]  # same JSON as rendering/examples/*.json
     narrate: bool = True  # voice every scene's "narration" with Deepgram first
     captions: bool | None = None  # True/False forces subtitles on/off; None = what the JSON says (default on)
+    # burn = in the picture (styled, word highlight) | track = player can switch it on/off | both; None = JSON / CAPTIONS_MODE
+    captions_mode: Literal["burn", "track", "both"] | None = None
     scale: float = Field(default=1.0, gt=0.1, le=2.0)  # 0.5 = half resolution (quick preview)
 
 
@@ -140,6 +145,8 @@ class RenderResponse(BaseModel):
     job_id: str
     video_url: str
     composition_url: str
+    captions_url: str | None = None  # captions.vtt (add ?format=srt for SubRip)
+    captions_mode: str = ""
     seconds: float
     voice_clips: int
     voice_cached: int
@@ -150,7 +157,8 @@ class RenderResponse(BaseModel):
 async def render(req: RenderRequest) -> RenderResponse:
     """Narrate (Deepgram) → validate → render with Remotion. Waits until the MP4 is ready."""
     try:
-        result = await render_video(req.composition, narrate=req.narrate, captions=req.captions, scale=req.scale)
+        result = await render_video(req.composition, narrate=req.narrate, captions=req.captions, scale=req.scale,
+                                    captions_mode=req.captions_mode)
     except RenderError as exc:
         raise HTTPException(status_code=422, detail={"error": str(exc), "details": exc.details}) from exc
     except (RuntimeError, ValueError) as exc:
@@ -159,6 +167,8 @@ async def render(req: RenderRequest) -> RenderResponse:
         job_id=result.job_id,
         video_url=f"/render/{result.job_id}/video",
         composition_url=f"/render/{result.job_id}/composition",
+        captions_url=f"/render/{result.job_id}/captions" if result.subtitles else None,
+        captions_mode=result.captions_mode,
         seconds=round(result.seconds, 1),
         voice_clips=result.voice_clips,
         voice_cached=result.voice_cached,
@@ -178,6 +188,13 @@ def _job_file(job_id: str, name: str):
 @app.get("/render/{job_id}/video", response_class=FileResponse)
 def render_video_file(job_id: str) -> FileResponse:
     return FileResponse(_job_file(job_id, "video.mp4"), media_type="video/mp4", filename=f"{job_id}.mp4")
+
+
+@app.get("/render/{job_id}/captions", response_class=FileResponse)
+def render_captions_file(job_id: str, format: Literal["vtt", "srt"] = "vtt") -> FileResponse:
+    """Subtitles for a web player (<track src=... kind="captions">) or any video player."""
+    media = "text/vtt" if format == "vtt" else "application/x-subrip"
+    return FileResponse(_job_file(job_id, f"captions.{format}"), media_type=media, filename=f"{job_id}.{format}")
 
 
 @app.get("/render/{job_id}/composition", response_class=FileResponse)
@@ -235,6 +252,7 @@ async def plan(req: PlanRequest) -> PlanResponse:
 class VideoRequest(PlanRequest):
     narrate: bool = True  # Deepgram voice for each scene's narration
     captions: bool = True  # subtitles from the narration (False = no captions)
+    captions_mode: Literal["burn", "track", "both"] | None = None  # see RenderRequest
     scale: float = Field(default=1.0, gt=0.1, le=2.0)
 
 
@@ -249,7 +267,8 @@ class VideoResponse(RenderResponse):
 async def video(req: VideoRequest) -> VideoResponse:
     """Prompt → plan (LLM) → narration (Deepgram) → captions → render. Waits until the MP4 is ready."""
     planned = await plan(PlanRequest(prompt=req.prompt, scenes=req.scenes, model=req.model, mode=req.mode, skills=req.skills))
-    rendered = await render(RenderRequest(composition=planned.composition, narrate=req.narrate, captions=req.captions, scale=req.scale))
+    rendered = await render(RenderRequest(composition=planned.composition, narrate=req.narrate, captions=req.captions, scale=req.scale,
+                                          captions_mode=req.captions_mode))
     return VideoResponse(**rendered.model_dump(), plan_attempts=planned.attempts, plan_mode=planned.mode,
                          llm_input_tokens=planned.input_tokens, llm_output_tokens=planned.output_tokens)
 

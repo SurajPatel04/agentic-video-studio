@@ -56,10 +56,18 @@ def resolve_headers() -> dict[str, str] | None:
 def get_llm(model: str | None = None, **kwargs: Any) -> ChatOpenAI:
     """Return a cached ChatOpenAI client pointed at the MLflow gateway route ``model``."""
     resolved_model = model or settings.DEFAULT_MODEL
-    key = (resolved_model, tuple(sorted(kwargs.items())))
+    test = settings.LLM_PROFILE == "test"
+    if test:  # gateway route names mean nothing on OpenAI: always the test model
+        resolved_model = settings.TEST_MODEL
+    key = (settings.LLM_PROFILE, resolved_model, tuple(sorted(kwargs.items())))
     if key not in _LLM_CACHE:
         kwargs.setdefault("timeout", settings.LLM_TIMEOUT_SECONDS)
         kwargs.setdefault("callbacks", [LLM_LOGGER])  # prints prompt, reply, tokens, time
+        if test:
+            if not settings.TEST:
+                raise RuntimeError("LLM_PROFILE=test but TEST (OpenAI key) is not set in .env")
+            _LLM_CACHE[key] = ChatOpenAI(api_key=settings.TEST, model=resolved_model, **kwargs)
+            return _LLM_CACHE[key]
         _LLM_CACHE[key] = ChatOpenAI(
             api_key=_GATEWAY_API_KEY,
             base_url=resolve_base_url(),

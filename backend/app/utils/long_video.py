@@ -40,7 +40,8 @@ from app.utils import skills as teaching_skills
 from app.utils.console import step
 from app.utils.llm import get_llm, text_of, usage_of
 from app.utils.planner import PlanError, _extract_json, plan_video
-from app.utils.render import RenderError, render_video, validate
+from app.utils import subtitles
+from app.utils.render import RenderError, render_video, validate, without_intro
 
 log = logging.getLogger(__name__)
 
@@ -399,6 +400,8 @@ async def _render_chapter(state: LongState, n: int) -> None:
     cs = state.chapters[n - 1]
     spec = json.loads(plan_file(state.id, n).read_text())
     cs.job_id = f"long-{state.id}-ch{n:02d}"
+    if n > 1:
+        spec = without_intro(spec)  # the logo intro plays once, at the start of the whole video
     result = await render_video(spec, captions=state.captions, job_id=cs.job_id, scale=state.scale,
                                 concurrency=render_concurrency())
     cs.seconds = await _duration(result.video)
@@ -437,16 +440,30 @@ async def join_chapters(state: LongState) -> Path:
     videos = [settings.WORKSPACE_DIR / "jobs" / c.job_id / "video.mp4" for c in state.chapters]
     (d / "concat.txt").write_text("".join(f"file '{v.resolve()}'\n" for v in videos))
     meta, stamps, start = [";FFMETADATA1", f"title={state.outline.title}"], [], 0.0
+    cues: list[subtitles.Cue] = []
+    mode = ""
     for c, ch in zip(state.chapters, state.outline.chapters):
         end = start + c.seconds
+        job = settings.WORKSPACE_DIR / "jobs" / c.job_id
+        if (job / "captions.srt").exists():  # chapter subtitles, shifted to where the chapter starts
+            cues += [subtitles.Cue(q.start + start, q.end + start, q.text) for q in subtitles.parse_srt((job / "captions.srt").read_text())]
+            if (job / "composition.json").exists():
+                mode = subtitles.caption_mode(json.loads((job / "composition.json").read_text()), settings.CAPTIONS_MODE)
         meta += ["[CHAPTER]", "TIMEBASE=1/1000", f"START={round(start * 1000)}", f"END={round(end * 1000)}", f"title={ch.title}"]
         stamps.append(f"{_stamp(start)} {ch.title}")
         start = end
     (d / "chapters.ffmeta").write_text("\n".join(meta) + "\n")
     out = d / "video.mp4"
-    base = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(d / "concat.txt"), "-i", str(d / "chapters.ffmeta"),
-            "-map", "0", "-map_metadata", "1", "-map_chapters", "1"]
-    code, log_text = await _ffmpeg(*base, "-c", "copy", "-movflags", "+faststart", str(out))
+    base = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(d / "concat.txt"), "-i", str(d / "chapters.ffmeta")]
+    track = []
+    if cues:
+        srt, _ = subtitles.write_files(cues, d)
+        if mode in ("track", "both"):  # one switchable subtitle track for the whole video
+            base += ["-i", str(srt)]
+            track = ["-map", "2:0", "-c:s", "mov_text", "-metadata:s:s:0", "language=eng", "-metadata:s:s:0", "title=Captions",
+                     "-disposition:s:0", "default" if mode == "track" else "0"]
+    base += ["-map", "0:v", "-map", "0:a?", "-map_metadata", "1", "-map_chapters", "1", *track]
+    code, log_text = await _ffmpeg(*base, "-c:v", "copy", "-c:a", "copy", "-movflags", "+faststart", str(out))
     if code != 0:  # chapters differ in format: re-encode once
         code, log_text = await _ffmpeg(*base, "-c:v", "libx264", "-crf", "18", "-c:a", "aac", "-movflags", "+faststart", str(out))
     (d / "join.log").write_text(log_text)

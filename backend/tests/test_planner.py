@@ -82,6 +82,20 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(llm.ainvoke.call_count, 2)
         self.assertEqual(len(plan.spec["scenes"]), len(one["scenes"]))  # the earlier, better plan is kept
 
+    def test_iso_chain_event_labels_and_repeated_layouts(self):
+        def iso(i, links, label="Server B", at=(7, -7)):
+            return {"id": f"s{i}", "component": "IsoScene", "props": {
+                "objects": [{"id": "lb", "kind": "loadbalancer", "at": [0, 0]}, {"id": "a", "kind": "server", "at": [3.5, -3.5]},
+                            {"id": "b", "kind": "server", "at": list(at), "label": label}], "links": links, "steps": []}}
+        fan = [{"from": "lb", "to": "a"}, {"from": "lb", "to": "b"}]
+        chained = planner._lint({"scenes": [iso(0, [{"from": "lb", "to": "a"}, {"from": "a", "to": "b"}])]})
+        self.assertIn("a->b chains servers", chained)
+        self.assertIn("labels name the object", planner._lint({"scenes": [iso(0, fan, label="Request 3")]}))
+        same = [iso(i, fan) for i in range(3)]
+        self.assertIn("s0, s1, s2 rewrite the same layout", planner._lint({"scenes": same}))
+        varied = [iso(0, fan), iso(1, fan), iso(2, fan, at=(9, -4))]
+        self.assertEqual(planner._lint({"scenes": varied}), "")
+
     def test_catalog_shows_number_limits(self):
         self.assertIn("300..", catalog.overlay_text("terminal"))
 

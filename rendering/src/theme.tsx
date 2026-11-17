@@ -22,3 +22,9 @@ export const useUnit = () => {
   const {width, height} = useVideoConfig();
   return Math.min(width, height) / 1080;
 };
+
+/** Length of the current scene in frames (set by VideoComposition), so a scene can time things as a
+ *  fraction of itself: the narration stretches scenes, so "halfway" is safer than "frame 90". */
+const SceneLengthContext = createContext<number>(150);
+export const SceneLengthProvider = SceneLengthContext.Provider;
+export const useSceneLength = () => useContext(SceneLengthContext);

@@ -6,13 +6,14 @@ import networking from '../examples/networking-complete.json';
 import priority from '../examples/networking-priority.json';
 import gallery from '../examples/study-gallery.json';
 import showcase from '../examples/library-showcase.json';
+import {brandTiming} from './brand';
 import {totalFrames} from './transitions';
 import type {CompositionSpec} from './types';
 import {VideoComposition} from './VideoComposition';
 
 // Length, fps and size all come from the JSON (or from --props), never from code.
 const calculateMetadata: CalculateMetadataFunction<CompositionSpec> = ({props}) => ({
-  durationInFrames: Math.max(1, totalFrames(props)),
+  durationInFrames: Math.max(1, brandTiming(props.brand, props.fps).offset + totalFrames(props)),
   fps: props.fps,
   width: props.width,
   height: props.height,

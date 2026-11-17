@@ -3,7 +3,9 @@
  *
  * Composition JSON (all optional; captions are on by default when words exist):
  *   "captions": {"enabled": true, "position": "bottom", "offset": 125, "size": 44, "maxWords": 7,
- *                "highlight": true, "highlightColor": "#facc15", "background": true}
+ *                "highlight": true, "highlightColor": "#ff5500", "background": true, "mode": "burn"}
+ * mode: burn = drawn into the picture; track = not drawn (the backend adds a subtitle track the player
+ * can switch on / off, plus captions.srt / .vtt); both = drawn + track.
  * Turn off: "captions": {"enabled": false}  (or "captions": false), or via the API / CLI flag.
  */
 import type {FC} from 'react';
@@ -17,13 +19,14 @@ export type CaptionWord = z.infer<typeof captionWordSchema>;
 const captionsObjectSchema = z
   .object({
     enabled: z.boolean().default(true),
+    mode: z.enum(['burn', 'track', 'both']).default('burn'),
     position: z.enum(['bottom', 'top']).default('bottom'),
     offset: z.number().min(0).max(400).default(125), // px from the edge (clear of the scenes' own bottom captions)
     size: z.number().min(16).max(120).default(44),
     maxWords: z.number().int().min(1).max(20).default(7), // per line
     highlight: z.boolean().default(true), // colour the word being spoken
     color: z.string().default('#ffffff'),
-    highlightColor: z.string().optional(), // default: theme accent
+    highlightColor: z.string().optional(), // default: the brand colour (logo orange), else the theme accent
     background: z.boolean().default(true), // dark pill behind the text
   })
   .strict();
@@ -58,7 +61,7 @@ export const Captions: FC<{words: CaptionWord[]; settings: CaptionsSettings; fps
   const f = useCurrentFrame();
   const theme = useTheme();
   const u = useUnit();
-  if (!settings.enabled || !words.length) return null;
+  if (!settings.enabled || settings.mode === 'track' || !words.length) return null;
   const lines = toLines(words, settings.maxWords, fps);
   // The line on screen: from its first word until the next line starts (or a short hold after the last).
   const idx = lines.findIndex((l, i) => {

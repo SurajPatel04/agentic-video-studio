@@ -1,0 +1,587 @@
+import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
+import {z} from 'zod';
+import {Sfx, sfxNames} from '../audio';
+import {useSceneLength, useUnit} from '../theme';
+import {ISO_COLORS, isoColorNames, mix, PAPER, project, type IsoColor, type Pt, C30, S30} from '../iso/iso';
+import {IsoBox, IsoPerson, IsoShadow, Note, noteSize, StatusPill, Tag} from '../iso/shapes';
+import {IsoLink} from '../iso/link';
+import {along, bendPoint, curve, sample} from '../iso/curve';
+import {IsoArt, iconByName, type ArtKind} from '../iso/objects';
+
+/* ----------------------------------------------------------------------------- kinds */
+
+type Kind = {shape: 'art' | 'people' | 'slab' | 'person'; size: [number, number, number]; color: IsoColor};
+const KINDS = {
+  server: {shape: 'art', size: [1.5, 1.5, 2.3], color: 'lavender'},
+  database: {shape: 'art', size: [1.9, 1.9, 1.7], color: 'mint'},
+  storage: {shape: 'art', size: [1.7, 1.7, 1.1], color: 'slate'},
+  cache: {shape: 'art', size: [1.6, 1.6, 0.8], color: 'butter'},
+  cloud: {shape: 'art', size: [2.4, 2.4, 1.2], color: 'sky'},
+  loadbalancer: {shape: 'art', size: [2.2, 2.2, 0.75], color: 'teal'},
+  router: {shape: 'art', size: [1.9, 1.3, 0.5], color: 'teal'},
+  api: {shape: 'art', size: [1.7, 1.7, 0.8], color: 'peach'},
+  queue: {shape: 'art', size: [3.2, 1.2, 0.75], color: 'butter'},
+  client: {shape: 'art', size: [2, 1, 1.8], color: 'peach'},
+  laptop: {shape: 'art', size: [1.9, 1.4, 1.2], color: 'slate'},
+  phone: {shape: 'art', size: [0.9, 0.9, 1.6], color: 'rose'},
+  cpu: {shape: 'art', size: [1.6, 1.6, 0.3], color: 'slate'},
+  memory: {shape: 'art', size: [2.6, 0.5, 0.75], color: 'mint'},
+  globe: {shape: 'art', size: [2, 2, 1.8], color: 'sky'},
+  lock: {shape: 'art', size: [1.3, 0.7, 1], color: 'coral'},
+  file: {shape: 'art', size: [1.2, 0.8, 1.6], color: 'cream'},
+  code: {shape: 'art', size: [2.2, 0.8, 1.5], color: 'lavender'},
+  box: {shape: 'art', size: [1.5, 1.5, 1.1], color: 'peach'},
+  // everyday / media objects
+  tile: {shape: 'art', size: [1.7, 0.4, 1.7], color: 'cream'}, // upright card showing any "icon"
+  tv: {shape: 'art', size: [2.4, 1, 2.1], color: 'peach'},
+  radio: {shape: 'art', size: [2.1, 0.9, 1.3], color: 'butter'},
+  newspaper: {shape: 'art', size: [2.2, 1.6, 0.3], color: 'cream'},
+  tower: {shape: 'art', size: [1.4, 1.4, 3.8], color: 'slate'},
+  satellite: {shape: 'art', size: [3, 1, 1], color: 'slate'},
+  building: {shape: 'art', size: [2, 2, 3], color: 'lavender'},
+  book: {shape: 'art', size: [1.8, 1.3, 0.45], color: 'coral'},
+  mic: {shape: 'art', size: [0.9, 0.9, 2.2], color: 'slate'},
+  camera: {shape: 'art', size: [1.8, 1, 1.2], color: 'slate'},
+  billboard: {shape: 'art', size: [3.2, 0.6, 2.8], color: 'cream'},
+  user: {shape: 'person', size: [0.8, 0.8, 1], color: 'sky'},
+  people: {shape: 'people', size: [0, 0, 1], color: 'sky'},
+  platform: {shape: 'slab', size: [6, 2.4, 0.28], color: 'cream'},
+} satisfies Record<string, Kind>;
+export const isoKinds = Object.keys(KINDS) as [keyof typeof KINDS, ...(keyof typeof KINDS)[]];
+const PERSON_COLORS = ['#9fc4ec', '#f4c178', '#c9b6ec', '#9ed3a8', '#f2a37d', '#f3b9c6'];
+
+/* ---------------------------------------------------------------------------- schema */
+
+const fraction = z.number().min(0).max(1); // of the scene's length (scenes stretch to fit the narration)
+const objectSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(isoKinds).default('box'),
+  label: z.string().max(24).optional(),
+  at: z.tuple([z.number().min(-20).max(30), z.number().min(-20).max(30)]), // grid position [x, y]
+  z: z.number().min(0).max(8).optional(), // height above the ground (e.g. on a platform: 0.3)
+  size: z.tuple([z.number().min(0.2).max(14), z.number().min(0.2).max(14), z.number().min(0.1).max(6)]).optional(), // [w, d, h]
+  color: z.enum(isoColorNames).optional(),
+  count: z.number().int().min(1).max(60).optional(), // people
+  status: z.number().min(0).max(100).optional(), // shows a ⚙ ▬ 59% pill
+  appearAt: fraction.optional(), // default: objects drop in one after another in the first third
+  enter: z.enum(['drop', 'none']).default('drop'), // none: already on screen (carried over from the previous scene)
+  ghost: z.boolean().default(false), // keeps its place in the layout but is not drawn (continuations)
+  highlight: z.boolean().default(false), // starts highlighted (carried over from the previous scene)
+  // icon shown by kind "tile" (any Lucide icon name: "megaphone", "graduation-cap", "thumbs-up", ...)
+  icon: z.string().max(40).refine((n) => iconByName(n) !== undefined, {message: 'unknown icon name; use a Lucide icon such as "megaphone", "users", "message-circle", "graduation-cap"'}).optional(),
+}).strict();
+
+const linkSchema = z.object({
+  from: z.string(),
+  to: z.string(),
+  label: z.string().max(22).optional(),
+  flow: z.enum(['dots', 'people', 'none']).default('dots'), // what travels along the arrow
+  dashed: z.boolean().default(false),
+  appearAt: fraction.optional(), // default: when both ends have landed
+  enter: z.enum(['draw', 'none']).default('draw'), // none: already drawn (carried over)
+}).strict();
+
+const stepSchema = z.object({
+  at: fraction, // when, as a fraction of the scene (0.5 = halfway through the narration)
+  target: z.string(), // object id
+  status: z.number().min(0).max(100).optional(), // animate the pill to this value
+  highlight: z.boolean().optional(), // lift + glow (false to stop)
+  label: z.string().max(24).optional(),
+  color: z.enum(isoColorNames).optional(),
+  hide: z.boolean().optional(),
+  note: z.string().max(80).optional(), // speech bubble above the target (one note on screen at a time)
+  focus: z.boolean().optional(), // camera moves in on the target (false: back out)
+  // sound for this moment; default picks one from what happens (hide: remove, overload: alert,
+  // highlight: chime, focus: rise, note: blip); "none" = silent
+  sound: z.union([z.enum(sfxNames), z.literal('none')]).optional(),
+}).strict();
+
+// The default example (also the preview): a crowd on a platform sending requests to two servers.
+const EXAMPLE_OBJECTS: z.output<typeof objectSchema>[] = [
+  {id: 'stage', kind: 'platform', at: [0, 0], size: [8, 2.6, 0.3], enter: 'drop', ghost: false, highlight: false},
+  {id: 'users', kind: 'people', at: [1.6, 0.35], z: 0.3, count: 22, label: 'Users', enter: 'drop', ghost: false, highlight: false},
+  {id: 'a', kind: 'server', label: 'Server A', at: [4.4, -5], status: 59, enter: 'drop', ghost: false, highlight: false},
+  {id: 'b', kind: 'server', label: 'Server B', at: [9.6, -3.2], status: 59, enter: 'drop', ghost: false, highlight: false},
+];
+const EXAMPLE_LINKS: z.output<typeof linkSchema>[] = [
+  {from: 'users', to: 'a', flow: 'dots', dashed: false, enter: 'draw'},
+  {from: 'users', to: 'b', flow: 'dots', dashed: false, enter: 'draw'},
+];
+const EXAMPLE_STEPS: z.output<typeof stepSchema>[] = [
+  {at: 0.45, target: 'a', status: 94, note: 'Server A is almost full'},
+  {at: 0.7, target: 'b', highlight: true, status: 72, note: 'New requests go to B'},
+];
+
+export const isoSceneSchema = z.object({
+  eyebrow: z.string().max(40).optional(),
+  title: z.string().max(80).optional(),
+  subtitle: z.string().max(140).optional(),
+  objects: z.array(objectSchema).max(24).default(() => EXAMPLE_OBJECTS),
+  links: z.array(linkSchema).max(30).default(() => EXAMPLE_LINKS),
+  steps: z.array(stepSchema).max(40).default(() => EXAMPLE_STEPS),
+  points: z.array(z.string().max(70)).max(4).optional(), // short note cards beside the diagram
+  zoom: z.number().min(0.5).max(1.6).default(1),
+  sound: z.boolean().default(true),
+  continued: z.boolean().optional(), // set by the backend: this scene continues the previous picture
+  continue: z.boolean().optional(), // planner shorthand, expanded by the backend before rendering
+  remove: z.array(z.string()).optional(), // with continue: ids to drop from the previous picture
+}).strict().superRefine((p, ctx) => {
+  const ids = new Set<string>();
+  p.objects.forEach((o, i) => {
+    if (ids.has(o.id)) ctx.addIssue({code: 'custom', path: ['objects', i, 'id'], message: `duplicate id "${o.id}"`});
+    ids.add(o.id);
+  });
+  p.links.forEach((l, i) => (['from', 'to'] as const).forEach((k) => {
+    if (!ids.has(l[k])) ctx.addIssue({code: 'custom', path: ['links', i, k], message: `no object with id "${l[k]}"`});
+  }));
+  p.steps.forEach((s, i) => {
+    if (!ids.has(s.target)) ctx.addIssue({code: 'custom', path: ['steps', i, 'target'], message: `no object with id "${s.target}"`});
+  });
+  // objects must not cover each other on screen (status pills need room above, too)
+  const solid = p.objects.map((o, i) => ({o, i, g: geometry(o)})).filter(({o, g}) => g.shape !== 'slab' && !o.ghost);
+  const rects = solid.map(({o, g}) => {
+    const r = rectOf(outline(g, 1, {x: 0, y: 0}));
+    return o.status !== undefined || p.steps.some((s) => s.target === o.id && s.status !== undefined) ? {...r, t: r.t - 0.75} : r;
+  });
+  for (let a = 0; a < solid.length; a++) for (let b = a + 1; b < solid.length; b++) {
+    const share = overlapArea(rects[a], rects[b]) / Math.min(area(rects[a]), area(rects[b]));
+    if (share > 0.25) ctx.addIssue({code: 'custom', path: ['objects', solid[b].i, 'at'],
+      message: `"${solid[b].o.id}" covers "${solid[a].o.id}" on screen (${Math.round(share * 100)}% overlap); move them at least 3 grid units further apart (a screen-horizontal row is [0,0], [3.5,-3.5], [7,-7]; a column is [0,0], [2.5,2.5])`});
+  }
+});
+
+export const description =
+  'Isometric "paper" diagram: 3D-looking servers, databases, caches, clouds, people, platforms and arrows drop in and ' +
+  'animate on a paper grid. Steps (timed as a fraction of the narration) change loads (⚙ 59% pills), highlight, add ' +
+  'notes and move the camera. Use for systems, architecture, flows, networking, scaling, how-things-work. With no ' +
+  'objects it is a paper title card (title, subtitle, points).';
+export const tags = ['isometric', 'iso', 'diagram', 'architecture', 'system design', 'server', 'database', 'cache',
+  'load balancer', 'scaling', 'cloud', 'users', 'flow', 'paper', '3d', 'infographic'];
+
+type Props = z.infer<typeof isoSceneSchema>;
+type Obj = Props['objects'][number];
+
+/* --------------------------------------------------------------------------- helpers */
+
+type Box3 = {x: number; y: number; z: number; w: number; d: number; h: number; shape: Kind['shape']; kind: Kind};
+
+const geometry = (o: Obj): Box3 => {
+  const kind = KINDS[o.kind] as Kind;
+  let [w, d, h] = o.size ?? kind.size;
+  if (kind.shape === 'people') {
+    const n = o.count ?? 12, cols = Math.ceil(Math.sqrt(n * 1.6));
+    w = cols * 0.62;
+    d = Math.ceil(n / cols) * 0.62;
+    h = 1;
+  }
+  return {x: o.at[0], y: o.at[1], z: o.z ?? 0, w, d, h, shape: kind.shape, kind};
+};
+
+const crowd = (g: Box3, n: number) => {
+  const cols = Math.ceil(Math.sqrt(n * 1.6));
+  return Array.from({length: n}, (_, i) => ({gx: g.x + 0.31 + (i % cols) * 0.62, gy: g.y + 0.31 + Math.floor(i / cols) * 0.62, i}))
+    .sort((a, b) => a.gx + a.gy - (b.gx + b.gy));
+};
+
+/** Screen outline of an object (polygon) for tile size T, origin o; z = its current height. */
+const outline = (g: Box3, T: number, o: Pt, zz = g.z): Pt[] => {
+  const P = (a: number, b: number, c: number) => project(a, b, c, T, o);
+  const {x, y, w, d, h} = g;
+  if (false) {
+    const r = Math.min(w, d) / 2, c0 = P(x + w / 2, y + d / 2, zz), c1 = P(x + w / 2, y + d / 2, zz + h);
+    const rx = Math.SQRT2 * r * C30 * T, ry = Math.SQRT2 * r * S30 * T;
+    const top = Array.from({length: 9}, (_, k) => {const t = Math.PI + (Math.PI * k) / 8; return {x: c1.x + rx * Math.cos(t), y: c1.y + ry * Math.sin(t)};});
+    const bot = Array.from({length: 9}, (_, k) => {const t = (Math.PI * k) / 8; return {x: c0.x + rx * Math.cos(t), y: c0.y + ry * Math.sin(t)};});
+    return [...top, ...bot];
+  }
+  if (g.shape === 'people' || g.shape === 'person') {
+    const pts = [P(x, y, zz), P(x + w, y, zz), P(x + w, y + d, zz), P(x, y + d, zz), P(x, y, zz + 1.1), P(x + w, y, zz + 1.1)];
+    const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y);
+    const [l, r, t, b] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    return [{x: l, y: t}, {x: r, y: t}, {x: r, y: b}, {x: l, y: b}];
+  }
+  return [P(x, y, zz + h), P(x + w, y, zz + h), P(x + w, y, zz), P(x + w, y + d, zz), P(x, y + d, zz), P(x, y + d, zz + h)];
+};
+
+type Rect = {l: number; t: number; r: number; b: number};
+const rectOf = (pts: Pt[]): Rect => ({l: Math.min(...pts.map((q) => q.x)), r: Math.max(...pts.map((q) => q.x)), t: Math.min(...pts.map((q) => q.y)), b: Math.max(...pts.map((q) => q.y))});
+const overlapArea = (a: Rect, b: Rect) => Math.max(0, Math.min(a.r, b.r) - Math.max(a.l, b.l)) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.t, b.t));
+const area = (a: Rect) => (a.r - a.l) * (a.b - a.t);
+
+/** Where the segment from `from` (inside) to `to` leaves polygon `poly` (the point nearest `to`). */
+const exitPoint = (polyPts: Pt[], from: Pt, to: Pt): Pt => {
+  let best: Pt | null = null, bestT = -1;
+  for (let i = 0; i < polyPts.length; i++) {
+    const a = polyPts[i], b = polyPts[(i + 1) % polyPts.length];
+    const dx = to.x - from.x, dy = to.y - from.y, ex = b.x - a.x, ey = b.y - a.y;
+    const den = dx * ey - dy * ex;
+    if (Math.abs(den) < 1e-9) continue;
+    const t = ((a.x - from.x) * ey - (a.y - from.y) * ex) / den, v = ((a.x - from.x) * dy - (a.y - from.y) * dx) / den;
+    if (t >= 0 && t <= 1 && v >= 0 && v <= 1 && t > bestT) {bestT = t; best = {x: from.x + dx * t, y: from.y + dy * t};}
+  }
+  return best ?? from;
+};
+
+/** Push apart objects that cover each other on screen (status pills count as part of the object),
+ *  so a plan never shows overlaps even when its positions are a little too close. */
+const separate = (input: Box3[], tall: boolean[], ids: string[]): Box3[] => {
+  const gs = input.map((g) => ({...g}));
+  const pad = 0.22;
+  const rect = (i: number) => {
+    const r = rectOf(outline(gs[i], 1, {x: 0, y: 0}));
+    return {l: r.l - pad, r: r.r + pad, t: r.t - pad - (tall[i] ? 0.7 : 0), b: r.b + pad + 0.5}; // + room for the label underneath
+  };
+  for (let it = 0; it < 120; it++) {
+    let moved = false;
+    // fixed order (by id): a continued scene lists objects in another order but must get the same layout
+    const order = gs.map((_, i) => i).sort((x, y) => (ids[x] < ids[y] ? -1 : ids[x] > ids[y] ? 1 : 0));
+    for (let ai = 0; ai < order.length; ai++) for (let bi = ai + 1; bi < order.length; bi++) {
+      const a = order[ai], b = order[bi];
+      if (gs[a].shape === 'slab' || gs[b].shape === 'slab') continue;
+      const ra = rect(a), rb = rect(b);
+      const ox = Math.min(ra.r, rb.r) - Math.max(ra.l, rb.l), oy = Math.min(ra.b, rb.b) - Math.max(ra.t, rb.t);
+      if (ox <= 0 || oy <= 0) continue;
+      const cax = (ra.l + ra.r) / 2, cbx = (rb.l + rb.r) / 2, cay = (ra.t + ra.b) / 2, cby = (rb.t + rb.b) / 2;
+      // move along the cheaper screen axis, half each
+      const [dx, dy] = ox < oy ? [(cbx >= cax ? 1 : -1) * (ox / 2 + 0.02), 0] : [0, (cby >= cay ? 1 : -1) * (oy / 2 + 0.02)];
+      const gx = (dx / C30 + dy / S30) / 2, gy = (dy / S30 - dx / C30) / 2;
+      gs[b].x += gx; gs[b].y += gy; gs[a].x -= gx; gs[a].y -= gy;
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  return gs;
+};
+
+/** Value of a property that steps change over time, with a spring between values. */
+const track = <T,>(initial: T, changes: {f: number; v: T}[], frame: number, fps: number, blend: (a: T, b: T, t: number) => T): T => {
+  let value = initial;
+  for (const c of changes) {
+    if (frame < c.f) break;
+    const t = spring({frame: frame - c.f, fps, config: {damping: 18, stiffness: 90}});
+    value = blend(value, c.v, Math.min(1, t));
+  }
+  return value;
+};
+const num = (a: number, b: number, t: number) => a + (b - a) * t;
+
+/* ----------------------------------------------------------------------------- scene */
+
+export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
+  const p = isoSceneSchema.parse(input);
+  const f = useCurrentFrame();
+  const {fps, width: W, height: H} = useVideoConfig();
+  const len = useSceneLength();
+  const u = useUnit();
+  const sw = 3 * u;
+
+  const hasTitle = Boolean(p.title || p.eyebrow);
+  const cards = p.points ?? [];
+  const onlyCard = p.objects.length === 0;
+
+  // ---------- layout: fit every object (+ room for pills/notes) into the free area
+  const tall = p.objects.map(() => true); // pill room for every object, so the layout depends only on positions (continued scenes match)
+  const geos = separate(p.objects.map(geometry), tall, p.objects.map((ob) => ob.id));
+  const top = hasTitle ? (p.subtitle ? 250 : 205) * u : 80 * u;
+  const bottom = H - 200 * u; // captions live below
+  const right = cards.length ? W - 600 * u : W - 90 * u;
+  const left = 90 * u;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  geos.forEach((g, i) => {
+    for (const [a, b] of [[g.x, g.y], [g.x + g.w, g.y], [g.x + g.w, g.y + g.d], [g.x, g.y + g.d]]) {
+      for (const c of [g.z, g.z + g.h]) {
+        const q = project(a, b, c, 1);
+        minX = Math.min(minX, q.x); maxX = Math.max(maxX, q.x); minY = Math.min(minY, q.y); maxY = Math.max(maxY, q.y + (g.shape !== 'slab' && c === g.z ? 0.55 : 0)); // label room for every object: layout must not depend on labels
+      }
+    }
+  });
+  const room = 95 * u; // pills and notes above the tallest object
+  const T = geos.length
+    ? Math.min((right - left) / Math.max(0.1, maxX - minX), (bottom - top - room) / Math.max(0.1, maxY - minY), 120 * u) * p.zoom
+    : 80 * u;
+  const centre = {x: (left + right) / 2, y: (top + room + bottom) / 2};
+  const o: Pt = geos.length ? {x: centre.x - ((minX + maxX) / 2) * T, y: centre.y - ((minY + maxY) / 2) * T} : {x: W / 2, y: H / 2};
+  const P = (x: number, y: number, z2: number) => project(x, y, z2, T, o);
+
+  // ---------- timing
+  const byId = Object.fromEntries(p.objects.map((ob, i) => [ob.id, i]));
+  const fresh = p.objects.filter((ob) => ob.enter === 'drop' && !ob.ghost);
+  const startOf = p.objects.map((ob) => ob.enter === 'none' ? -1000
+    : Math.round((ob.appearAt ?? 0.03 + Math.max(0, fresh.indexOf(ob)) * Math.min(0.065, 0.3 / Math.max(1, fresh.length))) * len));
+  const stepsFor = (id: string) => p.steps.filter((s) => s.target === id).map((s) => ({...s, f: Math.round(s.at * len)})).sort((a, b) => a.f - b.f);
+
+  const state = p.objects.map((ob, i) => {
+    const s = stepsFor(ob.id);
+    const drop = spring({frame: f - startOf[i], fps, config: {damping: 11, stiffness: 150, mass: 0.7}});
+    const shown = !ob.ghost && f >= startOf[i];
+    const hide = track(0, s.filter((x) => x.hide !== undefined).map((x) => ({f: x.f, v: x.hide ? 1 : 0})), f, fps, num);
+    const hl = track(ob.highlight ? 1 : 0, s.filter((x) => x.highlight !== undefined).map((x) => ({f: x.f, v: x.highlight ? 1 : 0})), f, fps, num);
+    const status = ob.status === undefined && !s.some((x) => x.status !== undefined) ? undefined
+      : track(ob.status ?? 0, s.filter((x) => x.status !== undefined).map((x) => ({f: x.f, v: x.status as number})), f, fps, num);
+    const base = ISO_COLORS[ob.color ?? (KINDS[ob.kind] as Kind).color];
+    const color = track(base, s.filter((x) => x.color).map((x) => ({f: x.f, v: ISO_COLORS[x.color as IsoColor]})), f, fps, mix);
+    const label = [...s].reverse().find((x) => x.label !== undefined && f >= x.f)?.label ?? ob.label;
+    const hot = status !== undefined && status >= 88 ? 0.5 + 0.5 * Math.sin(f / 4) : 0;
+    const pill = spring({frame: f - startOf[i] - 14, fps, config: {damping: 12}});
+    return {shown, drop, hide, hl, status, color, label, hot, pill};
+  });
+  const landed = (i: number) => startOf[i] + 12;
+
+  // notes: only the latest one is on screen
+  const notes = p.steps.filter((s) => s.note).map((s) => ({...s, f: Math.round(s.at * len)})).filter((s) => f >= s.f).sort((a, b) => a.f - b.f);
+  const note = notes[notes.length - 1];
+  const noteScale = note ? spring({frame: f - note.f, fps, config: {damping: 13}}) : 0;
+
+  // camera: slow push-in, plus focus steps
+  const foc = p.steps.filter((s) => s.focus !== undefined).map((s) => ({...s, f: Math.round(s.at * len)})).sort((a, b) => a.f - b.f);
+  const lastFocus = [...foc].reverse().find((s) => f >= s.f && s.focus);
+  const focusAmt = track(0, foc.map((s) => ({f: s.f, v: s.focus ? 1 : 0})), f, fps, num);
+  const anchor = (i: number, lift = 0.5) => {
+    const g = geos[i];
+    return P(g.x + g.w / 2, g.y + g.d / 2, g.z + g.h * lift);
+  };
+  const fp = lastFocus && byId[lastFocus.target] !== undefined ? anchor(byId[lastFocus.target], 0.6) : centre;
+  const push = 1; // no drift: a continued scene must match the previous one exactly
+  const zoom = push * (1 + 0.22 * focusAmt);
+  const F = {x: centre.x + (fp.x - centre.x) * focusAmt, y: centre.y + (fp.y - centre.y) * focusAmt};
+  const camera = `translate(${centre.x} ${centre.y}) scale(${zoom}) translate(${-F.x} ${-F.y})`;
+
+  // ---------- draw order: platforms first, then links, then everything else back-to-front
+  const order = p.objects.map((_, i) => i).sort((a, b) => {
+    const ga = geos[a], gb = geos[b];
+    const slabA = ga.shape === 'slab' ? -1 : 0, slabB = gb.shape === 'slab' ? -1 : 0;
+    if (slabA !== slabB) return slabA - slabB;
+    return ga.x + ga.w / 2 + ga.y + ga.d / 2 + ga.z * 0.1 - (gb.x + gb.w / 2 + gb.y + gb.d / 2 + gb.z * 0.1);
+  });
+  const slabs = order.filter((i) => geos[i].shape === 'slab'), rest = order.filter((i) => geos[i].shape !== 'slab');
+
+  const renderObject = (i: number) => {
+    const ob = p.objects[i], g = geos[i], s = state[i];
+    if (!s.shown || s.hide >= 0.99) return null;
+    const slab = g.shape === 'slab';
+    const dz = slab ? (1 - s.drop) * -0.4 : Math.max(-0.08, (1 - s.drop) * 3.2);
+    const lift = 0.28 * s.hl + 0.05 * s.hl * Math.sin(f / 7);
+    const zz = g.z + dz + lift;
+    const opacity = Math.min(1, (f - startOf[i]) / 6) * (1 - s.hide);
+    const glow = s.hl > 0.02 ? `drop-shadow(0 0 ${14 * u * s.hl}px ${PAPER.glow})` : s.hot > 0 ? `drop-shadow(0 0 ${10 * u * s.hot}px rgba(229,96,79,0.85))` : undefined;
+    const color = s.hot > 0 ? mix(s.color, ISO_COLORS.coral, 0.35 * s.hot) : s.color;
+    const fs = Math.max(18 * u, Math.min(28 * u, T * 0.24));
+    const sh = <IsoShadow x={g.x} y={g.y} w={g.w} d={g.d} opacity={opacity * Math.min(1, s.drop) * (slab ? 0.6 : 1)} T={T} o={o} sw={sw} />;
+
+    let body: React.ReactNode = null, topAt: Pt;
+    if (g.shape === 'art' || g.shape === 'slab') {
+      body = slab
+        ? <IsoBox id={`${ob.id}-${i}`} x={g.x} y={g.y} z={zz} w={g.w} d={g.d} h={g.h} color={color} T={T} o={o} sw={sw} radius={T * 0.45} />
+        : <IsoArt kind={ob.kind as ArtKind} id={`${ob.id}-${i}`} g={g} zz={zz} color={color} T={T} o={o} sw={sw} icon={ob.icon} />;
+      const r = rectOf(outline({...g, z: zz}, T, o));
+      topAt = {x: (r.l + r.r) / 2, y: r.t};
+    } else if (g.shape === 'person') {
+      const at = P(g.x + g.w / 2, g.y + g.d / 2, zz);
+      body = <IsoPerson at={at} size={T * 0.55} color={color} sw={sw} opacity={opacity} />;
+      topAt = {x: at.x, y: at.y - T * 1.45};
+    } else {
+      // people: each one pops in a frame after the other
+      const people = crowd(g, ob.count ?? 12);
+      body = people.map(({gx, gy, i: k}) => {
+        const t = spring({frame: f - startOf[i] - k * 1.3, fps, config: {damping: 11, stiffness: 160}});
+        if (f < startOf[i] + k * 1.3) return null;
+        const at = P(gx, gy, g.z + Math.max(0, (1 - t) * 1.2) + lift);
+        return <IsoPerson key={k} at={at} size={T * 0.3} color={PERSON_COLORS[k % PERSON_COLORS.length]} sw={sw * 0.9} scale={Math.min(1.05, t)} opacity={1 - s.hide} />;
+      });
+      topAt = P(g.x + g.w / 2, g.y + g.d / 2, g.z + 1.1);
+    }
+    // label: under the object, on a paper halo so lines behind it never cut through the text
+    const box = rectOf(outline({...g, z: g.z}, T, o));
+    const labelAt = {x: (box.l + box.r) / 2, y: box.b + fs * 1.25};
+    const labelIn = Math.min(1, Math.max(0, (f - startOf[i] - 8) / 8));
+    return (
+      <g key={ob.id} opacity={g.shape === 'people' ? 1 : opacity} style={glow ? {filter: glow} : undefined}>
+        {g.shape === 'art' || slab ? sh : null}
+        {body}
+        {s.label && !slab ? (
+          <text x={labelAt.x} y={labelAt.y} textAnchor="middle" fontFamily={PAPER.font} fontWeight={700} fontSize={fs} fill={PAPER.ink}
+            stroke={PAPER.bg} strokeWidth={fs * 0.32} paintOrder="stroke" strokeLinejoin="round" opacity={labelIn}>{s.label}</text>
+        ) : null}
+        {s.status !== undefined ? <StatusPill at={{x: topAt.x, y: topAt.y - 12 * u}} value={s.status} u={u} scale={s.pill * (1 - s.hide)} /> : null}
+      </g>
+    );
+  };
+
+  // object labels (so arrow labels can keep clear of them) and arrow labels placed so far
+  const fsLabel = Math.max(18 * u, Math.min(28 * u, T * 0.24));
+  const labelRects: Rect[] = p.objects.flatMap((ob, i) => {
+    if (!ob.label || !state[i].shown || geos[i].shape === 'slab') return [];
+    const r = rectOf(outline(geos[i], T, o)), cx = (r.l + r.r) / 2, y = r.b + fsLabel * 1.25;
+    const w = ob.label.length * fsLabel * 0.62;
+    return [{l: cx - w / 2, r: cx + w / 2, t: y - fsLabel, b: y + fsLabel * 0.3}];
+  });
+  const placedTags: Rect[] = [];
+
+  // links
+  /** Frame a link starts drawing. A new link between objects already on screen (continued scene) draws early on. */
+  const linkStart = (l: Props['links'][number]) => {
+    const ia = byId[l.from], ib = byId[l.to];
+    if (l.enter === 'none') return -1000;
+    if (l.appearAt !== undefined) return Math.round(l.appearAt * len);
+    const after = Math.max(landed(ia), landed(ib)) + 4;
+    return after < 0 ? Math.round(0.08 * len) : after;
+  };
+  const renderLink = (l: Props['links'][number], k: number, labelOnly = false) => {
+    const ia = byId[l.from], ib = byId[l.to];
+    if (ia === undefined || ib === undefined) return null;
+    const start = linkStart(l);
+    if (f < start || !state[ia].shown || !state[ib].shown) return null;
+    const ca = anchor(ia, geos[ia].shape === 'people' ? 0.9 : 0.5), cb = anchor(ib, 0.45);
+    // bend: a gentle curve by default; more when that steers around other objects; a link that
+    // comes back the other way (response) bends to the other side
+    // every object of the picture counts, ghosts too: scenes of one chain then bend each arrow the same way
+    const blockers = geos.map((gg, j) => (j === ia || j === ib || gg.shape === 'slab' ? null : rectOf(outline(gg, T, o)))).filter(Boolean) as Rect[];
+    const reverse = p.links.findIndex((x) => x.from === l.to && x.to === l.from);
+    const side = reverse >= 0 && reverse < k ? 1 : -1; // -1 bulges up for a left-to-right link
+    const options = [0.13, 0.28, 0.42].flatMap((m) => [side * m, -side * m]);
+    const hits = (c: Pt) => sample(curve(ca, c, cb), 24).filter((q) => blockers.some((r) => q.x > r.l && q.x < r.r && q.y > r.t && q.y < r.b)).length;
+    const bend = options.reduce((best, m) => (hits(bendPoint(ca, cb, m)) < hits(bendPoint(ca, cb, best)) ? m : best), options[0]);
+    const c0 = bendPoint(ca, cb, bend);
+    const ea = exitPoint(outline(geos[ia], T, o), ca, c0), eb = exitPoint(outline(geos[ib], T, o), cb, c0);
+    const towards = (q: Pt, to: Pt, d: number) => {const L = Math.hypot(to.x - q.x, to.y - q.y) || 1; return {x: q.x + ((to.x - q.x) / L) * d, y: q.y + ((to.y - q.y) / L) * d};};
+    const a = towards(ea, c0, 10 * u), b = towards(eb, c0, 14 * u);
+    const k2 = curve(a, bendPoint(a, b, bend), b);
+    const prog = interpolate(f - start, [0, 18], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: (t) => 1 - Math.pow(1 - t, 3)});
+    const fade = 1 - Math.max(state[ia].hide, state[ib].hide);
+    if (labelOnly) return l.label ? <g key={`label-${k}`} opacity={fade}>{(() => {
+          const tw = l.label.length * 20 * u * 0.62 + 26 * u, th = 36 * u;
+          const objs = [...geos.map((gg, j) => (gg.shape === 'slab' || !state[j].shown ? null : rectOf(outline(gg, T, o)))).filter(Boolean) as Rect[],
+            ...labelRects, ...placedTags];
+          const spots = [0.5, 0.38, 0.62, 0.28, 0.72].flatMap((t) => [-26, 26].map((dy) => {const q = along(k2, t).p; return {x: q.x, y: q.y + dy * u};}));
+          const cost = (q: Pt) => objs.reduce((acc, r) => acc + overlapArea(r, {l: q.x - tw / 2, r: q.x + tw / 2, t: q.y - th / 2, b: q.y + th / 2}), 0);
+          const at = spots.reduce((best, q) => (cost(q) < cost(best) - 1 ? q : best), spots[0]);
+          placedTags.push({l: at.x - tw / 2, r: at.x + tw / 2, t: at.y - th / 2, b: at.y + th / 2});
+          return <Tag at={at} text={l.label} u={u} opacity={prog} />;
+        })()}</g> : null;
+    return (
+      <g key={`link-${k}`} opacity={fade}>
+        <IsoLink k={k2} progress={prog} phase={f - start - 18} u={u} sw={sw} T={T} flow={l.flow} dashed={l.dashed} seed={k * 2} />
+      </g>
+    );
+  };
+
+  // ---------- paper + grid
+  const g0 = geos.length ? o : {x: W / 2, y: H / 2};
+  const gT = (geos.length ? T : 80 * u) / 2;
+  const gridLines: string[] = [];
+  for (let k = -60; k <= 60; k++) {
+    const a1 = project(k, -60, 0, gT, g0), a2 = project(k, 60, 0, gT, g0);
+    const b1 = project(-60, k, 0, gT, g0), b2 = project(60, k, 0, gT, g0);
+    gridLines.push(`M${a1.x},${a1.y}L${a2.x},${a2.y}M${b1.x},${b1.y}L${b2.x},${b2.y}`);
+  }
+  const gridIn = p.continued ? 1 : interpolate(f, [0, 12], [0, 1], {extrapolateRight: 'clamp'});
+  const titleIn = p.continued ? 1 : spring({frame: f - 2, fps, config: {damping: 200}}); // same picture: title already there
+
+
+  // sounds follow what happens: objects land, late links connect, steps pick a sound from their change
+  const sounds: {sound: string; at: number; volume: number}[] = [];
+  p.objects.forEach((ob, i) => {
+    if (ob.enter === 'none' || ob.ghost) return;
+    const shape = (KINDS[ob.kind] as Kind).shape;
+    if (shape === 'slab') return;
+    sounds.push({sound: shape === 'people' || shape === 'person' ? 'pop' : 'drop', at: startOf[i] + 9, volume: 0.28});
+  });
+  p.links.forEach((l) => {
+    const at = linkStart(l);
+    if (at > 0 && (l.appearAt !== undefined || p.continued)) sounds.push({sound: 'connect', at, volume: 0.2});
+  });
+  const statusNow: Record<string, number | undefined> = Object.fromEntries(p.objects.map((o) => [o.id, o.status]));
+  [...p.steps].sort((a, b) => a.at - b.at).forEach((st) => {
+    const before = statusNow[st.target];
+    if (st.status !== undefined) statusNow[st.target] = st.status;
+    const overload = st.status !== undefined && st.status >= 88 && (before ?? 0) < 88;
+    const auto = st.hide ? 'remove' : overload ? 'alert' : st.highlight ? 'chime' : st.focus ? 'rise' : st.note ? 'blip' : undefined;
+    const sound = st.sound ?? auto;
+    if (!sound || sound === 'none') return;
+    const volume = sound === 'alert' ? 0.22 : sound === 'rise' ? 0.25 : sound === 'blip' ? 0.2 : sound === 'chime' ? 0.22 : 0.3;
+    sounds.push({sound, at: Math.round(st.at * len), volume});
+  });
+
+  return (
+    <AbsoluteFill style={{background: `radial-gradient(ellipse at 50% 45%, ${PAPER.bgCenter} 0%, ${PAPER.bg} 70%)`, fontFamily: PAPER.sans}}>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', inset: 0}}>
+        <path d={gridLines.join('')} stroke={PAPER.grid} strokeWidth={1.2 * u} fill="none" opacity={gridIn} />
+        <defs><clipPath id="iso-stage"><rect x={0} y={hasTitle && !onlyCard ? top - 55 * u : 0} width={W} height={H} /></clipPath></defs>
+        <g clipPath="url(#iso-stage)"><g transform={camera}>
+          {slabs.map(renderObject)}
+          {p.links.map((l, k) => renderLink(l, k))}
+          {rest.map(renderObject)}
+          {p.links.map((l, k) => renderLink(l, k, true))}
+          {note && byId[note.target] !== undefined && state[byId[note.target]].shown ? (() => {
+            const i = byId[note.target], g = geos[i];
+            const box = rectOf(outline(g, T, o));
+            const pillRoom = state[i].status !== undefined ? 66 * u : 0;
+            const {w: nw, h: nh} = noteSize(note.note ?? '', u);
+            const others = geos.map((gg, j) => (j === i || gg.shape === 'slab' || !state[j].shown ? null : rectOf(outline(gg, T, o)))).filter(Boolean) as Rect[];
+            const cx = (box.l + box.r) / 2, cy = (box.t + box.b) / 2;
+            const others2 = [...others, ...geos.map((gg, j) => (j !== i && state[j].shown && state[j].status !== undefined ? (() => {const r = rectOf(outline(gg, T, o)); return {l: r.l, r: r.r, t: r.t - 70 * u, b: r.t};})() : null)).filter(Boolean) as Rect[]];
+            const options = [
+              {side: 'above' as const, at: {x: cx, y: box.t - pillRoom}, r: {l: cx - nw / 2, r: cx + nw / 2, t: box.t - pillRoom - nh - 16 * u, b: box.t - pillRoom}},
+              {side: 'right' as const, at: {x: box.r, y: cy}, r: {l: box.r + 16 * u, r: box.r + 16 * u + nw, t: cy - nh / 2, b: cy + nh / 2}},
+              {side: 'left' as const, at: {x: box.l, y: cy}, r: {l: box.l - 16 * u - nw, r: box.l - 16 * u, t: cy - nh / 2, b: cy + nh / 2}},
+              {side: 'right' as const, at: {x: box.r - 10 * u, y: box.t + 20 * u}, r: {l: box.r + 6 * u, r: box.r + 6 * u + nw, t: box.t + 20 * u - nh / 2, b: box.t + 20 * u + nh / 2}},
+              {side: 'left' as const, at: {x: box.l + 10 * u, y: box.t + 20 * u}, r: {l: box.l - 6 * u - nw, r: box.l - 6 * u, t: box.t + 20 * u - nh / 2, b: box.t + 20 * u + nh / 2}},
+            ];
+            const titleLine = hasTitle ? 170 * u : 20 * u;
+            const outside = (r: Rect) => Math.max(0, 30 * u - r.l) + Math.max(0, r.r - (W - 30 * u)) + Math.max(0, titleLine - r.t) + Math.max(0, r.b - (H - 170 * u));
+            const cost = (r: Rect) => others2.reduce((acc, x) => acc + overlapArea(x, r), 0) + outside(r) * nh * 40; // off-screen is worse than touching
+            const pick = options.reduce((best, c) => (cost(c.r) < cost(best.r) - 1 ? c : best), options[0]);
+            return <Note at={pick.at} side={pick.side} text={note.note ?? ''} u={u} scale={Math.min(1, noteScale)} />;
+          })() : null}
+        </g></g>
+      </svg>
+
+      {hasTitle && !onlyCard ? (
+        <div style={{position: 'absolute', left: 90 * u, top: 64 * u, right: 90 * u, opacity: titleIn, transform: `translateY(${(1 - titleIn) * 18 * u}px)`}}>
+          {p.eyebrow ? <div style={{fontFamily: PAPER.font, fontWeight: 700, fontSize: 22 * u, letterSpacing: 3 * u, color: '#8a6fd1', textTransform: 'uppercase'}}>{p.eyebrow}</div> : null}
+          {p.title ? <div style={{fontSize: 56 * u, fontWeight: 800, color: PAPER.ink, letterSpacing: -1 * u, marginTop: 6 * u}}>{p.title}</div> : null}
+          {p.subtitle ? <div style={{fontSize: 28 * u, color: PAPER.inkSoft, marginTop: 8 * u, maxWidth: 1300 * u}}>{p.subtitle}</div> : null}
+        </div>
+      ) : null}
+
+      {onlyCard ? (
+        <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: `0 ${140 * u}px ${160 * u}px`, textAlign: 'center'}}>
+          {p.eyebrow ? <div style={{fontFamily: PAPER.font, fontWeight: 700, fontSize: 26 * u, letterSpacing: 4 * u, color: '#8a6fd1', textTransform: 'uppercase', opacity: titleIn}}>{p.eyebrow}</div> : null}
+          {p.title ? <div style={{fontSize: 88 * u, fontWeight: 800, color: PAPER.ink, letterSpacing: -2 * u, lineHeight: 1.08, marginTop: 14 * u, opacity: titleIn, transform: `translateY(${(1 - titleIn) * 24 * u}px)`}}>{p.title}</div> : null}
+          {p.subtitle ? <div style={{fontSize: 34 * u, color: PAPER.inkSoft, marginTop: 22 * u, maxWidth: 1300 * u, opacity: spring({frame: f - 10, fps, config: {damping: 200}})}}>{p.subtitle}</div> : null}
+          {cards.length ? (
+            <div style={{display: 'flex', gap: 28 * u, marginTop: 56 * u}}>
+              {cards.map((c, k) => <PaperCard key={k} text={c} k={k} at={Math.round((0.15 + k * 0.12) * len)} u={u} width={(1500 * u) / cards.length - 28 * u} />)}
+            </div>
+          ) : null}
+        </div>
+      ) : cards.length ? (
+        <div style={{position: 'absolute', right: 90 * u, top: top + 10 * u, width: 470 * u, display: 'flex', flexDirection: 'column', gap: 22 * u}}>
+          {cards.map((c, k) => <PaperCard key={k} text={c} k={k} at={Math.round((0.12 + k * 0.14) * len)} u={u} />)}
+        </div>
+      ) : null}
+
+      {p.sound ? sounds.map((c, k) => <Sfx key={`s${k}`} sound={c.sound} at={c.at} volume={c.volume} />) : null}
+    </AbsoluteFill>
+  );
+};
+
+const CARD_TABS = [ISO_COLORS.lavender, ISO_COLORS.mint, ISO_COLORS.peach, ISO_COLORS.sky];
+
+const PaperCard: React.FC<{text: string; k: number; at: number; u: number; width?: number}> = ({text, k, at, u, width}) => {
+  const f = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  const t = spring({frame: f - at, fps, config: {damping: 13}});
+  if (f < at) return null;
+  return (
+    <div style={{
+      width, position: 'relative', background: PAPER.card, border: `${2.6 * u}px solid ${PAPER.ink}`, borderRadius: 18 * u,
+      padding: `${20 * u}px ${24 * u}px ${20 * u}px ${36 * u}px`, boxShadow: `${5 * u}px ${6 * u}px 0 ${PAPER.shadow}`,
+      fontSize: 28 * u, fontWeight: 600, color: PAPER.ink, textAlign: 'left', lineHeight: 1.3,
+      opacity: Math.min(1, t * 1.5), transform: `translateY(${(1 - t) * 30 * u}px) scale(${0.92 + 0.08 * Math.min(1, t)})`,
+    }}>
+      <div style={{position: 'absolute', left: 12 * u, top: 16 * u, bottom: 16 * u, width: 10 * u, borderRadius: 5 * u, background: CARD_TABS[k % CARD_TABS.length], border: `${2 * u}px solid ${PAPER.ink}`}} />
+      {text}
+    </div>
+  );
+};

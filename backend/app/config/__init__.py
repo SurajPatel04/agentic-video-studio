@@ -17,7 +17,12 @@ class Settings(BaseSettings):
     MLFLOW_GATEWAY_BASE_URL: str = ""
     # Gateway route name (the "model" sent to the OpenAI-compatible gateway).
     DEFAULT_MODEL: str = "summary"
-    LLM_TIMEOUT_SECONDS: float = 60.0
+    LLM_TIMEOUT_SECONDS: float = 1200.0  # 20 min per call; rich diagram plans (IsoScene) can take several minutes
+    # "gateway" (default): MLflow routes. "test": every call uses the TEST key (OpenAI) with TEST_MODEL,
+    # whatever route name the code asks for. For live tests, keeps test traffic off production.
+    LLM_PROFILE: str = "gateway"
+    TEST: str = ""  # OpenAI API key for LLM_PROFILE=test (never logged)
+    TEST_MODEL: str = "gpt-6-luna"
 
     # Deepgram text-to-speech (narration audio).
     DEEPGRAM_TTS_API_KEY: str = ""
@@ -39,6 +44,8 @@ class Settings(BaseSettings):
     PLANNER_MAX_TEXT_SHARE: float = 0.3  # at most 30% of scenes may be text-only
     PLANNER_CODE_EVERY: int = 5  # programming topics: >= 1 CodeScene per 5 scenes (0 = off)
     PLANNER_STYLE_RETRIES: int = 1  # retries for style problems; then the plan with the fewest problems is used
+    PLANNER_DEFAULT_STYLE: str = "iso-diagrams"  # visual style skill used when no style matches the topic ("" = none)
+    PLANNER_MAX_SAME_LAYOUT: int = 2  # IsoScene: the same objects in the same places in at most 2 scenes in a row
     PLANNER_MAX_TEXT_RUN: int = 3  # max Definition/Explain/BulletList scenes in a row (1 style retry, then accepted)
 
     # Component agent (writes new scenes when nothing in the library fits).
@@ -72,6 +79,13 @@ class Settings(BaseSettings):
     RENDERING_DIR: Path = PROJECT_ROOT / "rendering"
     WORKSPACE_DIR: Path = PROJECT_ROOT / "workspace"
     RENDER_TIMEOUT_SECONDS: float = 1800.0
+    # Captions: burn = styled in the picture (current word highlighted, cannot be switched off);
+    # track = subtitle track the player switches on/off; both = the two. JSON "captions": {"mode"} wins.
+    CAPTIONS_MODE: str = "track"
+    # Brand (logo intro + corner logo, rendering/src/brand.tsx). Used when the JSON has no "brand" key.
+    BRAND_ENABLED: bool = True  # false = no intro and no corner logo
+    BRAND_INTRO: bool = True  # animated logo before the first scene
+    BRAND_WATERMARK: bool = True  # logo in the corner for the whole video
 
 
 settings = Settings()

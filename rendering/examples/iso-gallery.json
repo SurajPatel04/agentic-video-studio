@@ -1,0 +1,290 @@
+{
+ "fps": 30,
+ "width": 1920,
+ "height": 1080,
+ "scenes": [
+  {
+   "id": "gallery",
+   "component": "IsoScene",
+   "durationInFrames": 150,
+   "props": {
+    "eyebrow": "Object kinds",
+    "title": "Every isometric object",
+    "objects": [
+     {
+      "id": "server",
+      "kind": "server",
+      "label": "server",
+      "at": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "id": "database",
+      "kind": "database",
+      "label": "database",
+      "at": [
+       3.8,
+       -3.8
+      ]
+     },
+     {
+      "id": "storage",
+      "kind": "storage",
+      "label": "storage",
+      "at": [
+       7.6,
+       -7.6
+      ]
+     },
+     {
+      "id": "cache",
+      "kind": "cache",
+      "label": "cache",
+      "at": [
+       11.399999999999999,
+       -11.399999999999999
+      ]
+     },
+     {
+      "id": "cloud",
+      "kind": "cloud",
+      "label": "cloud",
+      "at": [
+       15.2,
+       -15.2
+      ]
+     },
+     {
+      "id": "loadbalancer",
+      "kind": "loadbalancer",
+      "label": "loadbalancer",
+      "at": [
+       4.4,
+       4.4
+      ]
+     },
+     {
+      "id": "router",
+      "kind": "router",
+      "label": "router",
+      "at": [
+       8.2,
+       0.6000000000000005
+      ]
+     },
+     {
+      "id": "api",
+      "kind": "api",
+      "label": "api",
+      "at": [
+       12.0,
+       -3.1999999999999993
+      ]
+     },
+     {
+      "id": "queue",
+      "kind": "queue",
+      "label": "queue",
+      "at": [
+       15.799999999999999,
+       -6.999999999999998
+      ]
+     },
+     {
+      "id": "client",
+      "kind": "client",
+      "label": "client",
+      "at": [
+       19.6,
+       -10.799999999999999
+      ]
+     },
+     {
+      "id": "laptop",
+      "kind": "laptop",
+      "label": "laptop",
+      "at": [
+       8.8,
+       8.8
+      ]
+     },
+     {
+      "id": "phone",
+      "kind": "phone",
+      "label": "phone",
+      "at": [
+       12.600000000000001,
+       5.000000000000001
+      ]
+     },
+     {
+      "id": "cpu",
+      "kind": "cpu",
+      "label": "cpu",
+      "at": [
+       16.4,
+       1.200000000000001
+      ]
+     },
+     {
+      "id": "memory",
+      "kind": "memory",
+      "label": "memory",
+      "at": [
+       20.2,
+       -2.599999999999998
+      ]
+     },
+     {
+      "id": "globe",
+      "kind": "globe",
+      "label": "globe",
+      "at": [
+       24.0,
+       -6.399999999999999
+      ]
+     },
+     {
+      "id": "lock",
+      "kind": "lock",
+      "label": "lock",
+      "at": [
+       13.200000000000001,
+       13.200000000000001
+      ]
+     },
+     {
+      "id": "file",
+      "kind": "file",
+      "label": "file",
+      "at": [
+       17.0,
+       9.400000000000002
+      ]
+     },
+     {
+      "id": "code",
+      "kind": "code",
+      "label": "code",
+      "at": [
+       20.8,
+       5.600000000000001
+      ]
+     },
+     {
+      "id": "box",
+      "kind": "box",
+      "label": "box",
+      "at": [
+       24.6,
+       1.8000000000000025
+      ]
+     },
+     {
+      "id": "user",
+      "kind": "user",
+      "label": "user",
+      "at": [
+       28.4,
+       -1.9999999999999982
+      ]
+     }
+    ],
+    "links": [],
+    "steps": []
+   }
+  },
+  {
+   "id": "health-check",
+   "component": "IsoScene",
+   "durationInFrames": 240,
+   "props": {
+    "eyebrow": "SERVER HEALTH",
+    "title": "A health check looks for a usable server",
+    "objects": [
+     {
+      "id": "mira",
+      "kind": "client",
+      "label": "Mira",
+      "at": [
+       0,
+       0
+      ],
+      "color": "sky"
+     },
+     {
+      "id": "lb",
+      "kind": "loadbalancer",
+      "label": "Load balancer",
+      "at": [
+       4,
+       -4
+      ],
+      "color": "butter"
+     },
+     {
+      "id": "server-a",
+      "kind": "server",
+      "label": "Server A",
+      "at": [
+       8,
+       -8
+      ],
+      "color": "mint"
+     },
+     {
+      "id": "server-b",
+      "kind": "server",
+      "label": "Server B",
+      "at": [
+       8,
+       -3
+      ],
+      "color": "mint"
+     },
+     {
+      "id": "server-c",
+      "kind": "server",
+      "label": "Server C",
+      "at": [
+       12,
+       -6
+      ],
+      "color": "mint"
+     }
+    ],
+    "links": [
+     {
+      "from": "lb",
+      "to": "server-c",
+      "label": "health check",
+      "flow": "dots",
+      "dashed": true
+     }
+    ],
+    "steps": [
+     {
+      "at": 0.28,
+      "target": "lb",
+      "highlight": true,
+      "note": "Checking server health"
+     },
+     {
+      "at": 0.62,
+      "target": "server-c",
+      "highlight": true,
+      "color": "coral",
+      "label": "No response",
+      "note": "Server C cannot handle requests"
+     }
+    ],
+    "zoom": 0.85
+   },
+   "narration": {
+    "text": "A health check is a check used to determine whether a server is able to handle requests. Here, it finds that Server C cannot handle new work."
+   }
+  }
+ ]
+}

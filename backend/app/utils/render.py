@@ -21,6 +21,8 @@ from typing import Any
 
 from app.config import settings
 from app.utils.console import step
+from app.utils import subtitles
+from app.utils.iso import expand_continuations
 from app.utils.tts import synthesize, word_timings
 
 log = logging.getLogger(__name__)
@@ -46,6 +48,8 @@ class RenderResult:
     voice_clips: int = 0
     voice_cached: int = 0
     log: list[str] = field(default_factory=list)
+    subtitles: Path | None = None  # captions.srt (captions.vtt next to it), when the narration has words
+    captions_mode: str = ""
 
 
 def _transition_into(spec: dict[str, Any], i: int) -> int:
@@ -61,6 +65,39 @@ def captions_enabled(spec: dict[str, Any]) -> bool:
     """Captions are on unless the composition says ``"captions": {"enabled": false}`` (or ``false``)."""
     c = spec.get("captions", True)
     return bool(c.get("enabled", True)) if isinstance(c, dict) else bool(c)
+
+
+def apply_brand(spec: dict[str, Any]) -> dict[str, Any]:
+    """Fill in the "brand" key from BRAND_* settings when the JSON does not set it."""
+    if "brand" not in spec:
+        if not settings.BRAND_ENABLED:
+            spec["brand"] = False
+        elif not (settings.BRAND_INTRO and settings.BRAND_WATERMARK):
+            spec["brand"] = {"intro": settings.BRAND_INTRO, "watermark": settings.BRAND_WATERMARK}
+    return spec
+
+
+def without_intro(spec: dict[str, Any]) -> dict[str, Any]:
+    """Keep the corner logo but drop the logo intro (chapters after the first of a long video)."""
+    spec = apply_brand(spec)
+    brand = spec.get("brand", True)
+    if brand is not False:
+        spec["brand"] = {**(brand if isinstance(brand, dict) else {}), "intro": False}
+    return spec
+
+
+def set_caption_mode(spec: dict[str, Any], mode: str | None = None) -> dict[str, Any]:
+    """Write the caption mode into the JSON (renderer reads it): argument, else JSON, else CAPTIONS_MODE."""
+    if not captions_enabled(spec):
+        return spec
+    c = spec.get("captions")
+    c = dict(c) if isinstance(c, dict) else {}
+    if mode in subtitles.MODES:
+        c["mode"] = mode
+    elif c.get("mode") not in subtitles.MODES:
+        c["mode"] = settings.CAPTIONS_MODE
+    spec["captions"] = c
+    return spec
 
 
 def set_captions(spec: dict[str, Any], enabled: bool | None) -> dict[str, Any]:
@@ -154,22 +191,27 @@ async def render_video(
     job_id: str | None = None,
     scale: float = 1.0,
     concurrency: int | None = None,
+    captions_mode: str | None = None,
 ) -> RenderResult:
     """Voice the narration (Deepgram), validate, and render the composition to MP4.
 
     ``captions``: True / False forces subtitles on or off; None keeps the JSON's setting (default on).
+    ``captions_mode``: burn (in the picture) | track (player can switch it) | both; None = JSON, else CAPTIONS_MODE.
     """
     job_id = job_id or uuid.uuid4().hex[:12]
     job_dir = settings.WORKSPACE_DIR / "jobs" / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
 
+    spec = expand_continuations(copy.deepcopy(spec))  # hand-written JSON may use IsoScene "continue" too
+    spec = apply_brand(spec)
     made = cached = 0
     lines: list[str] = []
     if narrate:
         spec, made, cached, lines = await add_narration(spec, captions=captions)
     else:
         spec = set_captions(spec, captions)
+    spec = set_caption_mode(spec, captions_mode)
 
     composition = job_dir / "composition.json"
     composition.write_text(json.dumps(spec, indent=2))
@@ -190,6 +232,31 @@ async def render_video(
             raise RenderError("Remotion render failed", tail)
         s.update(video=str(video), size=f"{video.stat().st_size / 1e6:.1f}MB")
 
+    srt, mode = await add_subtitles(spec, job_dir, video)
     seconds = time.perf_counter() - started
     log.info("render.ok job=%s voice_new=%d voice_cached=%d took_s=%.1f", job_id, made, cached, seconds)
-    return RenderResult(job_id, job_dir, composition, video, seconds, made, cached, lines)
+    return RenderResult(job_id, job_dir, composition, video, seconds, made, cached, lines, srt, mode)
+
+
+async def add_subtitles(spec: dict[str, Any], job_dir: Path, video: Path) -> tuple[Path | None, str]:
+    """Write captions.srt / .vtt and, for mode track / both, add them to the MP4 as a switchable track."""
+    if not captions_enabled(spec):
+        return None, ""
+    items = subtitles.cues(spec)
+    if not items:
+        return None, ""
+    mode = subtitles.caption_mode(spec, settings.CAPTIONS_MODE)
+    srt, _ = subtitles.write_files(items, job_dir)
+    if mode in ("track", "both"):
+        with step("subtitle track", mode=mode, lines=len(items)) as s:
+            raw = video.with_name("video.raw.mp4")
+            video.replace(raw)
+            code, out = await _run(subtitles.mux_args(raw, srt, video, shown=mode == "track"), timeout=300)
+            if code != 0 or not video.exists():
+                raw.replace(video)  # keep the video without the track rather than failing the job
+                log.warning("subtitle track failed: %s", out[-1500:])
+                s["ok"] = False
+            else:
+                raw.unlink()
+                s["ok"] = True
+    return srt, mode

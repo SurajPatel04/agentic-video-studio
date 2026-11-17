@@ -19,7 +19,12 @@ import {captionWordSchema} from './Captions';
 
 export {Captions, captionsSettingsSchema, resolveCaptions, type CaptionsSettings, type CaptionWord} from './Captions';
 
-export const sfxNames = ['click', 'pop', 'whoosh', 'typing', 'ding', 'success', 'error', 'lock', 'notify'] as const;
+// Made by code once (scripts/make-sfx.mjs -> public/sfx/<name>.wav) and reused.
+export const sfxNames = [
+  'click', 'pop', 'whoosh', 'typing', 'ding', 'success', 'error', 'lock', 'notify',
+  'drop', 'chime', 'blip', 'alert', 'remove', 'rise', 'swipe', 'tick', 'sparkle', 'impact',
+  'data', 'connect', 'disconnect', 'coin', 'shutter', 'logo',
+] as const;
 export type SfxName = (typeof sfxNames)[number];
 
 const frame = z.number().int().nonnegative();
