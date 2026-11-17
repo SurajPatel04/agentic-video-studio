@@ -1,5 +1,6 @@
 """IsoScene continuations: the next scene lists only changes; the rest carries over without re-animating."""
 
+import copy
 import unittest
 
 from app.utils.iso import expand_continuations
@@ -56,3 +57,17 @@ class ContinueTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PaperCodeSceneTests(unittest.TestCase):
+    def test_code_scene_becomes_editor_in_paper_videos(self):
+        from app.utils.iso import paper_code_scenes
+        code = {"component": "CodeScene", "props": {"title": "The code", "language": "python", "code": "a = 1\nprint(a)\n", "highlightLines": [2, 9]}}
+        spec = paper_code_scenes({"scenes": [{"component": "IsoScene", "props": {}}, copy.deepcopy(code)]})
+        editor = spec["scenes"][1]
+        self.assertEqual(editor["component"], "EditorScene")
+        self.assertEqual(editor["props"]["filename"], "main.py")
+        self.assertEqual(editor["props"]["code"], "a = 1\nprint(a)")
+        self.assertEqual(editor["props"]["actions"], [{"at": 0.2, "do": "highlight", "line": 2}])  # line 9 does not exist
+        # a dark-theme video keeps its CodeScene
+        self.assertEqual(paper_code_scenes({"scenes": [copy.deepcopy(code)]})["scenes"][0]["component"], "CodeScene")

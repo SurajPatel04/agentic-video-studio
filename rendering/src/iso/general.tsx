@@ -3,8 +3,15 @@ import type {FC, ReactNode} from 'react';
 import type {ArtProps} from './objects';
 import {IsoBox, IsoCylinder} from './shapes';
 import {PAPER, project, poly, shade} from './iso';
+import {PublishingArt} from './publishing';
 
 export const GENERAL_KINDS = {
+  printingpress: {size:[3,2,2.2],color:'slate'},
+  newspaperbundle: {size:[2.2,1.6,.7],color:'cream'},
+  magazine: {size:[1.8,1.2,.35],color:'coral'},
+  printingplates: {size:[2.2,1.5,.35],color:'slate'},
+  newsstand: {size:[2.4,1.8,2.5],color:'butter'},
+  deliverystack: {size:[2,1.6,1.5],color:'peach'},
   house: {size: [2.6, 2.2, 2.8], color: 'peach'},
   tree: {size: [2, 2, 3], color: 'mint'},
   clock: {size: [2, 0.6, 2.3], color: 'sky'},
@@ -135,6 +142,7 @@ const RolePerson: FC<ArtProps & {role: 'chef'|'worker'|'police'}> = ({g,zz,T,o,s
 
 export const GeneralArt: FC<ArtProps & {kind: GeneralKind}> = (p) => {
   switch(p.kind) {
+    case 'printingpress':case 'newspaperbundle':case 'magazine':case 'printingplates':case 'newsstand':case 'deliverystack':return <PublishingArt {...p} kind={p.kind}/>;
     case 'house':return <House {...p}/>;
     case 'tree':return <Tree {...p}/>;
     case 'chart':return <Chart {...p}/>;

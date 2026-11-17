@@ -7,7 +7,8 @@ metadata:
   - planner
   tags:
   - programming
-  - code
+  - coding
+  - source code
   - javascript
   - node.js
   - nodejs
@@ -17,8 +18,26 @@ metadata:
   - npm
   - libuv
   - v8
+  - git
+  - terminal
+  - command line
+  - docker
+  - debugging
+  - bug
+  - deploy
+  - event loop
+  - async
+  - promise
+  - promises
+  - callback
+  - settimeout
+  - call stack
+  - heap
+  - garbage collection
   scenes:
-  - CodeScene
+  - EditorScene
+  - TerminalScene
+  - EventLoopScene
   - FlowchartScene
   - CycleScene
   - QuizScene
@@ -27,18 +46,21 @@ metadata:
   long_video: false
 ---
 
-Hard rules for programming topics (they override softer advice below):
-- At least 1 CodeScene in every 5 scenes (a 15-scene chapter has 3 or more): one per main concept, each a step of the same running example. Show the code that produces the behavior you explain; a diagram alone is not enough.
-- When code produces output, show it in the NEXT scene: a BlankScene (title like "Output") with a "terminal" overlay at "center". Never put a terminal on a CodeScene or a text scene: it covers the code / text. Two outputs side by side: two terminals at {"x": 27, "y": 55} and {"x": 73, "y": 55}, width about 760.
+Hard rules for programming topics (they override softer advice below; EditorScene and TerminalScene are allowed even when a style guide says "every scene IsoScene"):
+- At least 1 code scene in every 5 scenes, one per main concept, each a step of the same running example. Show the code that produces the behavior you explain; a diagram alone is not enough.
+- EditorScene when code is written, changes, or breaks: "code" is the file before, then actions: type (adds lines; "line" = insert after), suggest (autocomplete: items + pick), error (line + message: red underline), fix (line + new text), highlight (line), run (text = output, variant success/error; the mouse clicks Run and the output panel opens). Line numbers mean the file at that moment. To walk through finished code, use EditorScene with no typing: the full "code" plus highlight actions on the lines being explained (it matches the paper style; avoid the dark CodeScene).
+- EditorScene and TerminalScene take "device": "window" (default), "laptop", "monitor" or "browser" (online editor / web shell, with "url").
+- TerminalScene for commands and their output (git, npm, pip, docker, deploys, tests): actions run (one command), output (lines, variant muted/success/error/warn/info), progress (label + seconds), done (text + variant success/error), clear. Show output in the scene right after the code that produces it.
 - Never more than 2 DefinitionScene / ExplainScene in a row; break them with code, a diagram, or a comparison.
-- Pattern per concept: CodeScene (what we write) -> diagram (what the runtime does) -> output (what we see).
+- Pattern per concept: EditorScene (what we write) -> IsoScene or a diagram (what the runtime does) -> TerminalScene or the editor's run (what we see).
+- Debugging story: EditorScene run fails (variant error) -> error on the line -> fix -> run succeeds. Match each action to the narration.
 
-Teach observable behavior before introducing terminology. For executable concepts, use a small CodeScene example (usually 5–12 readable lines), highlight the relevant lines, and explain what the viewer should notice. Keep identifiers and inputs consistent between code, narration, diagrams, and output.
+Teach observable behavior before introducing terminology. For executable concepts, use a small EditorScene example (usually 5–12 readable lines), highlight the relevant lines, and explain what the viewer should notice. Keep identifiers and inputs consistent between code, narration, diagrams, and output.
 
-Use a terminal overlay for expected output when it helps connect code to behavior. This overlay displays supplied text; it does not execute code. Never claim an example was run or verified unless execution evidence is supplied. Prefer deterministic examples; identify scheduling assumptions rather than inventing a guaranteed ordering.
+Terminal and editor output is supplied text; nothing is executed. Never claim an example was run or verified unless execution evidence is supplied. Prefer deterministic examples; identify scheduling assumptions rather than inventing a guaranteed ordering.
 
 Build one small running application across chapters. State what changed and why; show enough context for the snippet to be understood. Avoid repeatedly restarting the application from scratch.
 
-For runtime mechanisms such as a call stack or event loop, use FlowchartScene or CycleScene when their actual contracts fit. Keep names, colors, and positions consistent as a diagram develops. Simplify honestly: a generic cycle is not a complete runtime specification.
+For runtime mechanisms use EventLoopScene (paper style): code with the running line, call stack frames with local vars, heap objects (a var with value "@id" draws a reference arrow), Node/Web APIs, microtask and task queues, console. It is a trace YOU write step by step: call, return, log, api {id, callback}, done {id}, queue {to: micro|task}, tick (stack must be empty; microtasks all run before the next task), alloc {id, fields, var}, set, free; give "line" on steps. Pair it with the EditorScene of the same code. Each "log" must match the real output order (e.g. A D C B for log / setTimeout 0 / Promise.then / log). Without steps, "preset": "event-loop" or "memory" (stack vs heap, GC) plays a ready example. Keep names consistent; simplify honestly (Node has more phases than one task queue).
 
 Avoid long runs of DefinitionScene and ExplainScene when code or a trace would teach the point better. Definitions still help introduce unfamiliar terms. Use an occasional prediction question at meaningful checkpoints, not after every scene. Inspect scene and overlay contracts before using their fields; do not invent animation capabilities.

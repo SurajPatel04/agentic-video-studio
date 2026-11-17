@@ -1,0 +1,124 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "brand": false,
+  "defaultTransition": {
+    "type": "none"
+  },
+  "scenes": [
+    {
+      "id": "communication-model",
+      "component": "IsoScene",
+      "durationInFrames": 240,
+      "props": {
+        "title": "How a message travels",
+        "objects": [
+          {
+            "id": "sender",
+            "kind": "sender",
+            "label": "Sender",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "encoder",
+            "kind": "encoder",
+            "label": "Encode",
+            "at": [
+              4,
+              -4
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "envelope",
+            "kind": "envelope",
+            "label": "Message",
+            "at": [
+              8,
+              -8
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "decoder",
+            "kind": "decoder",
+            "label": "Decode",
+            "at": [
+              12,
+              -12
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "receiver",
+            "kind": "receiver",
+            "label": "Receiver",
+            "at": [
+              16,
+              -16
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "feedback",
+            "kind": "feedback",
+            "label": "Feedback",
+            "at": [
+              12,
+              -4
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "noise",
+            "kind": "noise",
+            "label": "Noise",
+            "at": [
+              3,
+              -11
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [
+          {
+            "from": "sender",
+            "to": "encoder"
+          },
+          {
+            "from": "encoder",
+            "to": "envelope"
+          },
+          {
+            "from": "envelope",
+            "to": "decoder"
+          },
+          {
+            "from": "decoder",
+            "to": "receiver"
+          },
+          {
+            "from": "receiver",
+            "to": "feedback"
+          },
+          {
+            "from": "feedback",
+            "to": "sender"
+          },
+          {
+            "from": "noise",
+            "to": "envelope",
+            "dashed": true,
+            "flow": "none"
+          }
+        ],
+        "steps": []
+      }
+    }
+  ]
+}

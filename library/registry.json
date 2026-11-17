@@ -6361,7 +6361,7 @@
   {
     "name": "IsoScene",
     "version": "1.0.0",
-    "description": "Isometric \"paper\" diagram: 3D-looking servers, databases, caches, clouds, people, medical objects (hospital, doctor, patient bed, ambulance, pill bottle, syringe, heart monitor, microscope, test tubes, DNA), school objects (school, teacher with whiteboard, student desk, bookshelf, graduation cap, backpack, globe on a stand, certificate, pencil and notebook), finance objects (bank, coin stack, wallet, credit card, ATM, safe, piggy bank, cash bundle, stock chart board, calculator, receipt), retail and business objects (shop, shopping cart, delivery parcel on a conveyor, cash register, warehouse, price tag, shopping bag, factory, office desk, handshake, meeting table) and transport objects (car, truck, road, bus, train, airplane, ship, bicycle, traffic light, fuel pump, map pin), all plus everyday objects (house, tree, clock, animated bar and pie charts, chat bubble, sun, weather, trophy, flag, lightbulb, gear, magnifier, warning, checkmark, cross) and role figures (chef, worker, police). Clocks and gears turn, charts grow, ECG traces pulse, ambulance lights flash, and links support car flow. All objects are dropping in and animating on a paper grid. Steps (timed as a fraction of the narration) change loads (⚙ 59% pills), highlight, add notes and move the camera. Use for systems, architecture, flows, networking, scaling, how-things-work, healthcare, education, finance, retail and logistics. With no objects it is a paper title card (title, subtitle, points).",
+    "description": "Isometric \"paper\" diagram: 3D-looking servers, databases, caches, clouds, people, medical objects (hospital, doctor, patient bed, ambulance, pill bottle, syringe, heart monitor, microscope, test tubes, DNA), school objects (school, teacher with whiteboard, student desk, bookshelf, graduation cap, backpack, globe on a stand, certificate, pencil and notebook), finance objects (bank, coin stack, wallet, credit card, ATM, safe, piggy bank, cash bundle, stock chart board, calculator, receipt), retail and business objects (shop, shopping cart, delivery parcel on a conveyor, cash register, warehouse, price tag, shopping bag, factory, office desk, handshake, meeting table) and transport objects (car, truck, road, bus, train, airplane, ship, bicycle, traffic light, fuel pump, map pin), all plus everyday objects (house, tree, clock, animated bar and pie charts, chat bubble, sun, weather, trophy, flag, lightbulb, gear, magnifier, warning, checkmark, cross) and role figures (chef, worker, police). Clocks and gears turn, charts grow, ECG traces pulse, ambulance lights flash, and links support car flow. All objects are dropping in and animating on a paper grid. Communication fundamentals include envelope, sender, receiver, encoder, decoder, feedback loop and noise interference.  Steps (timed as a fraction of the narration) change loads (⚙ 59% pills), highlight, add notes and move the camera. Use for systems, architecture, flows, networking, scaling, how-things-work, healthcare, education, finance, retail, logistics, journalism and newsrooms. With no objects it is a paper title card (title, subtitle, points).",
     "tags": [
       "isometric",
       "iso",
@@ -6428,7 +6428,16 @@
       "airplane",
       "ship",
       "bicycle",
-      "map pin"
+      "map pin",
+      "journalism",
+      "news",
+      "newsroom",
+      "reporter",
+      "editor",
+      "interview",
+      "press pass",
+      "recorder",
+      "documents"
     ],
     "path": "rendering/src/scenes/IsoScene.tsx",
     "staged": false,
@@ -6462,11 +6471,24 @@
                 "default": "box",
                 "type": "string",
                 "enum": [
+                  "envelope",
+                  "sender",
+                  "receiver",
+                  "encoder",
+                  "decoder",
+                  "feedback",
+                  "noise",
                   "road",
                   "singlelane",
                   "twolane",
                   "fourlane",
                   "highway",
+                  "printingpress",
+                  "newspaperbundle",
+                  "magazine",
+                  "printingplates",
+                  "newsstand",
+                  "deliverystack",
                   "house",
                   "tree",
                   "clock",
@@ -6567,6 +6589,14 @@
                   "trafficlight",
                   "fuelpump",
                   "mappin",
+                  "reporter",
+                  "editor",
+                  "interview",
+                  "presspass",
+                  "recorder",
+                  "newsdesk",
+                  "newshub",
+                  "sourcedocs",
                   "user",
                   "people",
                   "platform"
@@ -6983,6 +7013,4906 @@
         }
       ],
       "zoom": 1,
+      "sound": true
+    }
+  },
+  {
+    "name": "ScreenScene",
+    "version": "1.0.0",
+    "description": "A website or app being used, in the paper style: a laptop, monitor, phone or browser window shows pages built from blocks (nav, hero, heading, text, image, cards, card, button, input, list, banner, footer); a timed script moves the mouse, clicks, types into inputs (or password dots), scrolls, opens other pages (address bar + loading bar), shows toasts and zooms in on an element. Use to show what the user does and sees (sign up, search, buy, log in, submit a form). Add \"diagram\" (IsoScene props: objects, links, steps) to show the screen on the left and what happens behind it on the right at the same time (the click on the left, the request travelling on the right).",
+    "tags": [
+      "website",
+      "web",
+      "browser",
+      "app",
+      "ui",
+      "screen",
+      "click",
+      "mouse",
+      "typing",
+      "form",
+      "login",
+      "sign up",
+      "checkout",
+      "demo",
+      "how-to",
+      "page",
+      "url",
+      "search",
+      "saas",
+      "user interface"
+    ],
+    "path": "rendering/src/scenes/ScreenScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "device": {
+          "default": "laptop",
+          "type": "string",
+          "enum": [
+            "laptop",
+            "monitor",
+            "phone",
+            "browser"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "accent": {
+          "default": "#4f6ef5",
+          "type": "string",
+          "maxLength": 20
+        },
+        "pages": {
+          "default": [
+            {
+              "id": "home",
+              "url": "shop.example.com",
+              "blocks": [
+                {
+                  "type": "nav",
+                  "label": "Shoply",
+                  "items": [
+                    "Shop",
+                    "Deals",
+                    "Help"
+                  ],
+                  "button": "Cart"
+                },
+                {
+                  "type": "hero",
+                  "label": "Run lighter",
+                  "text": "New trainers for every day.",
+                  "button": "Shop now",
+                  "image": true
+                },
+                {
+                  "id": "products",
+                  "type": "cards",
+                  "items": [
+                    {
+                      "id": "p1",
+                      "label": "Trail runner",
+                      "text": "$40",
+                      "icon": "footprints"
+                    },
+                    {
+                      "id": "p2",
+                      "label": "City walker",
+                      "text": "$55",
+                      "icon": "footprints"
+                    },
+                    {
+                      "id": "p3",
+                      "label": "Court classic",
+                      "text": "$62",
+                      "icon": "footprints"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "product",
+              "url": "shop.example.com/trail-runner",
+              "blocks": [
+                {
+                  "type": "nav",
+                  "label": "Shoply",
+                  "items": [
+                    "Shop",
+                    "Deals",
+                    "Help"
+                  ],
+                  "button": "Cart"
+                },
+                {
+                  "type": "hero",
+                  "label": "Trail runner",
+                  "text": "Grippy sole, light mesh. $40",
+                  "image": true
+                },
+                {
+                  "id": "buy",
+                  "type": "button",
+                  "label": "Add to cart"
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 30
+              },
+              "url": {
+                "type": "string",
+                "maxLength": 60
+              },
+              "blocks": {
+                "minItems": 1,
+                "maxItems": 12,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "maxLength": 30
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "nav",
+                        "hero",
+                        "heading",
+                        "text",
+                        "image",
+                        "cards",
+                        "card",
+                        "button",
+                        "input",
+                        "list",
+                        "banner",
+                        "footer"
+                      ]
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 60
+                    },
+                    "text": {
+                      "type": "string",
+                      "maxLength": 140
+                    },
+                    "button": {
+                      "type": "string",
+                      "maxLength": 24
+                    },
+                    "items": {
+                      "maxItems": 6,
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 48
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "maxLength": 30
+                              },
+                              "label": {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              "text": {
+                                "type": "string",
+                                "maxLength": 60
+                              },
+                              "icon": {
+                                "type": "string",
+                                "maxLength": 30
+                              }
+                            },
+                            "required": [
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "icon": {
+                      "type": "string",
+                      "maxLength": 30
+                    },
+                    "image": {
+                      "type": "boolean"
+                    },
+                    "placeholder": {
+                      "type": "string",
+                      "maxLength": 40
+                    },
+                    "value": {
+                      "type": "string",
+                      "maxLength": 40
+                    },
+                    "mask": {
+                      "type": "boolean"
+                    },
+                    "variant": {
+                      "type": "string",
+                      "enum": [
+                        "primary",
+                        "secondary",
+                        "success",
+                        "error",
+                        "info"
+                      ]
+                    },
+                    "align": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "center"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "blocks"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "actions": {
+          "default": [
+            {
+              "at": 0.15,
+              "do": "move",
+              "to": "p1"
+            },
+            {
+              "at": 0.3,
+              "do": "click",
+              "to": "p1"
+            },
+            {
+              "at": 0.32,
+              "do": "navigate",
+              "page": "product"
+            },
+            {
+              "at": 0.55,
+              "do": "click",
+              "to": "buy"
+            },
+            {
+              "at": 0.6,
+              "do": "toast",
+              "text": "Added to cart",
+              "variant": "success"
+            }
+          ],
+          "maxItems": 30,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "do": {
+                "type": "string",
+                "enum": [
+                  "move",
+                  "hover",
+                  "click",
+                  "type",
+                  "scroll",
+                  "navigate",
+                  "highlight",
+                  "toast",
+                  "focus",
+                  "unfocus"
+                ]
+              },
+              "to": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 60
+              },
+              "page": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "by": {
+                "type": "number",
+                "minimum": -3000,
+                "maximum": 3000
+              },
+              "variant": {
+                "type": "string",
+                "enum": [
+                  "success",
+                  "error",
+                  "info"
+                ]
+              }
+            },
+            "required": [
+              "at",
+              "do"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "instant": {
+          "default": false,
+          "type": "boolean"
+        },
+        "chat": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 30
+            },
+            "look": {
+              "default": "assistant",
+              "type": "string",
+              "enum": [
+                "assistant",
+                "messenger"
+              ]
+            },
+            "icon": {
+              "type": "string",
+              "maxLength": 30
+            },
+            "device": {
+              "type": "string"
+            },
+            "messages": {
+              "minItems": 1,
+              "maxItems": 8,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "at": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "from": {
+                    "type": "string",
+                    "enum": [
+                      "me",
+                      "them"
+                    ]
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 400
+                  },
+                  "stream": {
+                    "type": "boolean"
+                  },
+                  "typing": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 4
+                  },
+                  "sources": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 40
+                    }
+                  },
+                  "highlight": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "at",
+                  "from",
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "composer": {
+              "default": true,
+              "type": "boolean"
+            },
+            "open": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "messages"
+          ],
+          "additionalProperties": false
+        },
+        "diagram": {
+          "type": "object",
+          "properties": {
+            "eyebrow": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "title": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "subtitle": {
+              "type": "string",
+              "maxLength": 140
+            },
+            "objects": {
+              "maxItems": 24,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "kind": {
+                    "default": "box",
+                    "type": "string",
+                    "enum": [
+                      "envelope",
+                      "sender",
+                      "receiver",
+                      "encoder",
+                      "decoder",
+                      "feedback",
+                      "noise",
+                      "road",
+                      "singlelane",
+                      "twolane",
+                      "fourlane",
+                      "highway",
+                      "printingpress",
+                      "newspaperbundle",
+                      "magazine",
+                      "printingplates",
+                      "newsstand",
+                      "deliverystack",
+                      "house",
+                      "tree",
+                      "clock",
+                      "chart",
+                      "piechart",
+                      "chatbubble",
+                      "sun",
+                      "weather",
+                      "trophy",
+                      "flag",
+                      "lightbulb",
+                      "gear",
+                      "magnifier",
+                      "warning",
+                      "checkmark",
+                      "cross",
+                      "chef",
+                      "worker",
+                      "police",
+                      "server",
+                      "database",
+                      "storage",
+                      "cache",
+                      "cloud",
+                      "loadbalancer",
+                      "router",
+                      "api",
+                      "queue",
+                      "client",
+                      "laptop",
+                      "phone",
+                      "cpu",
+                      "memory",
+                      "globe",
+                      "lock",
+                      "file",
+                      "code",
+                      "box",
+                      "tile",
+                      "tv",
+                      "radio",
+                      "newspaper",
+                      "tower",
+                      "satellite",
+                      "building",
+                      "book",
+                      "mic",
+                      "camera",
+                      "billboard",
+                      "hospital",
+                      "doctor",
+                      "bed",
+                      "ambulance",
+                      "pill",
+                      "syringe",
+                      "heartmonitor",
+                      "microscope",
+                      "testtubes",
+                      "dna",
+                      "school",
+                      "teacher",
+                      "desk",
+                      "bookshelf",
+                      "gradcap",
+                      "backpack",
+                      "standglobe",
+                      "certificate",
+                      "notebook",
+                      "bank",
+                      "coins",
+                      "wallet",
+                      "creditcard",
+                      "atm",
+                      "safe",
+                      "piggybank",
+                      "cash",
+                      "stockchart",
+                      "calculator",
+                      "receipt",
+                      "shop",
+                      "shoppingcart",
+                      "conveyor",
+                      "register",
+                      "warehouse",
+                      "pricetag",
+                      "shoppingbag",
+                      "factory",
+                      "officedesk",
+                      "handshake",
+                      "meetingtable",
+                      "car",
+                      "truck",
+                      "bus",
+                      "train",
+                      "airplane",
+                      "ship",
+                      "bicycle",
+                      "trafficlight",
+                      "fuelpump",
+                      "mappin",
+                      "reporter",
+                      "editor",
+                      "interview",
+                      "presspass",
+                      "recorder",
+                      "newsdesk",
+                      "newshub",
+                      "sourcedocs",
+                      "user",
+                      "people",
+                      "platform"
+                    ]
+                  },
+                  "label": {
+                    "type": "string",
+                    "maxLength": 24
+                  },
+                  "at": {
+                    "type": "array",
+                    "prefixItems": [
+                      {
+                        "type": "number",
+                        "minimum": -20,
+                        "maximum": 30
+                      },
+                      {
+                        "type": "number",
+                        "minimum": -20,
+                        "maximum": 30
+                      }
+                    ],
+                    "items": false,
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  "z": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 8
+                  },
+                  "size": {
+                    "type": "array",
+                    "prefixItems": [
+                      {
+                        "type": "number",
+                        "minimum": 0.2,
+                        "maximum": 30
+                      },
+                      {
+                        "type": "number",
+                        "minimum": 0.2,
+                        "maximum": 30
+                      },
+                      {
+                        "type": "number",
+                        "minimum": 0.1,
+                        "maximum": 6
+                      }
+                    ],
+                    "items": false,
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "color": {
+                    "type": "string",
+                    "enum": [
+                      "lavender",
+                      "peach",
+                      "mint",
+                      "sky",
+                      "butter",
+                      "rose",
+                      "teal",
+                      "coral",
+                      "slate",
+                      "cream"
+                    ]
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60
+                  },
+                  "status": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "appearAt": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "enter": {
+                    "default": "drop",
+                    "type": "string",
+                    "enum": [
+                      "drop",
+                      "none"
+                    ]
+                  },
+                  "ghost": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "highlight": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "icon": {
+                    "type": "string",
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "id",
+                  "at"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "links": {
+              "default": [
+                {
+                  "from": "users",
+                  "to": "a",
+                  "flow": "dots",
+                  "dashed": false,
+                  "enter": "draw"
+                },
+                {
+                  "from": "users",
+                  "to": "b",
+                  "flow": "dots",
+                  "dashed": false,
+                  "enter": "draw"
+                }
+              ],
+              "maxItems": 30,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string",
+                    "maxLength": 22
+                  },
+                  "flow": {
+                    "default": "dots",
+                    "type": "string",
+                    "enum": [
+                      "dots",
+                      "people",
+                      "car",
+                      "none"
+                    ]
+                  },
+                  "dashed": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "appearAt": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "enter": {
+                    "default": "draw",
+                    "type": "string",
+                    "enum": [
+                      "draw",
+                      "none"
+                    ]
+                  }
+                },
+                "required": [
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "steps": {
+              "default": [
+                {
+                  "at": 0.45,
+                  "target": "a",
+                  "status": 94,
+                  "note": "Server A is almost full"
+                },
+                {
+                  "at": 0.7,
+                  "target": "b",
+                  "highlight": true,
+                  "status": 72,
+                  "note": "New requests go to B"
+                }
+              ],
+              "maxItems": 40,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "at": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "target": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "highlight": {
+                    "type": "boolean"
+                  },
+                  "label": {
+                    "type": "string",
+                    "maxLength": 24
+                  },
+                  "color": {
+                    "type": "string",
+                    "enum": [
+                      "lavender",
+                      "peach",
+                      "mint",
+                      "sky",
+                      "butter",
+                      "rose",
+                      "teal",
+                      "coral",
+                      "slate",
+                      "cream"
+                    ]
+                  },
+                  "hide": {
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "focus": {
+                    "type": "boolean"
+                  },
+                  "sound": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "click",
+                          "pop",
+                          "whoosh",
+                          "typing",
+                          "ding",
+                          "success",
+                          "error",
+                          "lock",
+                          "notify",
+                          "drop",
+                          "chime",
+                          "blip",
+                          "alert",
+                          "remove",
+                          "rise",
+                          "swipe",
+                          "tick",
+                          "sparkle",
+                          "impact",
+                          "data",
+                          "connect",
+                          "disconnect",
+                          "coin",
+                          "shutter",
+                          "logo"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "const": "none"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "at",
+                  "target"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "points": {
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 70
+              }
+            },
+            "zoom": {
+              "default": 1,
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 1.6
+            },
+            "sound": {
+              "default": true,
+              "type": "boolean"
+            },
+            "continued": {
+              "type": "boolean"
+            },
+            "continue": {
+              "type": "boolean"
+            },
+            "remove": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "device": "laptop",
+      "accent": "#4f6ef5",
+      "pages": [
+        {
+          "id": "home",
+          "url": "shop.example.com",
+          "blocks": [
+            {
+              "type": "nav",
+              "label": "Shoply",
+              "items": [
+                "Shop",
+                "Deals",
+                "Help"
+              ],
+              "button": "Cart"
+            },
+            {
+              "type": "hero",
+              "label": "Run lighter",
+              "text": "New trainers for every day.",
+              "button": "Shop now",
+              "image": true
+            },
+            {
+              "id": "products",
+              "type": "cards",
+              "items": [
+                {
+                  "id": "p1",
+                  "label": "Trail runner",
+                  "text": "$40",
+                  "icon": "footprints"
+                },
+                {
+                  "id": "p2",
+                  "label": "City walker",
+                  "text": "$55",
+                  "icon": "footprints"
+                },
+                {
+                  "id": "p3",
+                  "label": "Court classic",
+                  "text": "$62",
+                  "icon": "footprints"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "product",
+          "url": "shop.example.com/trail-runner",
+          "blocks": [
+            {
+              "type": "nav",
+              "label": "Shoply",
+              "items": [
+                "Shop",
+                "Deals",
+                "Help"
+              ],
+              "button": "Cart"
+            },
+            {
+              "type": "hero",
+              "label": "Trail runner",
+              "text": "Grippy sole, light mesh. $40",
+              "image": true
+            },
+            {
+              "id": "buy",
+              "type": "button",
+              "label": "Add to cart"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "at": 0.15,
+          "do": "move",
+          "to": "p1"
+        },
+        {
+          "at": 0.3,
+          "do": "click",
+          "to": "p1"
+        },
+        {
+          "at": 0.32,
+          "do": "navigate",
+          "page": "product"
+        },
+        {
+          "at": 0.55,
+          "do": "click",
+          "to": "buy"
+        },
+        {
+          "at": 0.6,
+          "do": "toast",
+          "text": "Added to cart",
+          "variant": "success"
+        }
+      ],
+      "instant": false,
+      "sound": true
+    }
+  },
+  {
+    "name": "PhoneScene",
+    "version": "1.0.0",
+    "description": "A phone being used, in the paper style: a finger taps and swipes, an app opens from the home screen, screens slide in and back, a keyboard slides up while typing, a notification drops in, an OTP text arrives and fills the code box by itself, a spinner waits, a snackbar confirms. Screens are built from blocks (header, heading, text, image, amount, input, button, list, cards, chat, banner, tabs). The title and each action's note appear as steps beside the phone. Use for mobile apps, phone logins and OTP, payments, push notifications, messaging.",
+    "tags": [
+      "phone",
+      "mobile",
+      "app",
+      "smartphone",
+      "tap",
+      "swipe",
+      "otp",
+      "notification",
+      "payment",
+      "upi",
+      "login",
+      "message",
+      "chat",
+      "sms",
+      "push notification",
+      "two-factor",
+      "android",
+      "iphone"
+    ],
+    "path": "rendering/src/scenes/PhoneScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "accent": {
+          "default": "#4f6ef5",
+          "type": "string",
+          "maxLength": 20
+        },
+        "time": {
+          "default": "9:41",
+          "type": "string",
+          "maxLength": 8
+        },
+        "screens": {
+          "default": [
+            {
+              "id": "home",
+              "type": "home",
+              "apps": [
+                {
+                  "id": "shoply",
+                  "label": "Shoply",
+                  "icon": "shopping-bag",
+                  "color": "#ff7a45"
+                },
+                {
+                  "id": "msgs",
+                  "label": "Messages",
+                  "icon": "message-circle",
+                  "color": "#4cc06a"
+                },
+                {
+                  "id": "cam",
+                  "label": "Camera",
+                  "icon": "camera",
+                  "color": "#8a8fa0"
+                },
+                {
+                  "id": "maps",
+                  "label": "Maps",
+                  "icon": "map",
+                  "color": "#3d9be9"
+                },
+                {
+                  "id": "bank",
+                  "label": "Bank",
+                  "icon": "landmark",
+                  "color": "#6b5bd6"
+                },
+                {
+                  "id": "music",
+                  "label": "Music",
+                  "icon": "music",
+                  "color": "#f25b7a"
+                },
+                {
+                  "id": "notes",
+                  "label": "Notes",
+                  "icon": "notebook-pen",
+                  "color": "#f2b632"
+                },
+                {
+                  "id": "mail",
+                  "label": "Mail",
+                  "icon": "mail",
+                  "color": "#4a8cf0"
+                }
+              ],
+              "blocks": []
+            },
+            {
+              "id": "verify",
+              "type": "app",
+              "blocks": [
+                {
+                  "type": "header",
+                  "label": "Shoply",
+                  "icon": "arrow-left"
+                },
+                {
+                  "type": "heading",
+                  "label": "Verify your phone",
+                  "text": "We sent a 6-digit code to +1 555 0134"
+                },
+                {
+                  "id": "code",
+                  "type": "input",
+                  "label": "Code",
+                  "digits": 6
+                },
+                {
+                  "id": "go",
+                  "type": "button",
+                  "label": "Verify"
+                }
+              ]
+            },
+            {
+              "id": "shop",
+              "type": "app",
+              "blocks": [
+                {
+                  "type": "header",
+                  "label": "Shoply"
+                },
+                {
+                  "type": "banner",
+                  "label": "You are signed in",
+                  "variant": "success"
+                },
+                {
+                  "type": "cards",
+                  "items": [
+                    {
+                      "label": "Trainers",
+                      "text": "$40",
+                      "icon": "footprints"
+                    },
+                    {
+                      "label": "Backpack",
+                      "text": "$32",
+                      "icon": "backpack"
+                    }
+                  ]
+                },
+                {
+                  "type": "tabs",
+                  "items": [
+                    {
+                      "label": "Home",
+                      "icon": "house"
+                    },
+                    {
+                      "label": "Search",
+                      "icon": "search"
+                    },
+                    {
+                      "label": "Cart",
+                      "icon": "shopping-cart"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 30
+              },
+              "type": {
+                "default": "app",
+                "type": "string",
+                "enum": [
+                  "home",
+                  "app"
+                ]
+              },
+              "apps": {
+                "maxItems": 16,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "maxLength": 30
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 14
+                    },
+                    "icon": {
+                      "type": "string",
+                      "maxLength": 30
+                    },
+                    "color": {
+                      "type": "string",
+                      "maxLength": 20
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "blocks": {
+                "default": [],
+                "maxItems": 10,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "maxLength": 30
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "header",
+                        "heading",
+                        "text",
+                        "image",
+                        "amount",
+                        "input",
+                        "button",
+                        "list",
+                        "cards",
+                        "chat",
+                        "banner",
+                        "tabs"
+                      ]
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 50
+                    },
+                    "text": {
+                      "type": "string",
+                      "maxLength": 120
+                    },
+                    "value": {
+                      "type": "string",
+                      "maxLength": 30
+                    },
+                    "icon": {
+                      "type": "string",
+                      "maxLength": 30
+                    },
+                    "placeholder": {
+                      "type": "string",
+                      "maxLength": 30
+                    },
+                    "mask": {
+                      "type": "boolean"
+                    },
+                    "digits": {
+                      "type": "integer",
+                      "minimum": 4,
+                      "maximum": 8
+                    },
+                    "items": {
+                      "maxItems": 6,
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 60
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "maxLength": 30
+                              },
+                              "label": {
+                                "type": "string",
+                                "maxLength": 60
+                              },
+                              "text": {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              "icon": {
+                                "type": "string",
+                                "maxLength": 30
+                              },
+                              "me": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "variant": {
+                      "type": "string",
+                      "enum": [
+                        "primary",
+                        "secondary",
+                        "success",
+                        "error",
+                        "info"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "actions": {
+          "default": [
+            {
+              "at": 0.08,
+              "do": "tap",
+              "to": "shoply",
+              "note": "Open the app"
+            },
+            {
+              "at": 0.12,
+              "do": "open",
+              "screen": "verify"
+            },
+            {
+              "at": 0.3,
+              "do": "otp",
+              "to": "code",
+              "text": "482913",
+              "title": "Shoply",
+              "note": "A code arrives by SMS"
+            },
+            {
+              "at": 0.6,
+              "do": "tap",
+              "to": "go",
+              "note": "Tap Verify"
+            },
+            {
+              "at": 0.64,
+              "do": "wait",
+              "text": "Checking code",
+              "seconds": 1
+            },
+            {
+              "at": 0.78,
+              "do": "open",
+              "screen": "shop",
+              "note": "Signed in"
+            }
+          ],
+          "maxItems": 30,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "do": {
+                "type": "string",
+                "enum": [
+                  "tap",
+                  "type",
+                  "swipe",
+                  "open",
+                  "back",
+                  "notify",
+                  "otp",
+                  "wait",
+                  "highlight",
+                  "toast",
+                  "focus",
+                  "unfocus"
+                ]
+              },
+              "to": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "screen": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "icon": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "up",
+                  "down",
+                  "left",
+                  "right"
+                ]
+              },
+              "variant": {
+                "type": "string",
+                "enum": [
+                  "success",
+                  "error",
+                  "info"
+                ]
+              },
+              "seconds": {
+                "type": "number",
+                "minimum": 0.4,
+                "maximum": 4
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 60
+              }
+            },
+            "required": [
+              "at",
+              "do"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "instant": {
+          "default": false,
+          "type": "boolean"
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "accent": "#4f6ef5",
+      "time": "9:41",
+      "screens": [
+        {
+          "id": "home",
+          "type": "home",
+          "apps": [
+            {
+              "id": "shoply",
+              "label": "Shoply",
+              "icon": "shopping-bag",
+              "color": "#ff7a45"
+            },
+            {
+              "id": "msgs",
+              "label": "Messages",
+              "icon": "message-circle",
+              "color": "#4cc06a"
+            },
+            {
+              "id": "cam",
+              "label": "Camera",
+              "icon": "camera",
+              "color": "#8a8fa0"
+            },
+            {
+              "id": "maps",
+              "label": "Maps",
+              "icon": "map",
+              "color": "#3d9be9"
+            },
+            {
+              "id": "bank",
+              "label": "Bank",
+              "icon": "landmark",
+              "color": "#6b5bd6"
+            },
+            {
+              "id": "music",
+              "label": "Music",
+              "icon": "music",
+              "color": "#f25b7a"
+            },
+            {
+              "id": "notes",
+              "label": "Notes",
+              "icon": "notebook-pen",
+              "color": "#f2b632"
+            },
+            {
+              "id": "mail",
+              "label": "Mail",
+              "icon": "mail",
+              "color": "#4a8cf0"
+            }
+          ],
+          "blocks": []
+        },
+        {
+          "id": "verify",
+          "type": "app",
+          "blocks": [
+            {
+              "type": "header",
+              "label": "Shoply",
+              "icon": "arrow-left"
+            },
+            {
+              "type": "heading",
+              "label": "Verify your phone",
+              "text": "We sent a 6-digit code to +1 555 0134"
+            },
+            {
+              "id": "code",
+              "type": "input",
+              "label": "Code",
+              "digits": 6
+            },
+            {
+              "id": "go",
+              "type": "button",
+              "label": "Verify"
+            }
+          ]
+        },
+        {
+          "id": "shop",
+          "type": "app",
+          "blocks": [
+            {
+              "type": "header",
+              "label": "Shoply"
+            },
+            {
+              "type": "banner",
+              "label": "You are signed in",
+              "variant": "success"
+            },
+            {
+              "type": "cards",
+              "items": [
+                {
+                  "label": "Trainers",
+                  "text": "$40",
+                  "icon": "footprints"
+                },
+                {
+                  "label": "Backpack",
+                  "text": "$32",
+                  "icon": "backpack"
+                }
+              ]
+            },
+            {
+              "type": "tabs",
+              "items": [
+                {
+                  "label": "Home",
+                  "icon": "house"
+                },
+                {
+                  "label": "Search",
+                  "icon": "search"
+                },
+                {
+                  "label": "Cart",
+                  "icon": "shopping-cart"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "at": 0.08,
+          "do": "tap",
+          "to": "shoply",
+          "note": "Open the app"
+        },
+        {
+          "at": 0.12,
+          "do": "open",
+          "screen": "verify"
+        },
+        {
+          "at": 0.3,
+          "do": "otp",
+          "to": "code",
+          "text": "482913",
+          "title": "Shoply",
+          "note": "A code arrives by SMS"
+        },
+        {
+          "at": 0.6,
+          "do": "tap",
+          "to": "go",
+          "note": "Tap Verify"
+        },
+        {
+          "at": 0.64,
+          "do": "wait",
+          "text": "Checking code",
+          "seconds": 1
+        },
+        {
+          "at": 0.78,
+          "do": "open",
+          "screen": "shop",
+          "note": "Signed in"
+        }
+      ],
+      "instant": false,
+      "sound": true
+    }
+  },
+  {
+    "name": "TerminalScene",
+    "version": "1.0.0",
+    "description": "A terminal / command line in the paper style: commands are typed letter by letter after the prompt, output streams in line by line, progress bars fill, and a run ends with a green check or a red error badge. Use for git, npm, pip, Docker, deploys, Linux commands, servers starting, tests passing or failing.",
+    "tags": [
+      "terminal",
+      "command line",
+      "shell",
+      "bash",
+      "cli",
+      "git",
+      "npm",
+      "docker",
+      "deploy",
+      "linux",
+      "console",
+      "install",
+      "devops"
+    ],
+    "path": "rendering/src/scenes/TerminalScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "device": {
+          "default": "window",
+          "type": "string",
+          "enum": [
+            "window",
+            "browser",
+            "laptop",
+            "monitor"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "window": {
+          "default": "bash — ~/shop",
+          "type": "string",
+          "maxLength": 50
+        },
+        "prompt": {
+          "default": "~/shop $",
+          "type": "string",
+          "maxLength": 30
+        },
+        "actions": {
+          "default": [
+            {
+              "at": 0.04,
+              "do": "run",
+              "text": "npm install"
+            },
+            {
+              "at": 0.22,
+              "do": "progress",
+              "text": "Installing packages",
+              "seconds": 1.6
+            },
+            {
+              "at": 0.42,
+              "do": "output",
+              "text": "added 214 packages in 3s",
+              "variant": "muted"
+            },
+            {
+              "at": 0.5,
+              "do": "run",
+              "text": "npm run deploy"
+            },
+            {
+              "at": 0.66,
+              "do": "output",
+              "text": "Building app...\nUploading 12 files\nStarting server"
+            },
+            {
+              "at": 0.84,
+              "do": "done",
+              "text": "Live at shop.example.com",
+              "variant": "success"
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 24,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "do": {
+                "type": "string",
+                "enum": [
+                  "run",
+                  "output",
+                  "progress",
+                  "done",
+                  "clear"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 600
+              },
+              "variant": {
+                "type": "string",
+                "enum": [
+                  "normal",
+                  "muted",
+                  "success",
+                  "error",
+                  "warn",
+                  "info"
+                ]
+              },
+              "seconds": {
+                "type": "number",
+                "minimum": 0.3,
+                "maximum": 8
+              }
+            },
+            "required": [
+              "at",
+              "do"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "instant": {
+          "default": false,
+          "type": "boolean"
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "device": "window",
+      "window": "bash — ~/shop",
+      "prompt": "~/shop $",
+      "actions": [
+        {
+          "at": 0.04,
+          "do": "run",
+          "text": "npm install"
+        },
+        {
+          "at": 0.22,
+          "do": "progress",
+          "text": "Installing packages",
+          "seconds": 1.6
+        },
+        {
+          "at": 0.42,
+          "do": "output",
+          "text": "added 214 packages in 3s",
+          "variant": "muted"
+        },
+        {
+          "at": 0.5,
+          "do": "run",
+          "text": "npm run deploy"
+        },
+        {
+          "at": 0.66,
+          "do": "output",
+          "text": "Building app...\nUploading 12 files\nStarting server"
+        },
+        {
+          "at": 0.84,
+          "do": "done",
+          "text": "Live at shop.example.com",
+          "variant": "success"
+        }
+      ],
+      "instant": false,
+      "sound": true
+    }
+  },
+  {
+    "name": "EditorScene",
+    "version": "1.0.0",
+    "description": "A code editor in the paper style: code is typed letter by letter with syntax colours, an autocomplete popup completes a word, a red wavy underline marks an error with its message, a line is fixed, and the mouse clicks ▶ Run so an output panel shows the result (green success or red error). Use for programming lessons, debugging, how a bug is found and fixed, writing a first program.",
+    "tags": [
+      "code",
+      "editor",
+      "programming",
+      "debugging",
+      "bug",
+      "error",
+      "ide",
+      "vscode",
+      "python",
+      "javascript",
+      "function",
+      "syntax",
+      "autocomplete",
+      "run"
+    ],
+    "path": "rendering/src/scenes/EditorScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "device": {
+          "default": "window",
+          "type": "string",
+          "enum": [
+            "window",
+            "browser",
+            "laptop",
+            "monitor"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "filename": {
+          "default": "app.py",
+          "type": "string",
+          "maxLength": 40
+        },
+        "code": {
+          "default": "def greet(name):\n    message = \"Hello, \" + name\n    return mesage",
+          "type": "string",
+          "maxLength": 1500
+        },
+        "actions": {
+          "default": [
+            {
+              "at": 0.04,
+              "do": "type",
+              "text": "\nprint(greet(\"Mira\"))"
+            },
+            {
+              "at": 0.22,
+              "do": "run",
+              "text": "Traceback (most recent call last):\n  File \"app.py\", line 5\nNameError: name 'mesage' is not defined",
+              "variant": "error"
+            },
+            {
+              "at": 0.38,
+              "do": "error",
+              "line": 3,
+              "text": "NameError: 'mesage' is not defined"
+            },
+            {
+              "at": 0.5,
+              "do": "fix",
+              "line": 3,
+              "text": "    return mes"
+            },
+            {
+              "at": 0.6,
+              "do": "suggest",
+              "line": 3,
+              "items": [
+                "message",
+                "max",
+                "memoryview"
+              ],
+              "pick": "message"
+            },
+            {
+              "at": 0.78,
+              "do": "run",
+              "text": "Hello, Mira",
+              "variant": "success"
+            }
+          ],
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "do": {
+                "type": "string",
+                "enum": [
+                  "type",
+                  "replace",
+                  "fix",
+                  "delete",
+                  "suggest",
+                  "error",
+                  "run",
+                  "highlight"
+                ]
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 40
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "items": {
+                "minItems": 1,
+                "maxItems": 5,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 30
+                }
+              },
+              "pick": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "variant": {
+                "type": "string",
+                "enum": [
+                  "success",
+                  "error"
+                ]
+              }
+            },
+            "required": [
+              "at",
+              "do"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "instant": {
+          "default": false,
+          "type": "boolean"
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "device": "window",
+      "filename": "app.py",
+      "code": "def greet(name):\n    message = \"Hello, \" + name\n    return mesage",
+      "actions": [
+        {
+          "at": 0.04,
+          "do": "type",
+          "text": "\nprint(greet(\"Mira\"))"
+        },
+        {
+          "at": 0.22,
+          "do": "run",
+          "text": "Traceback (most recent call last):\n  File \"app.py\", line 5\nNameError: name 'mesage' is not defined",
+          "variant": "error"
+        },
+        {
+          "at": 0.38,
+          "do": "error",
+          "line": 3,
+          "text": "NameError: 'mesage' is not defined"
+        },
+        {
+          "at": 0.5,
+          "do": "fix",
+          "line": 3,
+          "text": "    return mes"
+        },
+        {
+          "at": 0.6,
+          "do": "suggest",
+          "line": 3,
+          "items": [
+            "message",
+            "max",
+            "memoryview"
+          ],
+          "pick": "message"
+        },
+        {
+          "at": 0.78,
+          "do": "run",
+          "text": "Hello, Mira",
+          "variant": "success"
+        }
+      ],
+      "instant": false,
+      "sound": true
+    }
+  },
+  {
+    "name": "ChatScene",
+    "version": "1.0.0",
+    "description": "A chat in the paper style on any device (\"device\": \"window\" | \"browser\" | \"laptop\" | \"monitor\" | \"phone\"): my messages are typed into the box and sent, the other side shows \"typing…\" dots, then replies (an AI reply streams word by word), with optional source chips under a reply (RAG). Looks: \"assistant\" (chatbot, ChatGPT-style AI, customer support) or \"messenger\" (WhatsApp-style conversation with ticks; default on a phone). Use for chatbots, AI assistants and RAG, customer support, messaging stories, rumours and forwarded messages.",
+    "tags": [
+      "chat",
+      "chatbot",
+      "ai",
+      "assistant",
+      "chatgpt",
+      "llm",
+      "rag",
+      "support",
+      "customer service",
+      "message",
+      "whatsapp",
+      "conversation",
+      "messenger",
+      "texting",
+      "sms"
+    ],
+    "path": "rendering/src/scenes/ChatScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "device": {
+          "default": "window",
+          "type": "string",
+          "enum": [
+            "window",
+            "browser",
+            "laptop",
+            "monitor",
+            "phone"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "look": {
+          "type": "string",
+          "enum": [
+            "assistant",
+            "messenger"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "icon": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "accent": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "messages": {
+          "default": [
+            {
+              "at": 0.04,
+              "from": "me",
+              "text": "Can I return shoes I bought last week?"
+            },
+            {
+              "at": 0.3,
+              "from": "them",
+              "text": "Yes! You can return unworn shoes within 30 days. Start the return from Orders, print the label, and drop the box at any post office.",
+              "sources": [
+                "returns-policy.pdf",
+                "help/orders"
+              ]
+            },
+            {
+              "at": 0.72,
+              "from": "me",
+              "text": "Great, thanks!"
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "from": {
+                "type": "string",
+                "enum": [
+                  "me",
+                  "them"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 400
+              },
+              "stream": {
+                "type": "boolean"
+              },
+              "typing": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 4
+              },
+              "sources": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 40
+                }
+              },
+              "highlight": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "at",
+              "from",
+              "text"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "composer": {
+          "default": true,
+          "type": "boolean"
+        },
+        "instant": {
+          "default": false,
+          "type": "boolean"
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "device": "window",
+      "messages": [
+        {
+          "at": 0.04,
+          "from": "me",
+          "text": "Can I return shoes I bought last week?"
+        },
+        {
+          "at": 0.3,
+          "from": "them",
+          "text": "Yes! You can return unworn shoes within 30 days. Start the return from Orders, print the label, and drop the box at any post office.",
+          "sources": [
+            "returns-policy.pdf",
+            "help/orders"
+          ]
+        },
+        {
+          "at": 0.72,
+          "from": "me",
+          "text": "Great, thanks!"
+        }
+      ],
+      "composer": true,
+      "instant": false,
+      "sound": true
+    }
+  },
+  {
+    "name": "FormScene",
+    "version": "1.0.0",
+    "description": "A form being filled in, in the paper style: the mouse clicks into fields and types (passwords as dots with an optional strength meter), ticks a checkbox, presses submit; the button spins, then invalid fields shake with a red message, the user fixes them (green checks), and a second submit turns the form into a success card. Use for sign-up flows, input validation, password rules, security, form UX.",
+    "tags": [
+      "form",
+      "sign up",
+      "signup",
+      "register",
+      "validation",
+      "input validation",
+      "password",
+      "security",
+      "error",
+      "checkout",
+      "ux",
+      "login"
+    ],
+    "path": "rendering/src/scenes/FormScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "device": {
+          "default": "card",
+          "type": "string",
+          "enum": [
+            "card",
+            "browser",
+            "laptop",
+            "monitor",
+            "window",
+            "phone"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "heading": {
+          "default": "Create your account",
+          "type": "string",
+          "maxLength": 40
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "button": {
+          "default": "Sign up",
+          "type": "string",
+          "maxLength": 24
+        },
+        "accent": {
+          "default": "#4f6ef5",
+          "type": "string",
+          "maxLength": 20
+        },
+        "fields": {
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 30
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "type": {
+                "default": "text",
+                "type": "string",
+                "enum": [
+                  "text",
+                  "email",
+                  "password",
+                  "phone",
+                  "number",
+                  "date",
+                  "url",
+                  "textarea",
+                  "checkbox",
+                  "select"
+                ]
+              },
+              "prefix": {
+                "type": "string",
+                "maxLength": 8
+              },
+              "placeholder": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "value": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "strength": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "actions": {
+          "default": [
+            {
+              "at": 0.04,
+              "do": "type",
+              "to": "email",
+              "text": "mira@mail"
+            },
+            {
+              "at": 0.16,
+              "do": "type",
+              "to": "pass",
+              "text": "cat1"
+            },
+            {
+              "at": 0.27,
+              "do": "submit",
+              "errors": [
+                {
+                  "to": "email",
+                  "text": "Enter a full email address"
+                },
+                {
+                  "to": "pass",
+                  "text": "Use at least 8 characters"
+                }
+              ]
+            },
+            {
+              "at": 0.46,
+              "do": "type",
+              "to": "email",
+              "text": "mira@mail.com"
+            },
+            {
+              "at": 0.58,
+              "do": "type",
+              "to": "pass",
+              "text": "Blue-Kite-42!"
+            },
+            {
+              "at": 0.74,
+              "do": "check",
+              "to": "terms"
+            },
+            {
+              "at": 0.8,
+              "do": "submit",
+              "text": "Account created"
+            }
+          ],
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "do": {
+                "type": "string",
+                "enum": [
+                  "type",
+                  "check",
+                  "submit",
+                  "error",
+                  "highlight"
+                ]
+              },
+              "to": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 60
+              },
+              "errors": {
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "to": {
+                      "type": "string",
+                      "maxLength": 30
+                    },
+                    "text": {
+                      "type": "string",
+                      "maxLength": 60
+                    }
+                  },
+                  "required": [
+                    "to",
+                    "text"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "at",
+              "do"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "instant": {
+          "default": false,
+          "type": "boolean"
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "device": "card",
+      "heading": "Create your account",
+      "button": "Sign up",
+      "accent": "#4f6ef5",
+      "fields": [
+        {
+          "id": "email",
+          "label": "Email",
+          "type": "email",
+          "placeholder": "you@example.com"
+        },
+        {
+          "id": "pass",
+          "label": "Password",
+          "type": "password",
+          "placeholder": "At least 8 characters",
+          "strength": true
+        },
+        {
+          "id": "terms",
+          "label": "I agree to the terms",
+          "type": "checkbox"
+        }
+      ],
+      "actions": [
+        {
+          "at": 0.04,
+          "do": "type",
+          "to": "email",
+          "text": "mira@mail"
+        },
+        {
+          "at": 0.16,
+          "do": "type",
+          "to": "pass",
+          "text": "cat1"
+        },
+        {
+          "at": 0.27,
+          "do": "submit",
+          "errors": [
+            {
+              "to": "email",
+              "text": "Enter a full email address"
+            },
+            {
+              "to": "pass",
+              "text": "Use at least 8 characters"
+            }
+          ]
+        },
+        {
+          "at": 0.46,
+          "do": "type",
+          "to": "email",
+          "text": "mira@mail.com"
+        },
+        {
+          "at": 0.58,
+          "do": "type",
+          "to": "pass",
+          "text": "Blue-Kite-42!"
+        },
+        {
+          "at": 0.74,
+          "do": "check",
+          "to": "terms"
+        },
+        {
+          "at": 0.8,
+          "do": "submit",
+          "text": "Account created"
+        }
+      ],
+      "instant": false,
+      "sound": true
+    }
+  },
+  {
+    "name": "QueryScene",
+    "version": "1.0.0",
+    "description": "How a database answers a query, in the paper style: the SQL is typed, then a full scan (every row is checked, a \"rows read\" counter climbs) or an index lookup (the sorted index is searched in a few probes and points straight at the matching rows); matching rows light up and fly into a result table. Give \"query\" and \"table\" (columns + up to 12 rows); \"mode\": \"scan\" | \"index\". Make two scenes to compare a scan with an index.",
+    "tags": [
+      "sql",
+      "database",
+      "query",
+      "index",
+      "indexes",
+      "table",
+      "select",
+      "where",
+      "full scan",
+      "b-tree",
+      "performance",
+      "postgres",
+      "mysql"
+    ],
+    "path": "rendering/src/scenes/QueryScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "query": {
+          "default": "SELECT name, city FROM users WHERE city = 'Pune'",
+          "type": "string",
+          "maxLength": 160
+        },
+        "table": {
+          "default": {
+            "name": "users",
+            "columns": [
+              "id",
+              "name",
+              "city",
+              "age"
+            ],
+            "rows": [
+              [
+                1,
+                "Asha",
+                "Delhi",
+                31
+              ],
+              [
+                2,
+                "Ravi",
+                "Pune",
+                24
+              ],
+              [
+                3,
+                "Meera",
+                "Mumbai",
+                29
+              ],
+              [
+                4,
+                "Kabir",
+                "Pune",
+                35
+              ],
+              [
+                5,
+                "Sara",
+                "Delhi",
+                22
+              ],
+              [
+                6,
+                "Dev",
+                "Chennai",
+                41
+              ],
+              [
+                7,
+                "Nina",
+                "Pune",
+                27
+              ],
+              [
+                8,
+                "Omar",
+                "Mumbai",
+                33
+              ]
+            ]
+          },
+          "type": "object",
+          "properties": {
+            "name": {
+              "default": "users",
+              "type": "string",
+              "maxLength": 30
+            },
+            "columns": {
+              "minItems": 1,
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 24
+              }
+            },
+            "rows": {
+              "minItems": 1,
+              "maxItems": 12,
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 40
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "required": [
+            "columns",
+            "rows"
+          ],
+          "additionalProperties": false
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "scan",
+            "index"
+          ]
+        },
+        "index": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "where": {
+          "type": "object",
+          "properties": {
+            "column": {
+              "type": "string",
+              "maxLength": 24
+            },
+            "op": {
+              "default": "=",
+              "type": "string",
+              "enum": [
+                "=",
+                "!=",
+                ">",
+                "<",
+                ">=",
+                "<=",
+                "contains"
+              ]
+            },
+            "value": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          "required": [
+            "column",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "matches": {
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 12
+          }
+        },
+        "select": {
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 24
+          }
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "query": "SELECT name, city FROM users WHERE city = 'Pune'",
+      "table": {
+        "name": "users",
+        "columns": [
+          "id",
+          "name",
+          "city",
+          "age"
+        ],
+        "rows": [
+          [
+            1,
+            "Asha",
+            "Delhi",
+            31
+          ],
+          [
+            2,
+            "Ravi",
+            "Pune",
+            24
+          ],
+          [
+            3,
+            "Meera",
+            "Mumbai",
+            29
+          ],
+          [
+            4,
+            "Kabir",
+            "Pune",
+            35
+          ],
+          [
+            5,
+            "Sara",
+            "Delhi",
+            22
+          ],
+          [
+            6,
+            "Dev",
+            "Chennai",
+            41
+          ],
+          [
+            7,
+            "Nina",
+            "Pune",
+            27
+          ],
+          [
+            8,
+            "Omar",
+            "Mumbai",
+            33
+          ]
+        ]
+      },
+      "sound": true
+    }
+  },
+  {
+    "name": "PipelineScene",
+    "version": "1.0.0",
+    "description": "A table flowing through data stages, in the paper style: stages (source, filter, map, join, group, sort, select, clean, load) in a row at the top; as each runs, rows a filter drops turn red and fall out, changed values flash, new columns slide in, rows reorder. Give \"source\" (columns + up to 8 rows) and \"stages\" with each stage's OUTPUT table (columns + rows) and a \"detail\" rule. Use for ETL, data cleaning, pandas / SQL transforms, data science steps.",
+    "tags": [
+      "pipeline",
+      "etl",
+      "data",
+      "data science",
+      "pandas",
+      "dataframe",
+      "transform",
+      "filter",
+      "map",
+      "join",
+      "group by",
+      "aggregate",
+      "data cleaning",
+      "spark",
+      "stream"
+    ],
+    "path": "rendering/src/scenes/PipelineScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "source": {
+          "default": {
+            "name": "orders.csv",
+            "columns": [
+              "id",
+              "item",
+              "price",
+              "qty"
+            ],
+            "rows": [
+              [
+                1,
+                "pen",
+                2,
+                10
+              ],
+              [
+                2,
+                "lamp",
+                35,
+                1
+              ],
+              [
+                3,
+                "desk",
+                120,
+                1
+              ],
+              [
+                4,
+                "mug",
+                8,
+                4
+              ],
+              [
+                5,
+                "chair",
+                60,
+                2
+              ]
+            ]
+          },
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 30
+            },
+            "columns": {
+              "minItems": 1,
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "rows": {
+              "maxItems": 8,
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 30
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "required": [
+            "columns",
+            "rows"
+          ],
+          "additionalProperties": false
+        },
+        "stages": {
+          "default": [
+            {
+              "label": "Filter",
+              "op": "filter",
+              "detail": "price > 10",
+              "columns": [
+                "id",
+                "item",
+                "price",
+                "qty"
+              ],
+              "rows": [
+                [
+                  2,
+                  "lamp",
+                  35,
+                  1
+                ],
+                [
+                  3,
+                  "desk",
+                  120,
+                  1
+                ],
+                [
+                  5,
+                  "chair",
+                  60,
+                  2
+                ]
+              ]
+            },
+            {
+              "label": "Map",
+              "op": "map",
+              "detail": "total = price * qty",
+              "columns": [
+                "id",
+                "item",
+                "price",
+                "qty",
+                "total"
+              ],
+              "rows": [
+                [
+                  2,
+                  "lamp",
+                  35,
+                  1,
+                  35
+                ],
+                [
+                  3,
+                  "desk",
+                  120,
+                  1,
+                  120
+                ],
+                [
+                  5,
+                  "chair",
+                  60,
+                  2,
+                  120
+                ]
+              ]
+            },
+            {
+              "label": "Sort",
+              "op": "sort",
+              "detail": "total desc",
+              "columns": [
+                "id",
+                "item",
+                "price",
+                "qty",
+                "total"
+              ],
+              "rows": [
+                [
+                  3,
+                  "desk",
+                  120,
+                  1,
+                  120
+                ],
+                [
+                  5,
+                  "chair",
+                  60,
+                  2,
+                  120
+                ],
+                [
+                  2,
+                  "lamp",
+                  35,
+                  1,
+                  35
+                ]
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 24
+              },
+              "op": {
+                "default": "custom",
+                "type": "string",
+                "enum": [
+                  "source",
+                  "filter",
+                  "map",
+                  "join",
+                  "group",
+                  "sort",
+                  "select",
+                  "clean",
+                  "load",
+                  "custom"
+                ]
+              },
+              "detail": {
+                "type": "string",
+                "maxLength": 60
+              },
+              "columns": {
+                "minItems": 1,
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 20
+                }
+              },
+              "rows": {
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 30
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              },
+              "with": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 30
+                  },
+                  "columns": {
+                    "minItems": 1,
+                    "maxItems": 6,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 20
+                    }
+                  },
+                  "rows": {
+                    "maxItems": 8,
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 30
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "columns",
+                  "rows"
+                ],
+                "additionalProperties": false
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "key": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "source": {
+        "name": "orders.csv",
+        "columns": [
+          "id",
+          "item",
+          "price",
+          "qty"
+        ],
+        "rows": [
+          [
+            1,
+            "pen",
+            2,
+            10
+          ],
+          [
+            2,
+            "lamp",
+            35,
+            1
+          ],
+          [
+            3,
+            "desk",
+            120,
+            1
+          ],
+          [
+            4,
+            "mug",
+            8,
+            4
+          ],
+          [
+            5,
+            "chair",
+            60,
+            2
+          ]
+        ]
+      },
+      "stages": [
+        {
+          "label": "Filter",
+          "op": "filter",
+          "detail": "price > 10",
+          "columns": [
+            "id",
+            "item",
+            "price",
+            "qty"
+          ],
+          "rows": [
+            [
+              2,
+              "lamp",
+              35,
+              1
+            ],
+            [
+              3,
+              "desk",
+              120,
+              1
+            ],
+            [
+              5,
+              "chair",
+              60,
+              2
+            ]
+          ]
+        },
+        {
+          "label": "Map",
+          "op": "map",
+          "detail": "total = price * qty",
+          "columns": [
+            "id",
+            "item",
+            "price",
+            "qty",
+            "total"
+          ],
+          "rows": [
+            [
+              2,
+              "lamp",
+              35,
+              1,
+              35
+            ],
+            [
+              3,
+              "desk",
+              120,
+              1,
+              120
+            ],
+            [
+              5,
+              "chair",
+              60,
+              2,
+              120
+            ]
+          ]
+        },
+        {
+          "label": "Sort",
+          "op": "sort",
+          "detail": "total desc",
+          "columns": [
+            "id",
+            "item",
+            "price",
+            "qty",
+            "total"
+          ],
+          "rows": [
+            [
+              3,
+              "desk",
+              120,
+              1,
+              120
+            ],
+            [
+              5,
+              "chair",
+              60,
+              2,
+              120
+            ],
+            [
+              2,
+              "lamp",
+              35,
+              1,
+              35
+            ]
+          ]
+        }
+      ],
+      "sound": true
+    }
+  },
+  {
+    "name": "PacketScene",
+    "version": "1.0.0",
+    "description": "A packet's journey, in the paper style: devices left to right (branches show other paths), an envelope travels between them, opens to show its fields (IP, port, TTL, headers), a router reads one field and picks a path (that link lights up), fields change on the way (TTL, NAT), a packet can be dropped. Steps: send / route (to), open, close, read (field), change (field, value), note (text), drop. Use for networking, HTTP, TCP/IP, DNS, routing, NAT, firewalls.",
+    "tags": [
+      "packet",
+      "network",
+      "networking",
+      "routing",
+      "router",
+      "ip",
+      "tcp",
+      "udp",
+      "http",
+      "dns",
+      "nat",
+      "firewall",
+      "headers",
+      "ttl",
+      "internet"
+    ],
+    "path": "rendering/src/scenes/PacketScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "nodes": {
+          "default": [
+            {
+              "id": "laptop",
+              "label": "Your laptop"
+            },
+            {
+              "id": "router",
+              "label": "Router"
+            },
+            {
+              "id": "isp",
+              "label": "ISP"
+            },
+            {
+              "id": "other",
+              "label": "Other network"
+            },
+            {
+              "id": "server",
+              "label": "Web server"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 30
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 24
+              },
+              "icon": {
+                "type": "string",
+                "maxLength": 30
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "links": {
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "packet": {
+          "default": {
+            "label": "HTTP request",
+            "fields": [
+              {
+                "name": "Src IP",
+                "value": "192.168.1.20"
+              },
+              {
+                "name": "Dst IP",
+                "value": "93.184.216.34"
+              },
+              {
+                "name": "Dst port",
+                "value": "443"
+              },
+              {
+                "name": "TTL",
+                "value": "64"
+              },
+              {
+                "name": "Host",
+                "value": "shop.example"
+              }
+            ]
+          },
+          "type": "object",
+          "properties": {
+            "label": {
+              "default": "Packet",
+              "type": "string",
+              "maxLength": 24
+            },
+            "color": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "fields": {
+              "default": [],
+              "maxItems": 7,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 24
+                  },
+                  "value": {
+                    "type": "string",
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "name",
+                  "value"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "steps": {
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "do": {
+                "type": "string",
+                "enum": [
+                  "send",
+                  "route",
+                  "open",
+                  "close",
+                  "read",
+                  "change",
+                  "note",
+                  "drop"
+                ]
+              },
+              "to": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "field": {
+                "type": "string",
+                "maxLength": 24
+              },
+              "value": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 60
+              }
+            },
+            "required": [
+              "at",
+              "do"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "nodes": [
+        {
+          "id": "laptop",
+          "label": "Your laptop"
+        },
+        {
+          "id": "router",
+          "label": "Router"
+        },
+        {
+          "id": "isp",
+          "label": "ISP"
+        },
+        {
+          "id": "other",
+          "label": "Other network"
+        },
+        {
+          "id": "server",
+          "label": "Web server"
+        }
+      ],
+      "links": [
+        {
+          "from": "laptop",
+          "to": "router"
+        },
+        {
+          "from": "router",
+          "to": "isp"
+        },
+        {
+          "from": "router",
+          "to": "other"
+        },
+        {
+          "from": "isp",
+          "to": "server"
+        }
+      ],
+      "packet": {
+        "label": "HTTP request",
+        "fields": [
+          {
+            "name": "Src IP",
+            "value": "192.168.1.20"
+          },
+          {
+            "name": "Dst IP",
+            "value": "93.184.216.34"
+          },
+          {
+            "name": "Dst port",
+            "value": "443"
+          },
+          {
+            "name": "TTL",
+            "value": "64"
+          },
+          {
+            "name": "Host",
+            "value": "shop.example"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "at": 0.05,
+          "do": "send",
+          "to": "router"
+        },
+        {
+          "at": 0.2,
+          "do": "open"
+        },
+        {
+          "at": 0.27,
+          "do": "read",
+          "field": "Dst IP",
+          "text": "Where is it going?"
+        },
+        {
+          "at": 0.45,
+          "do": "change",
+          "field": "TTL",
+          "value": "63"
+        },
+        {
+          "at": 0.52,
+          "do": "close"
+        },
+        {
+          "at": 0.56,
+          "do": "route",
+          "to": "isp"
+        },
+        {
+          "at": 0.75,
+          "do": "send",
+          "to": "server"
+        },
+        {
+          "at": 0.9,
+          "do": "note",
+          "text": "Delivered"
+        }
+      ],
+      "sound": true
+    }
+  },
+  {
+    "name": "ArrayScene",
+    "version": "1.0.0",
+    "description": "An array as bars or boxes (paper style). Give \"values\" (up to 12) and \"algorithm\": bubble | selection | insertion | binary-search | linear-search (+ \"target\") and every comparison and swap is traced automatically with i/j pointers, comparison/swap counters and the pseudocode line lighting up. Or give your own \"steps\": compare {i,j}, swap {i,j}, set {i,value}, sorted {i}, pointer {name,i}, range {lo,hi}, found {i}, note; every step may have a \"note\".",
+    "tags": [
+      "array",
+      "sorting",
+      "sort",
+      "bubble sort",
+      "selection sort",
+      "insertion sort",
+      "binary search",
+      "linear search",
+      "algorithm",
+      "dsa",
+      "swap",
+      "big o",
+      "complexity",
+      "search"
+    ],
+    "path": "rendering/src/scenes/ArrayScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "values": {
+          "default": [
+            5,
+            2,
+            8,
+            1,
+            9,
+            3
+          ],
+          "minItems": 1,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "maxLength": 8
+              }
+            ]
+          }
+        },
+        "algorithm": {
+          "default": "none",
+          "type": "string",
+          "enum": [
+            "none",
+            "bubble",
+            "selection",
+            "insertion",
+            "binary-search",
+            "linear-search"
+          ]
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "maxLength": 8
+            }
+          ]
+        },
+        "look": {
+          "type": "string",
+          "enum": [
+            "bars",
+            "boxes"
+          ]
+        },
+        "steps": {
+          "default": [],
+          "maxItems": 80,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 90
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "code": {
+          "maxItems": 14,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          }
+        },
+        "showCode": {
+          "type": "boolean"
+        },
+        "counters": {
+          "default": true,
+          "type": "boolean"
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "values": [
+        5,
+        2,
+        8,
+        1,
+        9,
+        3
+      ],
+      "algorithm": "bubble",
+      "steps": [],
+      "counters": true,
+      "sound": true
+    }
+  },
+  {
+    "name": "StackScene",
+    "version": "1.0.0",
+    "description": "A stack (LIFO bucket, open at the top) or a queue (FIFO lane: in at the back, out at the front) in the paper style. \"kind\": stack | queue, \"items\" already inside, \"steps\": push {value} | pop | peek | note (enqueue/dequeue work too). Popped items line up in an \"out\" row so the order is visible. Use for undo history, call stack, print queue, BFS queue.",
+    "tags": [
+      "stack",
+      "queue",
+      "lifo",
+      "fifo",
+      "push",
+      "pop",
+      "enqueue",
+      "dequeue",
+      "data structures",
+      "dsa",
+      "undo",
+      "call stack",
+      "buffer"
+    ],
+    "path": "rendering/src/scenes/StackScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "kind": {
+          "default": "stack",
+          "type": "string",
+          "enum": [
+            "stack",
+            "queue"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "items": {
+          "default": [],
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 18
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 10
+        },
+        "steps": {
+          "default": [
+            {
+              "do": "push",
+              "value": "A"
+            },
+            {
+              "do": "push",
+              "value": "B"
+            },
+            {
+              "do": "push",
+              "value": "C"
+            },
+            {
+              "do": "peek"
+            },
+            {
+              "do": "pop"
+            },
+            {
+              "do": "pop"
+            },
+            {
+              "do": "push",
+              "value": "D"
+            },
+            {
+              "do": "pop"
+            }
+          ],
+          "maxItems": 30,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 90
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "outLabel": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "kind": "stack",
+      "items": [],
+      "steps": [
+        {
+          "do": "push",
+          "value": "A"
+        },
+        {
+          "do": "push",
+          "value": "B"
+        },
+        {
+          "do": "push",
+          "value": "C"
+        },
+        {
+          "do": "peek"
+        },
+        {
+          "do": "pop"
+        },
+        {
+          "do": "pop"
+        },
+        {
+          "do": "push",
+          "value": "D"
+        },
+        {
+          "do": "pop"
+        }
+      ],
+      "sound": true
+    }
+  },
+  {
+    "name": "HashScene",
+    "version": "1.0.0",
+    "description": "A hash table in the paper style: a key goes through the hash function (the sum is shown), \"% size\" picks a bucket, and the key flies there; keys landing in the same bucket grow a chain (collision). get / delete walk the chain node by node. Give \"size\" (buckets, 3-12), optional \"entries\", and \"steps\": insert {key, value} | get {key} | delete {key} | note. Buckets are computed (sum of letter codes, or the number) unless a step gives \"bucket\". \"act\" and \"cat\" collide.",
+    "tags": [
+      "hash table",
+      "hash map",
+      "hashmap",
+      "dictionary",
+      "hashing",
+      "hash function",
+      "collision",
+      "bucket",
+      "chaining",
+      "dict",
+      "map",
+      "object",
+      "set",
+      "dsa",
+      "o(1)"
+    ],
+    "path": "rendering/src/scenes/HashScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "size": {
+          "default": 8,
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 12
+        },
+        "hash": {
+          "type": "string",
+          "enum": [
+            "sum",
+            "length",
+            "first",
+            "number"
+          ]
+        },
+        "entries": {
+          "default": [],
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 12
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 12
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "key"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "steps": {
+          "default": [
+            {
+              "do": "insert",
+              "key": "cat",
+              "value": "meow"
+            },
+            {
+              "do": "insert",
+              "key": "dog",
+              "value": "woof"
+            },
+            {
+              "do": "insert",
+              "key": "act",
+              "value": "play"
+            },
+            {
+              "do": "get",
+              "key": "act"
+            }
+          ],
+          "maxItems": 16,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 90
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "showValues": {
+          "default": true,
+          "type": "boolean"
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "size": 8,
+      "entries": [],
+      "steps": [
+        {
+          "do": "insert",
+          "key": "cat",
+          "value": "meow"
+        },
+        {
+          "do": "insert",
+          "key": "dog",
+          "value": "woof"
+        },
+        {
+          "do": "insert",
+          "key": "act",
+          "value": "play"
+        },
+        {
+          "do": "get",
+          "key": "act"
+        }
+      ],
+      "showValues": true,
+      "sound": true
+    }
+  },
+  {
+    "name": "TreeScene",
+    "version": "1.0.0",
+    "description": "A tree in the paper style. kind \"bst\": insert walks down comparing (7 > 5 → right) and the node pops in; \"avl\": after insert/delete the tree rebalances and nodes glide through each rotation; \"tree\": any hierarchy given as \"tree\": {label, children:[...]} (file system, DOM, org chart). \"values\" are inserted at the start; \"steps\": insert {value, parent for \"tree\"} | delete {value} | find {value} | traverse {order: inorder|preorder|postorder|bfs} | visit {value} | note.",
+    "tags": [
+      "tree",
+      "binary tree",
+      "binary search tree",
+      "bst",
+      "avl",
+      "balanced tree",
+      "rotation",
+      "traversal",
+      "inorder",
+      "preorder",
+      "postorder",
+      "dom",
+      "hierarchy",
+      "dsa",
+      "recursion",
+      "file system"
+    ],
+    "path": "rendering/src/scenes/TreeScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "bst",
+            "avl",
+            "tree"
+          ]
+        },
+        "values": {
+          "maxItems": 15,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "maxLength": 10
+              }
+            ]
+          }
+        },
+        "tree": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 18
+            },
+            {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 18
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "children": {
+                  "maxItems": 8,
+                  "type": "array",
+                  "items": {}
+                }
+              },
+              "additionalProperties": {}
+            }
+          ]
+        },
+        "steps": {
+          "maxItems": 24,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 90
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "showBalance": {
+          "type": "boolean"
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "sound": true
+    }
+  },
+  {
+    "name": "GraphScene",
+    "version": "1.0.0",
+    "description": "A graph in the paper style: \"nodes\" (strings are fine; optional x/y), \"edges\" ([from, to, weight?] or \"A-B\"), \"directed\". \"steps\": bfs {from} spreads level by level with the queue shown; dfs {from} goes deep and backtracks with the stack shown; dijkstra {from, to} settles the nearest node, relaxes edges (distances on nodes) and lights the shortest path; path {nodes:[...]}, visit {value}, edge {from,to}, note. Use for maps/routes, social networks, dependencies, web crawling.",
+    "tags": [
+      "graph",
+      "bfs",
+      "dfs",
+      "breadth first search",
+      "depth first search",
+      "dijkstra",
+      "shortest path",
+      "traversal",
+      "nodes and edges",
+      "network",
+      "dsa",
+      "routing",
+      "social network"
+    ],
+    "path": "rendering/src/scenes/TreeScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "nodes": {
+          "default": [
+            {
+              "id": "A"
+            },
+            {
+              "id": "B"
+            },
+            {
+              "id": "C"
+            },
+            {
+              "id": "D"
+            },
+            {
+              "id": "E"
+            },
+            {
+              "id": "F"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 16
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 18
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "edges": {
+          "default": [
+            {
+              "from": "A",
+              "to": "B"
+            },
+            {
+              "from": "A",
+              "to": "C"
+            },
+            {
+              "from": "B",
+              "to": "D"
+            },
+            {
+              "from": "C",
+              "to": "D"
+            },
+            {
+              "from": "C",
+              "to": "E"
+            },
+            {
+              "from": "D",
+              "to": "F"
+            },
+            {
+              "from": "E",
+              "to": "F"
+            }
+          ],
+          "maxItems": 24,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "weight": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "directed": {
+          "default": false,
+          "type": "boolean"
+        },
+        "steps": {
+          "default": [
+            {
+              "do": "bfs",
+              "from": "A"
+            }
+          ],
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 90
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "nodes": [
+        {
+          "id": "A"
+        },
+        {
+          "id": "B"
+        },
+        {
+          "id": "C"
+        },
+        {
+          "id": "D"
+        },
+        {
+          "id": "E"
+        },
+        {
+          "id": "F"
+        }
+      ],
+      "edges": [
+        {
+          "from": "A",
+          "to": "B"
+        },
+        {
+          "from": "A",
+          "to": "C"
+        },
+        {
+          "from": "B",
+          "to": "D"
+        },
+        {
+          "from": "C",
+          "to": "D"
+        },
+        {
+          "from": "C",
+          "to": "E"
+        },
+        {
+          "from": "D",
+          "to": "F"
+        },
+        {
+          "from": "E",
+          "to": "F"
+        }
+      ],
+      "directed": false,
+      "steps": [
+        {
+          "do": "bfs",
+          "from": "A"
+        }
+      ],
+      "sound": true
+    }
+  },
+  {
+    "name": "LinkedListScene",
+    "version": "1.0.0",
+    "description": "A singly linked list in the paper style: [value | next] boxes, arrows, a \"head\" tag and null at the end. \"values\" (up to 7), \"steps\": insert {value, index | after: value} (new node appears, its next points at the successor, then the previous arrow swings to it), append, prepend, delete {value | index} (the arrow swings past the node, it drops out), find {value} (a curr pointer walks), reverse (arrows flip one by one), note. Shows why insert is O(1) once you are there and find is O(n).",
+    "tags": [
+      "linked list",
+      "singly linked list",
+      "pointer",
+      "pointers",
+      "node",
+      "next",
+      "head",
+      "insert",
+      "delete",
+      "reverse",
+      "data structures",
+      "dsa",
+      "references"
+    ],
+    "path": "rendering/src/scenes/LinkedListScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "values": {
+          "default": [
+            3,
+            9,
+            5
+          ],
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "maxLength": 8
+              }
+            ]
+          }
+        },
+        "steps": {
+          "default": [
+            {
+              "do": "insert",
+              "value": 7,
+              "after": 3
+            },
+            {
+              "do": "delete",
+              "value": 9
+            },
+            {
+              "do": "find",
+              "value": 5
+            }
+          ],
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 90
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "values": [
+        3,
+        9,
+        5
+      ],
+      "steps": [
+        {
+          "do": "insert",
+          "value": 7,
+          "after": 3
+        },
+        {
+          "do": "delete",
+          "value": 9
+        },
+        {
+          "do": "find",
+          "value": 5
+        }
+      ],
+      "sound": true
+    }
+  },
+  {
+    "name": "EventLoopScene",
+    "version": "1.0.0",
+    "description": "How JavaScript / Node.js runs code (paper style): code with the running line, the CALL STACK (frames with local vars), the HEAP (objects; a var with value \"@id\" draws an arrow to it), Node/Web APIs (timers, I/O), the MICROTASK queue (promises), the TASK queue, the event loop and the console. Only used panels are drawn. \"steps\": call {name, vars} | return | log {text} | api {name, callback, id} | done {id} (API finished → task queue) | queue {name, to: micro|task} | tick (event loop moves the next microtask, else task, onto the stack) | alloc {id, label, fields, var} | set {name, value} | free {id} | note; each may have \"line\". Presets without steps: \"event-loop\" (A D C B) and \"memory\" (stack vs heap, GC).",
+    "tags": [
+      "event loop",
+      "javascript",
+      "node",
+      "nodejs",
+      "node.js",
+      "async",
+      "await",
+      "promise",
+      "promises",
+      "callback",
+      "settimeout",
+      "call stack",
+      "stack",
+      "heap",
+      "memory",
+      "garbage collection",
+      "microtask",
+      "task queue",
+      "libuv",
+      "non-blocking",
+      "concurrency",
+      "reference",
+      "stack vs heap"
+    ],
+    "path": "rendering/src/scenes/EventLoopScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "preset": {
+          "type": "string",
+          "enum": [
+            "event-loop",
+            "memory",
+            "none"
+          ]
+        },
+        "runtime": {
+          "default": "node",
+          "type": "string",
+          "enum": [
+            "node",
+            "browser"
+          ]
+        },
+        "code": {
+          "maxItems": 16,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          }
+        },
+        "steps": {
+          "maxItems": 40,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 90
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "panels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "code",
+              "stack",
+              "heap",
+              "apis",
+              "micro",
+              "task",
+              "console"
+            ]
+          }
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "runtime": "node",
       "sound": true
     }
   },

@@ -45,7 +45,47 @@ assert(!sceneCatalog.NetworkScene.schema.safeParse({packetFrames:0}).success);
 assert(!sceneCatalog.ZoomOutScene.schema.safeParse({cityAt:120,globeAt:100}).success);
 assert.equal(sceneCatalog.BuildingScene.schema.parse({}).preset, 'city');
 assert.equal(sceneCatalog.TechnologyScene.schema.parse({}).preset, 'technology');
-const entries=Object.entries(sceneCatalog).map(([name,e])=>({name,version:'1.0.0',description:e.description,tags:e.tags,path:existsSync(path.join(root,`src/staging/${name}.tsx`))?`rendering/src/staging/${name}.tsx`:`rendering/src/scenes/${({BuildingScene:'InfrastructureScene',TechnologyScene:'InfrastructureScene',CircuitScene:'ConnectionScene',WirelessScene:'ConnectionScene'})[name]??name}.tsx`,staged:existsSync(path.join(root,`src/staging/${name}.tsx`)),propsSchema:z.toJSONSchema(e.schema,{io:'input'}),example:e.schema.parse({})}));
+// Forgiving input: names AIs often use are understood instead of failing the plan.
+const chat = sceneCatalog.ChatScene.schema.parse({device: 'mobile', messages: [{role: 'user', content: 'hi'}, {role: 'assistant', content: 'hello'}]});
+assert.deepEqual([chat.device, chat.messages[0].from, chat.messages[1].from, chat.messages[1].text], ['phone', 'me', 'them', 'hello']);
+const term = sceneCatalog.TerminalScene.schema.parse({commands: ['$ npm test'], device: 'computer'});
+assert.deepEqual([term.device, term.actions[0].do, term.actions[0].text], ['laptop', 'run', 'npm test']);
+const ed = sceneCatalog.EditorScene.schema.parse({code: ['a = 1', 'print(b)'], actions: [{action: 'underline', lineNumber: '2', message: 'b is not defined'}]});
+assert.deepEqual([ed.actions[0].do, ed.actions[0].line], ['error', 2]);
+const ph = sceneCatalog.PhoneScene.schema.parse({screens: [{id: 'a', blocks: [{id: 'go', type: 'button', label: 'Go'}]}, {id: 'b', blocks: [{type: 'heading', label: 'Done'}]}], actions: [{action: 'click', target: 'go'}, {action: 'navigate', to: 'b'}, {action: 'loading', duration: 1500}]});
+assert.deepEqual(ph.actions.map((x) => x.do), ['tap', 'open', 'wait']);
+assert.equal(ph.actions[2].seconds, 1.5);
+const scr = sceneCatalog.ScreenScene.schema.parse({page: [{id: 'q', type: 'input', label: 'Search'}], actions: [{action: 'fill', target: 'q', value: 'shoes'}, {action: 'tap', target: 'chat'}], chat: [{role: 'user', content: 'Hi'}]});
+assert.deepEqual(scr.actions.map((x) => x.do), ['type', 'click']);
+assert.equal(sceneCatalog.ScreenScene.schema.parse({page: [{type: 'heading', label: 'Own page'}]}).actions.length, 0); // own page: no demo script
+assert(!sceneCatalog.FormScene.schema.safeParse({fields: [{id: 'p', label: 'P', type: 'password'}], actions: [{at: 0.2, do: 'submit', errors: [{to: 'p', text: 'short'}]}, {at: 0.5, do: 'submit', text: 'ok'}]}).success); // success before the fix
+const qs = sceneCatalog.QueryScene.schema.parse({sql: 'SELECT name FROM people WHERE age >= 30', rows: [{name: 'A', age: 31}, {name: 'B', age: 20}], mode: 'full scan'});
+assert.deepEqual([qs.mode, qs.table.columns.join()], ['scan', 'name,age']);
+assert(!sceneCatalog.QueryScene.schema.safeParse({query: 'SELECT * FROM t WHERE nope = 1', table: {columns: ['a'], rows: [[1]]}}).success); // unknown WHERE column
+const pl = sceneCatalog.PipelineScene.schema.parse({data: [{id: 1, x: 2}, {id: 2, x: 0}], steps: [{name: 'Keep big', type: 'where', condition: 'x > 1', output: [{id: 1, x: 2}]}]});
+assert.deepEqual([pl.stages[0].op, pl.stages[0].detail, pl.stages[0].rows.length], ['filter', 'x > 1', 1]);
+const pk = sceneCatalog.PacketScene.schema.parse({devices: ['Laptop', 'Router', 'Server'], headers: {'Dst IP': '1.2.3.4', TTL: 64},
+  actions: [{action: 'travel', target: 'Router'}, {action: 'inspect', key: 'Dst IP'}, {action: 'decrement', key: 'TTL', new: 63}, {action: 'forward', target: 'server'}]});
+assert.deepEqual(pk.steps.map((x) => x.do + ':' + (x.to ?? x.field ?? '')), ['send:router', 'read:Dst IP', 'change:TTL', 'send:server']);
+// Data-structure scenes: AI-style input is understood.
+const ar = sceneCatalog.ArrayScene.schema.parse({array: '5, 3, 8', algo: 'Bubble Sort'});
+assert.deepEqual([ar.values.join(), ar.algorithm], ['5,3,8', 'bubble']);
+assert(!sceneCatalog.ArrayScene.schema.safeParse({values: [1, 2], algorithm: 'binary search'}).success); // search without target
+const sk = sceneCatalog.StackScene.schema.parse({type: 'FIFO', operations: [{action: 'enqueue', item: 'A'}, {op: 'push', values: ['B', 'C']}, 'dequeue']});
+assert.deepEqual([sk.kind, sk.steps.map((s) => s.do).join()], ['queue', 'push,push,push,pop']);
+const hs = sceneCatalog.HashScene.schema.parse({buckets: 5, keys: ['cat', 'act'], entries: {dog: 'woof'}});
+assert.deepEqual([hs.size, hs.steps.length, hs.entries[0].key], [5, 2, 'dog']);
+const tr = sceneCatalog.TreeScene.schema.parse({type: 'AVL', keys: [10, 20], actions: [{action: 'add', key: 30}, {action: 'traverse', type: 'in-order'}]});
+assert.deepEqual([tr.kind, tr.steps[0].do, tr.steps[1].order], ['avl', 'insert', 'inorder']);
+const gr = sceneCatalog.GraphScene.schema.parse({edges: ['A-B', 'B-C 4'], algorithm: 'dijkstra', start: 'A', goal: 'C'});
+assert.deepEqual([gr.nodes.length, gr.edges[1].weight, gr.steps[0].do, gr.steps[0].to], [3, 4, 'dijkstra', 'C']);
+assert(!sceneCatalog.GraphScene.schema.safeParse({edges: [['A', 'B']], steps: [{do: 'bfs', from: 'Z'}]}).success); // unknown node
+const ll = sceneCatalog.LinkedListScene.schema.parse({nodes: [1, 2], operations: ['append 3', {action: 'remove', node: 1}]});
+assert.deepEqual(ll.steps.map((s) => s.do + ':' + s.value), ['append:3', 'delete:1']);
+const ev = sceneCatalog.EventLoopScene.schema.parse({env: 'browser', events: [{action: 'call', label: 'main'}, {action: 'setTimeout', fn: 'cb', delay: '10ms'}, {action: 'then', name: 'p'}, 'tick', {action: 'console.log', output: 'hi'}]});
+assert.deepEqual([ev.runtime, ...ev.steps.map((s) => s.do)], ['browser', 'call', 'api', 'queue', 'tick', 'log']);
+assert.equal(ev.steps[2].to, 'micro');
+const entries=Object.entries(sceneCatalog).map(([name,e])=>({name,version:'1.0.0',description:e.description,tags:e.tags,path:existsSync(path.join(root,`src/staging/${name}.tsx`))?`rendering/src/staging/${name}.tsx`:`rendering/src/scenes/${({BuildingScene:'InfrastructureScene',TechnologyScene:'InfrastructureScene',CircuitScene:'ConnectionScene',WirelessScene:'ConnectionScene',GraphScene:'TreeScene'})[name]??name}.tsx`,staged:existsSync(path.join(root,`src/staging/${name}.tsx`)),propsSchema:z.toJSONSchema(e.schema,{io:'input'}),example:e.schema.parse({})}));
 await mkdir(path.join(root,'../library'), {recursive:true});
 await writeFile(path.join(root,'../library/registry.json'),JSON.stringify(entries,null,2)+'\n');
 const overlays=overlaySchema.options.map((o)=>{const s=z.toJSONSchema(o,{io:'input'});const type=s.properties.type.const;delete s.properties.type;s.required=(s.required??[]).filter((k)=>k!=='type');return {type,propsSchema:s};});

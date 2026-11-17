@@ -6,9 +6,9 @@ import {pathToFileURL} from 'node:url';
 const root=path.resolve(import.meta.dirname,'..');
 await mkdir(path.join(root,'out'),{recursive:true});
 const file=path.join(root,'out','iso-art-check.mjs');
-await build({stdin:{resolveDir:root,loader:'tsx',contents:`export {createElement} from 'react'; export {renderToStaticMarkup} from 'react-dom/server'; export {IsoArt} from './src/iso/objects'; export {GENERAL_KINDS} from './src/iso/general'; export {ROAD_KINDS} from './src/iso/roads'; export {isoSceneSchema} from './src/scenes/IsoScene'; export {IsoLink} from './src/iso/link'; export {curve} from './src/iso/curve';`},outfile:file,bundle:true,platform:'node',format:'esm',packages:'external',jsx:'automatic'});
-const {createElement:h,renderToStaticMarkup:render,IsoArt,GENERAL_KINDS,ROAD_KINDS,isoSceneSchema,IsoLink,curve}=await import(pathToFileURL(file));
-function art(kind,time=0,highlight=0){const [w,d,height]=(GENERAL_KINDS[kind]??ROAD_KINDS[kind])?.size??[2.8,1.5,2];return render(h('svg',{},h(IsoArt,{kind,id:kind,g:{x:0,y:0,z:0,w,d,h:height},zz:0,T:50,o:{x:150,y:200},sw:2,color:'#b8d6f3',time,highlight})));}
+await build({stdin:{resolveDir:root,loader:'tsx',contents:`export {createElement} from 'react'; export {renderToStaticMarkup} from 'react-dom/server'; export {IsoArt} from './src/iso/objects'; export {GENERAL_KINDS} from './src/iso/general'; export {ROAD_KINDS} from './src/iso/roads'; export {COMMUNICATION_KINDS} from './src/iso/communication'; export {isoSceneSchema} from './src/scenes/IsoScene'; export {IsoLink} from './src/iso/link'; export {curve} from './src/iso/curve';`},outfile:file,bundle:true,platform:'node',format:'esm',packages:'external',jsx:'automatic'});
+const {createElement:h,renderToStaticMarkup:render,IsoArt,GENERAL_KINDS,ROAD_KINDS,COMMUNICATION_KINDS,isoSceneSchema,IsoLink,curve}=await import(pathToFileURL(file));
+function art(kind,time=0,highlight=0){const [w,d,height]=(GENERAL_KINDS[kind]??ROAD_KINDS[kind]??COMMUNICATION_KINDS[kind])?.size??[2.8,1.5,2];return render(h('svg',{},h(IsoArt,{kind,id:kind,g:{x:0,y:0,z:0,w,d,h:height},zz:0,T:50,o:{x:150,y:200},sw:2,color:'#b8d6f3',time,highlight})));}
 for(const kind of Object.keys(GENERAL_KINDS)){
  assert(isoSceneSchema.safeParse({objects:[{id:'a',kind,at:[0,0]}],links:[],steps:[]}).success,kind+' accepted by scene');
  for(const t of [0,.3,2,30]){const svg=art(kind,t);assert(!/NaN|Infinity|undefined/.test(svg),kind+' finite SVG');assert.equal(svg,art(kind,t),kind+' deterministic');}
@@ -36,3 +36,12 @@ assert(art('fourlane').includes('data-marking="lane-dividers"'));
 assert(art('highway').includes('highway-median'));
 for(const [alias,kind] of [['single-lane-road','singlelane'],['two-lane-road','twolane'],['four-lane-road','fourlane'],['divided-highway','highway']]) assert.equal(isoSceneSchema.parse({objects:[{id:'r',kind:alias,at:[0,0]}],links:[],steps:[]}).objects[0].kind,kind);
 console.log('Checked road variants, lane markings, median and aliases.');
+
+for(const kind of Object.keys(COMMUNICATION_KINDS)){
+ assert(isoSceneSchema.safeParse({objects:[{id:'c',kind,at:[0,0]}],links:[],steps:[]}).success);
+ for(const t of [0,.3,2]) {assert(!/NaN|Infinity|undefined/.test(art(kind,t)));assert.equal(art(kind,t),art(kind,t));}
+}
+for(const kind of ['sender','receiver','feedback','noise']) assert.notEqual(art(kind,0),art(kind,.3),kind+' animated');
+assert.notEqual(art('encoder'),art('decoder'),'encoding and decoding are distinct');
+for(const [alias,kind] of [['message-envelope','envelope'],['sender-station','sender'],['receiver-station','receiver'],['feedback-loop','feedback'],['noise-interference','noise']]) assert.equal(isoSceneSchema.parse({objects:[{id:'c',kind:alias,at:[0,0]}],links:[],steps:[]}).objects[0].kind,kind);
+console.log('Checked seven communication kinds, aliases and animated states.');

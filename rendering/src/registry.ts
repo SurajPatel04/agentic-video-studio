@@ -34,6 +34,21 @@ import * as Connection from './scenes/ConnectionScene';
 import * as DeviceDemo from './scenes/DeviceDemoScene';
 import * as Blank from './scenes/BlankScene';
 import * as Iso from './scenes/IsoScene';
+import * as Screen from './scenes/ScreenScene';
+import * as Phone from './scenes/PhoneScene';
+import * as Terminal from './scenes/TerminalScene';
+import * as Editor from './scenes/EditorScene';
+import * as Chat from './scenes/ChatScene';
+import * as Form from './scenes/FormScene';
+import * as Query from './scenes/QueryScene';
+import * as Pipeline from './scenes/PipelineScene';
+import * as Packet from './scenes/PacketScene';
+import * as ArrayS from './scenes/ArrayScene';
+import * as StackS from './scenes/StackScene';
+import * as Hash from './scenes/HashScene';
+import * as Tree from './scenes/TreeScene';
+import * as Linked from './scenes/LinkedListScene';
+import * as EventLoop from './scenes/EventLoopScene';
 
 // A single contract for scene lookup, validation, and LLM discovery.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,6 +90,22 @@ const baseCatalog: Record<string, SceneEntry> = {
   BlankScene: {...Blank, component: Blank.BlankScene, schema: Blank.blankSceneSchema},
   DeviceDemoScene: {...DeviceDemo, component: DeviceDemo.DeviceDemoScene, schema: DeviceDemo.deviceDemoSceneSchema},
   IsoScene: {...Iso, component: Iso.IsoScene, schema: Iso.isoSceneSchema},
+  ScreenScene: {...Screen, component: Screen.ScreenScene, schema: Screen.screenSceneSchema},
+  PhoneScene: {...Phone, component: Phone.PhoneScene, schema: Phone.phoneSceneSchema},
+  TerminalScene: {...Terminal, component: Terminal.TerminalScene, schema: Terminal.terminalSceneSchema},
+  EditorScene: {...Editor, component: Editor.EditorScene, schema: Editor.editorSceneSchema},
+  ChatScene: {...Chat, component: Chat.ChatScene, schema: Chat.chatSceneSchema},
+  FormScene: {...Form, component: Form.FormScene, schema: Form.formSceneSchema},
+  QueryScene: {...Query, component: Query.QueryScene, schema: Query.querySceneSchema},
+  PipelineScene: {...Pipeline, component: Pipeline.PipelineScene, schema: Pipeline.pipelineSceneSchema},
+  PacketScene: {...Packet, component: Packet.PacketScene, schema: Packet.packetSceneSchema},
+  ArrayScene: {...ArrayS, component: ArrayS.ArrayScene, schema: ArrayS.arraySceneSchema},
+  StackScene: {...StackS, component: StackS.StackScene, schema: StackS.stackSceneSchema},
+  HashScene: {...Hash, component: Hash.HashScene, schema: Hash.hashSceneSchema},
+  TreeScene: {component: Tree.TreeScene, schema: Tree.treeSceneSchema, description: Tree.treeDescription, tags: Tree.treeTags},
+  GraphScene: {component: Tree.GraphScene, schema: Tree.graphSceneSchema, description: Tree.graphDescription, tags: Tree.graphTags},
+  LinkedListScene: {...Linked, component: Linked.LinkedListScene, schema: Linked.linkedListSceneSchema},
+  EventLoopScene: {...EventLoop, component: EventLoop.EventLoopScene, schema: EventLoop.eventLoopSceneSchema},
   // <promoted-scenes> (the backend adds promoted agent-made scenes above this line)
   ...stagingCatalog,
 };

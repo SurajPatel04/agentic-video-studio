@@ -26,7 +26,7 @@ from langchain_core.tools import tool
 from app.config import settings
 from app.utils import catalog, skills as teaching_skills
 from app.utils.console import step
-from app.utils.iso import expand_continuations
+from app.utils.iso import expand_continuations, paper_code_scenes
 from app.utils.llm import get_llm, get_tool_llm, text_of, usage_of
 from app.utils.render import RenderError, validate
 
@@ -105,6 +105,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 def _normalize(spec: dict[str, Any]) -> dict[str, Any]:
     expand_continuations(spec)  # IsoScene "continue": carry the previous picture over
+    paper_code_scenes(spec)  # paper-style video: no dark CodeScene
     spec.setdefault("fps", 30)
     spec.setdefault("width", 1920)
     spec.setdefault("height", 1080)

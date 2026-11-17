@@ -1,3 +1,4 @@
+import {createContext, useContext} from 'react';
 import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {z} from 'zod';
 import {Sfx, sfxNames} from '../audio';
@@ -8,6 +9,7 @@ import {IsoLink} from '../iso/link';
 import {along, bendPoint, curve, sample} from '../iso/curve';
 import {IsoArt, Road, iconByName, type ArtKind} from '../iso/objects';
 import {GENERAL_KINDS} from '../iso/general';
+import {COMMUNICATION_KINDS} from '../iso/communication';
 import {ROAD_KINDS, isRoadKind} from '../iso/roads';
 
 /* ----------------------------------------------------------------------------- kinds */
@@ -15,7 +17,9 @@ import {ROAD_KINDS, isRoadKind} from '../iso/roads';
 type Kind = {shape: 'art' | 'people' | 'slab' | 'person'; size: [number, number, number]; color: IsoColor};
 const GENERAL_PRESETS = Object.fromEntries(Object.entries(GENERAL_KINDS).map(([kind, value]) => [kind, {shape: 'art', size: [...value.size], color: value.color}])) as Record<keyof typeof GENERAL_KINDS, Kind>;
 const ROAD_PRESETS = Object.fromEntries(Object.entries(ROAD_KINDS).map(([kind, value]) => [kind, {shape: 'slab', size: [...value.size], color: value.color}])) as Record<keyof typeof ROAD_KINDS, Kind>;
-const KINDS = {
+const COMMUNICATION_PRESETS = Object.fromEntries(Object.entries(COMMUNICATION_KINDS).map(([kind, value]) => [kind, {shape: 'art', size: [...value.size], color: value.color}])) as Record<keyof typeof COMMUNICATION_KINDS, Kind>;
+export const KINDS = {
+  ...COMMUNICATION_PRESETS,
   ...ROAD_PRESETS,
   ...GENERAL_PRESETS,
   server: {shape: 'art', size: [1.5, 1.5, 2.3], color: 'lavender'},
@@ -105,6 +109,15 @@ const KINDS = {
   trafficlight: {shape: 'art', size: [0.8, 0.8, 2.6], color: 'slate'},
   fuelpump: {shape: 'art', size: [1.6, 1.2, 2.4], color: 'coral'},
   mappin: {shape: 'art', size: [1.6, 0.5, 2.4], color: 'coral'},
+  // journalism / newsroom objects
+  reporter: {shape: 'art', size: [1.2, 1.2, 2.4], color: 'sky'},
+  editor: {shape: 'art', size: [1.8, 1.2, 2.2], color: 'lavender'},
+  interview: {shape: 'art', size: [3.6, 1.6, 2.2], color: 'peach'},
+  presspass: {shape: 'art', size: [1.4, 0.4, 1.8], color: 'butter'},
+  recorder: {shape: 'art', size: [1.4, 1.15, 1.5], color: 'slate'},
+  newsdesk: {shape: 'art', size: [3.2, 1.6, 1.4], color: 'butter'},
+  newshub: {shape: 'art', size: [3.4, 2.4, 2.6], color: 'lavender'},
+  sourcedocs: {shape: 'art', size: [2, 1.4, 0.5], color: 'cream'},
   user: {shape: 'person', size: [0.8, 0.8, 1], color: 'sky'},
   people: {shape: 'people', size: [0, 0, 1], color: 'sky'},
   platform: {shape: 'slab', size: [6, 2.4, 0.28], color: 'cream'},
@@ -146,6 +159,8 @@ const linkSchema = z.object({
 // Planners often write a synonym or an icon name as the kind ("users", "microphone", "printer"):
 // map synonyms to the real kind, and any other Lucide icon name to a tile showing that icon.
 const KIND_ALIASES: Record<string, string> = {
+  message: 'envelope', 'message-envelope': 'envelope', 'sender-station': 'sender', 'receiver-station': 'receiver',
+  'feedback-loop': 'feedback', feedbackloop: 'feedback', interference: 'noise', 'noise-interference': 'noise',
   home: 'house', 'bar-chart': 'chart', 'chart-bar': 'chart', barchart: 'chart',
   'pie-chart': 'piechart', 'chart-pie': 'piechart', 'chat-bubble': 'chatbubble', chat: 'chatbubble', 'message-circle': 'chatbubble',
   'sun-and-cloud': 'weather', 'partly-cloudy': 'weather', bulb: 'lightbulb', 'light-bulb': 'lightbulb',
@@ -200,6 +215,14 @@ const KIND_ALIASES: Record<string, string> = {
   'traffic-signal': 'trafficlight', stoplight: 'trafficlight',
   'gas-pump': 'fuelpump', 'petrol-pump': 'fuelpump', 'gas-station': 'fuelpump',
   'map-pin': 'mappin', pin: 'mappin', location: 'mappin', 'location-pin': 'mappin',
+  // journalism / newsroom synonyms
+  journalist: 'reporter', correspondent: 'reporter', newsreader: 'reporter',
+  'news-editor': 'editor', copyeditor: 'editor', proofreader: 'editor',
+  'interview-setup': 'interview', 'press-pass': 'presspass', badge: 'presspass', credentials: 'presspass',
+  'voice-recorder': 'recorder', 'tape-recorder': 'recorder',
+  'newsroom-desk': 'newsdesk', 'news-desk': 'newsdesk',
+  'news-agency': 'newshub', 'agency-hub': 'newshub', 'press-agency': 'newshub',
+  'source-documents': 'sourcedocs', 'source-docs': 'sourcedocs', documents: 'sourcedocs', dossier: 'sourcedocs',
   smartphone: 'phone', mobile: 'phone', 'cell-tower': 'tower', 'radio-tower': 'tower', antenna: 'tower', mast: 'tower',
   document: 'file', paper: 'newspaper', news: 'newspaper', magazine: 'newspaper', office: 'building', company: 'building',
   studio: 'building', newsroom: 'building', advert: 'billboard', ad: 'billboard', poster: 'billboard',
@@ -297,17 +320,19 @@ export const description =
   'plus everyday objects (house, tree, clock, animated bar and pie charts, chat bubble, sun, weather, trophy, flag, ' +
   'lightbulb, gear, magnifier, warning, checkmark, cross) and role figures (chef, worker, police). Clocks and gears ' +
   'turn, charts grow, ECG traces pulse, ambulance lights flash, and links support car flow. All objects are ' +
-  'dropping in and animating on a paper grid. Steps (timed as a fraction of the narration) change loads (⚙ 59% pills), ' +
+  'dropping in and animating on a paper grid. Communication fundamentals include envelope, sender, receiver, ' +
+  'encoder, decoder, feedback loop and noise interference.  Steps (timed as a fraction of the narration) change loads (⚙ 59% pills), ' +
   'highlight, add notes and move the camera. Use for systems, architecture, flows, networking, scaling, ' +
-  'how-things-work, healthcare, education, finance, retail and logistics. With no objects it is a paper title card ' +
-  '(title, subtitle, points).';
+  'how-things-work, healthcare, education, finance, retail, logistics, journalism and newsrooms. With no objects it is ' +
+  'a paper title card (title, subtitle, points).';
 export const tags = ['isometric', 'iso', 'diagram', 'architecture', 'system design', 'server', 'database', 'cache',
   'load balancer', 'scaling', 'cloud', 'users', 'flow', 'paper', '3d', 'infographic',
   'medical', 'healthcare', 'hospital', 'doctor', 'patient', 'ambulance', 'medicine', 'dna', 'science',
   'education', 'school', 'teacher', 'student', 'classroom', 'books', 'graduation', 'backpack',
   'finance', 'money', 'bank', 'coins', 'wallet', 'credit card', 'atm', 'safe', 'piggy bank', 'cash', 'stocks', 'chart',
   'retail', 'business', 'shop', 'cart', 'conveyor', 'warehouse', 'factory', 'office', 'meeting', 'handshake',
-  'transport', 'logistics', 'car', 'truck', 'road', 'bus', 'train', 'airplane', 'ship', 'bicycle', 'map pin'];
+  'transport', 'logistics', 'car', 'truck', 'road', 'bus', 'train', 'airplane', 'ship', 'bicycle', 'map pin',
+  'journalism', 'news', 'newsroom', 'reporter', 'editor', 'interview', 'press pass', 'recorder', 'documents'];
 
 type Props = z.infer<typeof isoSceneSchema>;
 type Obj = Props['objects'][number];
@@ -418,7 +443,11 @@ const num = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /* ----------------------------------------------------------------------------- scene */
 
+/** When set, IsoScene draws only its diagram inside this box (no paper, grid or title): used by ScreenScene's split view. */
+export const IsoRegion = createContext<{left: number; right: number; top: number} | null>(null);
+
 export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
+  const region = useContext(IsoRegion);
   const p = isoSceneSchema.parse(input);
   const f = useCurrentFrame();
   const {fps, width: W, height: H} = useVideoConfig();
@@ -426,17 +455,17 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const u = useUnit();
   const sw = 3 * u;
 
-  const hasTitle = Boolean(p.title || p.eyebrow);
-  const cards = p.points ?? [];
-  const onlyCard = p.objects.length === 0;
+  const hasTitle = !region && Boolean(p.title || p.eyebrow);
+  const cards = region ? [] : p.points ?? [];
+  const onlyCard = !region && p.objects.length === 0;
 
   // ---------- layout: fit every object (+ room for pills/notes) into the free area
   const tall = p.objects.map(() => true); // pill room for every object, so the layout depends only on positions (continued scenes match)
   const geos = separate(p.objects.map(geometry), tall, p.objects.map((ob) => ob.id));
-  const top = hasTitle ? (p.subtitle ? 250 : 205) * u : 80 * u;
+  const top = region ? region.top : hasTitle ? (p.subtitle ? 250 : 205) * u : 80 * u;
   const bottom = H - 200 * u; // captions live below
-  const right = cards.length ? W - 600 * u : W - 90 * u;
-  const left = 90 * u;
+  const right = region ? region.right : cards.length ? W - 600 * u : W - 90 * u;
+  const left = region ? region.left : 90 * u;
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   geos.forEach((g, i) => {
     for (const [a, b] of [[g.x, g.y], [g.x + g.w, g.y], [g.x + g.w, g.y + g.d], [g.x, g.y + g.d]]) {
@@ -656,9 +685,9 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   });
 
   return (
-    <AbsoluteFill style={{background: `radial-gradient(ellipse at 50% 45%, ${PAPER.bgCenter} 0%, ${PAPER.bg} 70%)`, fontFamily: PAPER.sans}}>
+    <AbsoluteFill style={{background: region ? 'transparent' : `radial-gradient(ellipse at 50% 45%, ${PAPER.bgCenter} 0%, ${PAPER.bg} 70%)`, fontFamily: PAPER.sans}}>
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', inset: 0}}>
-        <path d={gridLines.join('')} stroke={PAPER.grid} strokeWidth={1.2 * u} fill="none" opacity={gridIn} />
+        {region ? null : <path d={gridLines.join('')} stroke={PAPER.grid} strokeWidth={1.2 * u} fill="none" opacity={gridIn} />}
         <defs><clipPath id="iso-stage"><rect x={0} y={hasTitle && !onlyCard ? top - 55 * u : 0} width={W} height={H} /></clipPath></defs>
         <g clipPath="url(#iso-stage)"><g transform={camera}>
           {slabs.map(renderObject)}

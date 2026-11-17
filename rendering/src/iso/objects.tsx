@@ -11,6 +11,7 @@ import {C30, faces, PAPER, poly, project, S30, shade, type Pt} from './iso';
 import {IsoBox, IsoCylinder, IsoShadow} from './shapes';
 import {GeneralArt, GENERAL_KINDS, type GeneralKind} from './general';
 import {RoadArt, isRoadKind, type RoadKind} from './roads';
+import {CommunicationArt, COMMUNICATION_KINDS, type CommunicationKind} from './communication';
 export {RoadArt as Road} from './roads';
 
 export type Space = {T: number; o: Pt; sw: number};
@@ -1660,21 +1661,600 @@ const MapPin: FC<ArtProps> = ({g, zz, T, o, sw, color}) => {
   );
 };
 
+/* --------------------------------------------------------- journalism & newsroom objects */
+
+/** Reporter: a standing correspondent in a belted trench coat, holding up a flagged mic and a notepad. */
+const Reporter: FC<ArtProps> = ({g, zz, T, o, sw, color}) => {
+  const c = project(g.x + g.w / 2, g.y + g.d / 2, zz, T, o);
+  const h = g.h * T, bw = g.w * T * 0.72, hr = bw * 0.29;
+  const coat = shade(color, -0.04), skin = '#f6d3b6', hair = '#3a3550';
+  const mic = {x: bw * 0.66, y: -h * 0.86};
+  return (
+    <g transform={`translate(${c.x} ${c.y})`}>
+      <ellipse cx={0} cy={0} rx={bw} ry={sw * 2.6} fill={PAPER.shadow} />
+      {/* shoes */}
+      <rect x={-bw * 0.3} y={-h * 0.045} width={bw * 0.26} height={h * 0.055} rx={sw * 0.8} fill="#3a3550" stroke={PAPER.ink} strokeWidth={sw * 0.6} />
+      <rect x={bw * 0.05} y={-h * 0.045} width={bw * 0.26} height={h * 0.055} rx={sw * 0.8} fill="#3a3550" stroke={PAPER.ink} strokeWidth={sw * 0.6} />
+      {/* trousers */}
+      <rect x={-bw * 0.27} y={-h * 0.34} width={bw * 0.2} height={h * 0.31} rx={sw} fill={shade(color, -0.4)} stroke={PAPER.ink} strokeWidth={sw * 0.7} />
+      <rect x={bw * 0.07} y={-h * 0.34} width={bw * 0.2} height={h * 0.31} rx={sw} fill={shade(color, -0.4)} stroke={PAPER.ink} strokeWidth={sw * 0.7} />
+      {/* trench coat */}
+      <path d={`M${-bw * 0.44},${-h * 0.71} L${bw * 0.44},${-h * 0.71} L${bw * 0.52},${-h * 0.26} L${-bw * 0.52},${-h * 0.26} Z`} fill={coat} stroke={PAPER.ink} strokeWidth={sw * 0.9} strokeLinejoin="round" />
+      <path d={`M${-bw * 0.18},${-h * 0.72} L0,${-h * 0.5} L${bw * 0.18},${-h * 0.72} Z`} fill="#fffaf1" stroke={PAPER.ink} strokeWidth={sw * 0.5} />
+      <path d={`M${-bw * 0.44},${-h * 0.71} L${-bw * 0.1},${-h * 0.47} L${-bw * 0.32},${-h * 0.69} Z`} fill={shade(coat, 0.14)} stroke={PAPER.ink} strokeWidth={sw * 0.5} strokeLinejoin="round" />
+      <path d={`M${bw * 0.44},${-h * 0.71} L${bw * 0.1},${-h * 0.47} L${bw * 0.32},${-h * 0.69} Z`} fill={shade(coat, 0.14)} stroke={PAPER.ink} strokeWidth={sw * 0.5} strokeLinejoin="round" />
+      <line x1={0} y1={-h * 0.5} x2={0} y2={-h * 0.27} stroke={PAPER.ink} strokeWidth={sw * 0.5} opacity={0.4} />
+      {/* belt */}
+      <rect x={-bw * 0.5} y={-h * 0.45} width={bw} height={h * 0.045} fill={shade(color, -0.36)} stroke={PAPER.ink} strokeWidth={sw * 0.4} />
+      <rect x={-bw * 0.07} y={-h * 0.462} width={bw * 0.14} height={h * 0.058} rx={sw * 0.5} fill="#f4da93" stroke={PAPER.ink} strokeWidth={sw * 0.4} />
+      {[0, 1].map((k) => <circle key={k} cx={bw * 0.27} cy={-h * (0.39 - k * 0.07)} r={sw * 0.75} fill={INK_LINE} />)}
+      {/* press badge */}
+      <g transform={`translate(${-bw * 0.27} ${-h * 0.62}) rotate(-5)`}>
+        <rect x={-bw * 0.12} y={0} width={bw * 0.24} height={bw * 0.16} rx={sw * 0.4} fill={PAPER.card} stroke={PAPER.ink} strokeWidth={sw * 0.5} />
+        <rect x={-bw * 0.1} y={sw * 0.5} width={bw * 0.2} height={bw * 0.05} fill={PAPER.bad} />
+        <line x1={-bw * 0.075} y1={bw * 0.12} x2={bw * 0.02} y2={bw * 0.12} stroke={INK_LINE} strokeWidth={sw * 0.5} />
+      </g>
+      {/* notepad arm */}
+      {limb({x: -bw * 0.38, y: -h * 0.62}, {x: -bw * 0.58, y: -h * 0.42}, bw * 0.17, coat, sw)}
+      <g transform={`translate(${-bw * 0.64} ${-h * 0.44}) rotate(-14)`}>
+        <rect x={-bw * 0.16} y={0} width={bw * 0.32} height={bw * 0.24} rx={sw * 0.5} fill={PAPER.card} stroke={PAPER.ink} strokeWidth={sw * 0.6} />
+        {[0, 1, 2].map((k) => <line key={k} x1={-bw * 0.11} x2={bw * (k === 2 ? 0.03 : 0.11)} y1={bw * (0.055 + k * 0.05)} y2={bw * (0.055 + k * 0.05)} stroke={INK_LINE} strokeWidth={sw * 0.5} opacity={0.65} />)}
+      </g>
+      {/* raised mic arm */}
+      {limb({x: bw * 0.36, y: -h * 0.63}, {x: mic.x, y: mic.y + h * 0.05}, bw * 0.17, coat, sw)}
+      {/* mic flag */}
+      <g transform={`translate(${mic.x - sw * 1.4} ${mic.y - sw * 3.2}) rotate(-9)`}>
+        <rect x={0} y={0} width={bw * 0.4} height={bw * 0.17} rx={sw * 0.7} fill={PAPER.bad} stroke={PAPER.ink} strokeWidth={sw * 0.7} />
+        <rect x={sw * 0.7} y={sw * 0.7} width={bw * 0.34} height={bw * 0.12} rx={sw * 0.4} fill={shade(PAPER.bad, -0.12)} stroke="none" />
+        <text x={bw * 0.2} y={bw * 0.135} textAnchor="middle" fontFamily={PAPER.sans} fontWeight={800} fontSize={bw * 0.078} fill="#fffaf1" letterSpacing={bw * 0.006}>NEWS</text>
+      </g>
+      <circle cx={mic.x} cy={mic.y} r={sw * 3.5} fill="#4a5068" stroke={PAPER.ink} strokeWidth={sw * 0.7} />
+      <circle cx={mic.x} cy={mic.y} r={sw * 1.7} fill="none" stroke="#8890a8" strokeWidth={sw * 0.5} opacity={0.8} />
+      <line x1={mic.x} y1={mic.y + sw * 3.2} x2={mic.x} y2={mic.y + sw * 5.2} stroke={PAPER.ink} strokeWidth={sw * 1.2} strokeLinecap="round" />
+      <path d={`M${mic.x},${mic.y + sw * 5.2} q${-bw * 0.2},${h * 0.14} ${-bw * 0.44},${h * 0.2}`} fill="none" stroke={PAPER.ink} strokeWidth={sw * 0.6} opacity={0.5} />
+      {/* head */}
+      <circle cx={0} cy={-h * 0.82} r={hr} fill={skin} stroke={PAPER.ink} strokeWidth={sw * 0.8} />
+      <path d={`M${-hr},${-h * 0.83} A${hr},${hr} 0 0 1 ${hr},${-h * 0.83} L${hr * 0.72},${-h * 0.87} A${hr * 0.8},${hr * 0.8} 0 0 0 ${-hr * 0.72},${-h * 0.87} Z`} fill={hair} />
+      <path d={`M${hr * 0.86},${-h * 0.8} q${hr * 0.22},${h * 0.02} ${hr * 0.02},${h * 0.05}`} fill="none" stroke={hair} strokeWidth={sw * 1.2} strokeLinecap="round" />
+    </g>
+  );
+};
+
+/** Editor: a figure in a green eyeshade marking up proofs at a slanted copy desk. */
+const Editor: FC<ArtProps> = ({id, g, zz, T, o, sw, color}) => {
+  const P = (x: number, y: number, z: number) => project(x, y, z, T, o);
+  const bx0 = g.x + 0.12, bx1 = g.x + g.w * 0.64;
+  const by0 = g.y + 0.16, by1 = g.y + g.d * 0.84;
+  const zTop = zz + g.h * 0.58, zBot = zz + g.h * 0.36;
+  const b0 = P(bx0, by0, zTop), b1 = P(bx1, by0, zTop), b2 = P(bx1, by1, zBot), b3 = P(bx0, by1, zBot);
+  // (u, v) on the slanted board -> screen
+  const B = (u: number, v: number): Pt => {
+    const a = {x: b0.x + (b1.x - b0.x) * u, y: b0.y + (b1.y - b0.y) * u};
+    const b = {x: b3.x + (b2.x - b3.x) * u, y: b3.y + (b2.y - b3.y) * u};
+    return {x: a.x + (b.x - a.x) * v, y: a.y + (b.y - a.y) * v};
+  };
+  const c = P(g.x + g.w * 0.79, g.y + g.d * 0.62, zz);
+  const h = g.h * T * 0.9, bw = g.w * T * 0.3, hr = bw * 0.3;
+  const skin = '#f6d3b6', hair = '#5a4a42';
+  const hand = B(0.6, 0.5);
+  return (
+    <g>
+      {/* copy desk: four legs and a slanted board */}
+      {[[bx0 + 0.05, by0 + 0.03, zTop], [bx1 - 0.13, by0 + 0.03, zTop], [bx0 + 0.05, by1 - 0.12, zBot], [bx1 - 0.13, by1 - 0.12, zBot]].map(([x, y, z], k) => (
+        <IsoBox key={k} id={`${id}-leg${k}`} x={x} y={y} z={zz} w={0.08} d={0.08} h={z - zz} color={shade(color, -0.34)} T={T} o={o} sw={sw * 0.7} radius={1} />
+      ))}
+      <polygon points={poly([b0, b1, b2, b3])} fill={shade(color, 0.1)} stroke={PAPER.ink} strokeWidth={sw} strokeLinejoin="round" />
+      <polygon points={poly([b3, b2, {x: b2.x, y: b2.y + sw * 3.4}, {x: b3.x, y: b3.y + sw * 3.4}])} fill={shade(color, -0.22)} stroke={PAPER.ink} strokeWidth={sw * 0.7} strokeLinejoin="round" />
+      {/* proof sheet on the board */}
+      <polygon points={poly([B(0.05, 0.07), B(0.95, 0.07), B(0.95, 0.94), B(0.05, 0.94)])} fill="#d8d1e7" stroke={PAPER.ink} strokeWidth={sw * 0.7} strokeLinejoin="round" />
+      <polygon points={poly([B(0.07, 0.08), B(0.93, 0.08), B(0.93, 0.92), B(0.07, 0.92)])} fill={PAPER.card} stroke={PAPER.ink} strokeWidth={sw * 0.55} strokeLinejoin="round" />
+      {(() => {
+        const R = (u0: number, v0: number, u1: number, v1: number, fill: string, opacity = 1, extra?: object) => (
+          <polygon points={poly([B(u0, v0), B(u1, v0), B(u1, v1), B(u0, v1)])} fill={fill} opacity={opacity} {...extra} />
+        );
+        const rule = (u0: number, v0: number, u1: number, v1: number, w = 1.4, op = 1) => (
+          <line x1={B(u0, v0).x} y1={B(u0, v0).y} x2={B(u1, v1).x} y2={B(u1, v1).y} stroke={PAPER.ink} strokeWidth={sw * w} opacity={op} />
+        );
+        return <>
+          {/* masthead + edition tag */}
+          {R(0.1, 0.1, 0.55, 0.18, PAPER.ink)}
+          {R(0.6, 0.105, 0.88, 0.16, PAPER.bad, 0.9)}
+          {rule(0.1, 0.205, 0.9, 0.205, 1.6)}
+          {/* headline and deck */}
+          {R(0.1, 0.24, 0.86, 0.31, PAPER.ink)}
+          {R(0.1, 0.325, 0.6, 0.348, INK_LINE, 0.6)}
+          {/* left column: photo + caption + copy */}
+          {R(0.1, 0.39, 0.44, 0.61, '#9fc4ec', 1, {stroke: PAPER.ink, strokeWidth: sw * 0.8})}
+          {R(0.13, 0.43, 0.41, 0.455, '#d9e8f7', 0.8)}
+          <circle cx={B(0.2, 0.55).x} cy={B(0.2, 0.55).y} r={T * 0.035} fill={shade(color, -0.28)} />
+          {R(0.27, 0.52, 0.41, 0.58, shade(color, -0.2), 0.85)}
+          {[0.66, 0.705, 0.75, 0.795, 0.84, 0.885].map((v, k) => R(0.1, v, 0.1 + (k === 5 ? 0.22 : 0.32), v + 0.022, INK_LINE, 0.55))}
+          {/* right column copy */}
+          {R(0.49, 0.39, 0.9, 0.412, INK_LINE, 0.7)}
+          {[0.44, 0.48, 0.52, 0.56, 0.6, 0.64, 0.685, 0.73, 0.775, 0.82, 0.865].map((v, k) => R(0.49, v, 0.49 + (k % 4 === 3 ? 0.3 : 0.41), v + 0.02, INK_LINE, 0.5))}
+          {R(0.49, 0.665, 0.76, 0.695, '#f4da93', 0.95)}
+          {R(0.49, 0.88, 0.68, 0.9, PAPER.bad, 0.85)}
+          {/* red editor marks */}
+          <polygon points={poly([B(0.47, 0.63), B(0.79, 0.625), B(0.8, 0.71), B(0.48, 0.72)])} fill="none" stroke={PAPER.bad} strokeWidth={sw * 1.3} strokeLinejoin="round" opacity={0.9} />
+          <polyline points={poly([B(0.1, 0.63), B(0.16, 0.635), B(0.13, 0.685)])} fill="none" stroke={PAPER.bad} strokeWidth={sw * 1.1} strokeLinejoin="round" />
+          <line x1={B(0.08, 0.24).x} y1={B(0.08, 0.24).y} x2={B(0.08, 0.88).x} y2={B(0.08, 0.88).y} stroke={PAPER.bad} strokeWidth={sw * 0.8} opacity={0.55} />
+          <polyline points={poly([B(0.84, 0.24), B(0.88, 0.25), B(0.87, 0.3)])} fill="none" stroke={PAPER.bad} strokeWidth={sw * 1.1} strokeLinejoin="round" />
+        </>;
+      })()}
+      <g transform={`translate(${hand.x} ${hand.y}) rotate(-34)`}>
+        <rect x={-T * 0.023} y={-T * 0.15} width={T * 0.046} height={T * 0.2} rx={T * 0.012} fill={PAPER.bad} stroke={PAPER.ink} strokeWidth={sw * 0.55} />
+        <rect x={-T * 0.023} y={-T * 0.15} width={T * 0.046} height={T * 0.028} fill={shade(PAPER.bad, -0.25)} />
+        <polygon points={poly([{x: -T * 0.016, y: -T * 0.15}, {x: T * 0.016, y: -T * 0.15}, {x: 0, y: -T * 0.2}])} fill="#2b2833" stroke={PAPER.ink} strokeWidth={sw * 0.4} strokeLinejoin="round" />
+        <circle cx={0} cy={T * 0.04} r={T * 0.05} fill="#f0c39f" stroke={PAPER.ink} strokeWidth={sw * 0.55} />
+        <path d={`M${-T * 0.035},${T * 0.02} q${T * 0.035},${T * 0.022} ${T * 0.07},0`} fill="none" stroke={PAPER.ink} strokeWidth={sw * 0.45} opacity={0.6} />
+      </g>
+      {/* editor */}
+      <g transform={`translate(${c.x} ${c.y})`}>
+        <ellipse cx={0} cy={0} rx={bw * 0.95} ry={sw * 2.5} fill={PAPER.shadow} />
+        <rect x={-bw * 0.28} y={-h * 0.04} width={bw * 0.22} height={h * 0.05} rx={sw * 0.8} fill="#3a3550" stroke={PAPER.ink} strokeWidth={sw * 0.6} />
+        <rect x={bw * 0.06} y={-h * 0.04} width={bw * 0.22} height={h * 0.05} rx={sw * 0.8} fill="#3a3550" stroke={PAPER.ink} strokeWidth={sw * 0.6} />
+        <rect x={-bw * 0.25} y={-h * 0.35} width={bw * 0.19} height={h * 0.32} rx={sw} fill={shade(color, -0.44)} stroke={PAPER.ink} strokeWidth={sw * 0.7} />
+        <rect x={bw * 0.06} y={-h * 0.35} width={bw * 0.19} height={h * 0.32} rx={sw} fill={shade(color, -0.44)} stroke={PAPER.ink} strokeWidth={sw * 0.7} />
+        <path d={`M${-bw * 0.42},${-h * 0.7} L${bw * 0.42},${-h * 0.7} L${bw * 0.48},${-h * 0.28} L${-bw * 0.48},${-h * 0.28} Z`} fill={color} stroke={PAPER.ink} strokeWidth={sw * 0.9} strokeLinejoin="round" />
+        <line x1={-bw * 0.2} y1={-h * 0.68} x2={-bw * 0.3} y2={-h * 0.3} stroke={shade(color, -0.42)} strokeWidth={sw * 1.8} />
+        <line x1={bw * 0.2} y1={-h * 0.68} x2={bw * 0.3} y2={-h * 0.3} stroke={shade(color, -0.42)} strokeWidth={sw * 1.8} />
+        <path d={`M${-bw * 0.12},${-h * 0.7} L0,${-h * 0.66} L${bw * 0.12},${-h * 0.7} L${bw * 0.1},${-h * 0.61} L0,${-h * 0.64} L${-bw * 0.1},${-h * 0.61} Z`} fill={PAPER.bad} stroke={PAPER.ink} strokeWidth={sw * 0.5} strokeLinejoin="round" />
+        {/* far arm resting */}
+        {limb({x: bw * 0.38, y: -h * 0.62}, {x: bw * 0.56, y: -h * 0.33}, bw * 0.16, color, sw)}
+        <circle cx={bw * 0.56} cy={-h * 0.32} r={sw * 2.2} fill={skin} stroke={PAPER.ink} strokeWidth={sw * 0.6} />
+        {/* arm reaching to the proof */}
+        {limb({x: -bw * 0.38, y: -h * 0.62}, {x: -bw * 0.72, y: -h * 0.5}, bw * 0.16, color, sw)}
+        {limb({x: -bw * 0.72, y: -h * 0.5}, {x: hand.x - c.x, y: hand.y - c.y}, bw * 0.13, skin, sw)}
+        {/* head */}
+        <circle cx={0} cy={-h * 0.81} r={hr} fill={skin} stroke={PAPER.ink} strokeWidth={sw * 0.8} />
+        <path d={`M${-hr},${-h * 0.82} A${hr},${hr} 0 0 1 ${hr},${-h * 0.82} L${hr * 0.72},${-h * 0.87} A${hr * 0.8},${hr * 0.8} 0 0 0 ${-hr * 0.72},${-h * 0.87} Z`} fill={hair} />
+        {/* green eyeshade */}
+        <path d={`M${-hr * 1.04},${-h * 0.85} L${hr * 1.04},${-h * 0.85} L${hr * 0.86},${-h * 0.78} L${-hr * 0.86},${-h * 0.78} Z`} fill="#7fbf9a" stroke={PAPER.ink} strokeWidth={sw * 0.6} strokeLinejoin="round" />
+        <path d={`M${-hr * 0.92},${-h * 0.86} L${hr * 0.92},${-h * 0.86}`} stroke={shade('#7fbf9a', -0.35)} strokeWidth={sw * 1.1} />
+        {/* glasses */}
+        {[-hr * 0.4, hr * 0.4].map((x) => <circle key={x} cx={x} cy={-h * 0.78} r={hr * 0.26} fill="none" stroke={PAPER.ink} strokeWidth={sw * 0.6} />)}
+        <line x1={-hr * 0.15} y1={-h * 0.78} x2={hr * 0.15} y2={-h * 0.78} stroke={PAPER.ink} strokeWidth={sw * 0.6} />
+        {/* pencil behind the ear */}
+        <line x1={hr * 0.8} y1={-h * 0.8} x2={hr * 1.16} y2={-h * 0.72} stroke="#f4c178" strokeWidth={sw * 1.8} strokeLinecap="round" />
+        <circle cx={hr * 1.18} cy={-h * 0.715} r={sw * 0.9} fill={PAPER.bad} />
+      </g>
+    </g>
+  );
+};
+
+/** Interview setup: two seated speakers, a low table, a boom mic, an on-air lamp and a tripod camera. */
+const Interview: FC<ArtProps> = ({id, g, zz, T, o, sw, color}) => {
+  const P = (x: number, y: number, z: number) => project(x, y, z, T, o);
+  const seatZ = zz + 0.4, tableZ = zz + 0.44;
+  const cx = g.x + g.w * 0.5, cy = g.y + g.d * 0.46;
+  const skin = '#f6d3b6';
+  const chair = (u: number) => {
+    const x = g.x + g.w * u, y = g.y + g.d * 0.4;
+    return (
+      <g key={u}>
+        {[[x - 0.24, y - 0.2], [x + 0.16, y - 0.2], [x - 0.24, y + 0.14], [x + 0.16, y + 0.14]].map(([lx, ly], k) => (
+          <IsoBox key={k} id={`${id}-cl${u}${k}`} x={lx} y={ly} z={zz} w={0.08} d={0.08} h={0.4} color={shade(color, -0.4)} T={T} o={o} sw={sw * 0.7} radius={1} />
+        ))}
+        <IsoBox id={`${id}-cs${u}`} x={x - 0.28} y={y - 0.24} z={seatZ} w={0.56} d={0.5} h={0.07} color={shade(color, -0.16)} T={T} o={o} sw={sw} radius={T * 0.05} />
+        <IsoBox id={`${id}-cb${u}`} x={x - 0.28} y={y - 0.33} z={seatZ} w={0.56} d={0.08} h={0.58} color={shade(color, -0.08)} T={T} o={o} sw={sw} radius={T * 0.03} />
+      </g>
+    );
+  };
+  const person = (u: number, shirt: string, hair: string) => {
+    const x = g.x + g.w * u, y = g.y + g.d * 0.4;
+    const q = P(x, y, seatZ + 0.07);
+    const s = g.w * T * 0.1;
+    return (
+      <g key={u} transform={`translate(${q.x} ${q.y})`}>
+        <path d={`M${-s * 0.46},${-s * 0.05} L${s * 0.46},${-s * 0.05} L${s * 0.56},${s * 0.4} L${-s * 0.56},${s * 0.4} Z`} fill="#424c66" stroke={PAPER.ink} strokeWidth={sw * 0.7} strokeLinejoin="round" />
+        <line x1={0} y1={-s * 0.03} x2={0} y2={s * 0.38} stroke="#2f3850" strokeWidth={sw * 0.6} opacity={0.8} />
+        <path d={`M${-s * 0.48},${-s * 1.24} L${s * 0.48},${-s * 1.24} L${s * 0.6},${-s * 0.02} L${-s * 0.6},${-s * 0.02} Z`} fill={shirt} stroke={PAPER.ink} strokeWidth={sw * 0.85} strokeLinejoin="round" />
+        <path d={`M${-s * 0.16},${-s * 1.24} L0,${-s * 0.98} L${s * 0.16},${-s * 1.24} Z`} fill="#fffaf1" stroke={PAPER.ink} strokeWidth={sw * 0.5} />
+        <path d={`M${-s * 0.48},${-s * 1.24} L${-s * 0.12},${-s * 0.94} L${-s * 0.34},${-s * 1.2} Z`} fill={shade(shirt, 0.16)} stroke={PAPER.ink} strokeWidth={sw * 0.45} strokeLinejoin="round" />
+        <path d={`M${s * 0.48},${-s * 1.24} L${s * 0.12},${-s * 0.94} L${s * 0.34},${-s * 1.2} Z`} fill={shade(shirt, 0.16)} stroke={PAPER.ink} strokeWidth={sw * 0.45} strokeLinejoin="round" />
+        {limb({x: -s * 0.44, y: -s * 1.12}, {x: -s * 0.56, y: -s * 0.2}, s * 0.22, shade(shirt, -0.05), sw)}
+        {limb({x: s * 0.44, y: -s * 1.12}, {x: s * 0.56, y: -s * 0.2}, s * 0.22, shade(shirt, -0.05), sw)}
+        <circle cx={-s * 0.56} cy={-s * 0.16} r={s * 0.14} fill={skin} stroke={PAPER.ink} strokeWidth={sw * 0.5} />
+        <circle cx={s * 0.56} cy={-s * 0.16} r={s * 0.14} fill={skin} stroke={PAPER.ink} strokeWidth={sw * 0.5} />
+        <circle cx={0} cy={-s * 1.62} r={s * 0.42} fill={skin} stroke={PAPER.ink} strokeWidth={sw * 0.8} />
+        <path d={`M${-s * 0.42},${-s * 1.64} A${s * 0.42},${s * 0.42} 0 0 1 ${s * 0.42},${-s * 1.64} L${s * 0.3},${-s * 1.7} A${s * 0.34},${s * 0.34} 0 0 0 ${-s * 0.3},${-s * 1.7} Z`} fill={hair} />
+      </g>
+    );
+  };
+  // on-air light on a stand behind the guest
+  const lamp = P(g.x + 0.04, g.y + 0.16, zz);
+  const lampLift = T * 1.0;
+  const lampW = T * 0.62, lampH = T * 0.26;
+  // boom mic arm reaching over the table
+  const mx = cx + 0.05, my = g.y + g.d * 0.16;
+  const micBase = P(mx, my, zz), micTop = P(mx, my, zz + 1.28);
+  const armEnd = {x: micTop.x + T * 0.44, y: micTop.y - T * 0.04};
+  const micTip = {x: armEnd.x - T * 0.04, y: armEnd.y + T * 0.26};
+  // camera on a tripod in the left foreground, lens pointing at the speakers
+  const camX = g.x + g.w * 0.14, camY = g.y + g.d * 0.96;
+  const apex = P(camX, camY, zz + 0.92);
+  return (
+    <g>
+      <line x1={lamp.x} y1={lamp.y} x2={lamp.x} y2={lamp.y - lampLift} stroke={PAPER.ink} strokeWidth={sw * 1.6} strokeLinecap="round" />
+      <line x1={lamp.x - T * 0.12} y1={lamp.y - T * 0.02} x2={lamp.x + T * 0.12} y2={lamp.y - T * 0.02} stroke={PAPER.ink} strokeWidth={sw * 1.3} strokeLinecap="round" />
+      <ellipse cx={lamp.x} cy={lamp.y} rx={T * 0.14} ry={sw * 2.2} fill={shade(color, -0.5)} stroke={PAPER.ink} strokeWidth={sw * 0.6} />
+      <rect x={lamp.x - lampW / 2} y={lamp.y - lampLift - lampH} width={lampW} height={lampH} rx={T * 0.04} fill="#3a3550" stroke={PAPER.ink} strokeWidth={sw * 0.8} />
+      <rect x={lamp.x - lampW / 2 + sw * 1.2} y={lamp.y - lampLift - lampH + sw * 1.2} width={lampW - sw * 2.4} height={lampH - sw * 2.4} rx={T * 0.025} fill={PAPER.bad} stroke={PAPER.ink} strokeWidth={sw * 0.4} />
+      <text x={lamp.x} y={lamp.y - lampLift - lampH * 0.28} textAnchor="middle" fontFamily={PAPER.sans} fontWeight={800} fontSize={lampH * 0.42} fill="#fffaf1" letterSpacing={T * 0.005}>ON AIR</text>
+      {/* chairs and speakers */}
+      {chair(0.2)}{chair(0.8)}
+      {person(0.2, color, '#3a3550')}{person(0.8, '#9fc4eb', '#5a4a42')}
+      {/* boom mic */}
+      <circle cx={micBase.x} cy={micBase.y} r={sw * 2.6} fill={shade(color, -0.4)} stroke={PAPER.ink} strokeWidth={sw * 0.7} />
+      <line x1={micBase.x} y1={micBase.y} x2={micTop.x} y2={micTop.y} stroke={PAPER.ink} strokeWidth={sw * 1.5} strokeLinecap="round" />
+      <circle cx={micTop.x} cy={micTop.y} r={sw * 1.4} fill={shade(color, -0.2)} stroke={PAPER.ink} strokeWidth={sw * 0.5} />
+      {limb({x: micTop.x, y: micTop.y}, armEnd, sw * 1.7, '#4a5068', sw * 0.6)}
+      <line x1={micTop.x} y1={micTop.y} x2={micTop.x - T * 0.12} y2={micTop.y + T * 0.07} stroke={PAPER.ink} strokeWidth={sw * 1.2} strokeLinecap="round" />
+      <line x1={armEnd.x} y1={armEnd.y} x2={micTip.x} y2={micTip.y} stroke={PAPER.ink} strokeWidth={sw * 0.9} strokeLinecap="round" />
+      <g transform={`rotate(30 ${micTip.x} ${micTip.y})`}>
+        <rect x={micTip.x - T * 0.035} y={micTip.y - T * 0.12} width={T * 0.07} height={T * 0.2} rx={T * 0.035} fill="#4a5068" stroke={PAPER.ink} strokeWidth={sw * 0.6} />
+        <rect x={micTip.x - T * 0.06} y={micTip.y + T * 0.02} width={T * 0.12} height={T * 0.09} rx={T * 0.045} fill="#2f3a55" stroke={PAPER.ink} strokeWidth={sw * 0.5} />
+      </g>
+      <path d={`M${micBase.x},${micBase.y} q${T * 0.2},${T * 0.24} ${T * 0.5},${T * 0.18}`} fill="none" stroke={PAPER.ink} strokeWidth={sw * 0.6} opacity={0.5} />
+      {/* low table */}
+      {[[cx - 0.42, cy - 0.2], [cx + 0.34, cy - 0.2], [cx - 0.42, cy + 0.18], [cx + 0.34, cy + 0.18]].map(([x, y], k) => (
+        <IsoBox key={k} id={`${id}-tl${k}`} x={x} y={y} z={zz} w={0.08} d={0.08} h={tableZ - zz} color={shade(color, -0.4)} T={T} o={o} sw={sw * 0.7} radius={1} />
+      ))}
+      <IsoBox id={`${id}-table`} x={cx - 0.46} y={cy - 0.26} z={tableZ} w={0.92} d={0.52} h={0.07} color="#f2e9da" T={T} o={o} sw={sw} radius={T * 0.05} />
+      {[-0.24, 0.24].map((dx, k) => (
+        <g key={k}>
+          <IsoCylinder cx={cx + dx} cy={cy + 0.04} z={tableZ + 0.07} r={0.1} h={0.2} color={k === 0 ? '#f3b9c6' : '#b0dfda'} T={T} o={o} sw={sw * 0.7} bands={1} />
+          <path d={`M${P(cx + dx + 0.1, cy + 0.04, tableZ + 0.17).x},${P(cx + dx + 0.1, cy + 0.04, tableZ + 0.17).y} q${T * 0.08},${T * 0.03} 0,${T * 0.09}`} fill="none" stroke={PAPER.ink} strokeWidth={sw * 0.7} />
+        </g>
+      ))}
+      <IsoBox id={`${id}-rec`} x={cx - 0.14} y={cy - 0.12} z={tableZ + 0.07} w={0.28} d={0.16} h={0.07} color={shade(color, -0.28)} T={T} o={o} sw={sw * 0.6} radius={T * 0.03} />
+      <circle cx={P(cx, cy - 0.04, tableZ + 0.14).x} cy={P(cx, cy - 0.04, tableZ + 0.14).y} r={sw * 0.9} fill={PAPER.bad} />
+      {/* camera on tripod */}
+      {[[camX - 0.26, camY - 0.14], [camX + 0.26, camY - 0.14], [camX, camY + 0.22]].map(([x, y], k) => {
+        const foot = P(x, y, zz);
+        return <g key={k}><line x1={apex.x} y1={apex.y} x2={foot.x} y2={foot.y} stroke={PAPER.ink} strokeWidth={sw * 1.1} strokeLinecap="round" /><circle cx={foot.x} cy={foot.y} r={sw * 1.2} fill="#3a3550" /></g>;
+      })}
+      <rect x={apex.x - T * 0.29} y={apex.y - T * 0.18} width={T * 0.58} height={T * 0.36} rx={T * 0.05} fill={shade(color, -0.12)} stroke={PAPER.ink} strokeWidth={sw * 0.9} />
+      <rect x={apex.x + T * 0.26} y={apex.y - T * 0.11} width={T * 0.13} height={T * 0.22} rx={T * 0.03} fill={shade(color, -0.28)} stroke={PAPER.ink} strokeWidth={sw * 0.7} />
+      <circle cx={apex.x + T * 0.39} cy={apex.y} r={T * 0.1} fill={SCREEN} stroke={PAPER.ink} strokeWidth={sw * 0.8} />
+      <circle cx={apex.x + T * 0.39} cy={apex.y} r={T * 0.045} fill="#7f8aa8" />
+      <path d={`M${apex.x + T * 0.47},${apex.y - T * 0.11} l${T * 0.06},${T * 0.03} l0,${T * 0.16} l${-T * 0.06},${T * 0.03}`} fill={shade(color, -0.34)} stroke={PAPER.ink} strokeWidth={sw * 0.6} strokeLinejoin="round" />
+      <rect x={apex.x - T * 0.22} y={apex.y - T * 0.3} width={T * 0.34} height={T * 0.12} rx={T * 0.02} fill={shade(color, 0.2)} stroke={PAPER.ink} strokeWidth={sw * 0.6} />
+      <circle cx={apex.x - T * 0.22} cy={apex.y - T * 0.12} r={sw * 1.5} fill={PAPER.bad} stroke={PAPER.ink} strokeWidth={sw * 0.4} />
+      <path d={`M${apex.x - T * 0.1},${apex.y - T * 0.26} q${T * 0.14},${-T * 0.1} ${T * 0.28},0`} fill="none" stroke={PAPER.ink} strokeWidth={sw * 1.2} strokeLinecap="round" />
+      <line x1={apex.x - T * 0.2} y1={apex.y + T * 0.18} x2={apex.x} y2={apex.y + T * 0.06} stroke={PAPER.ink} strokeWidth={sw * 1.1} />
+      <line x1={apex.x + T * 0.2} y1={apex.y + T * 0.18} x2={apex.x} y2={apex.y + T * 0.06} stroke={PAPER.ink} strokeWidth={sw * 1.1} />
+    </g>
+  );
+};
+
+/** Press pass: a laminate credential card on a lanyard, with a photo, PRESS band and barcode. */
+const PressPass: FC<ArtProps> = (p) => {
+  const {id, g, zz, T, o, sw, color} = p;
+  const back: Geo = {x: g.x + g.w * 0.3, y: g.y + g.d * 0.3, z: zz + 0.02, w: g.w * 0.66, d: 0.06, h: g.h * 0.6};
+  const card: Geo = {x: g.x + g.w * 0.12, y: g.y + g.d * 0.4, z: zz + 0.05, w: g.w * 0.74, d: 0.07, h: g.h * 0.68};
+  const cw = card.w, ch = card.h;
+  const clip = project(card.x + cw / 2, card.y + card.d / 2, card.z + ch, T, o);
+  const loop = T * 0.4;
+  const strap = `M${clip.x - 3},${clip.y} C${clip.x - T * 0.3},${clip.y - loop * 0.45} ${clip.x - T * 0.24},${clip.y - loop} ${clip.x},${clip.y - loop} C${clip.x + T * 0.24},${clip.y - loop} ${clip.x + T * 0.3},${clip.y - loop * 0.45} ${clip.x + 3},${clip.y}`;
+  return (
+    <g>
+      <IsoShadow x={card.x - 0.06} y={card.y - 0.02} w={cw + 0.12} d={card.d + 0.2} opacity={0.45} T={T} o={o} sw={sw} />
+      <IsoBox id={`${id}-back`} x={back.x} y={back.y} z={back.z} w={back.w} d={back.d} h={back.h} color={shade(color, -0.14)} T={T} o={o} sw={sw * 0.8} radius={T * 0.05} />
+      <Decorated {...p} g={card} zz={card.z} radius={T * 0.05} front={<>
+        <rect x={0} y={0} width={cw} height={ch * 0.22} rx={0.018} fill={PAPER.bad} />
+        <text x={cw / 2} y={ch * 0.155} textAnchor="middle" fontFamily={PAPER.sans} fontWeight={800} fontSize={ch * 0.13} fill="#fffaf1" letterSpacing={ch * 0.02}>PRESS</text>
+        <rect x={cw * 0.07} y={ch * 0.3} width={cw * 0.38} height={ch * 0.34} rx={ch * 0.02} fill="#b8d6f3" stroke={PAPER.ink} strokeWidth={line(T, sw, 0.6)} />
+        <circle cx={cw * 0.26} cy={ch * 0.42} r={ch * 0.075} fill={shade(color, -0.35)} />
+        <path d={`M${cw * 0.15},${ch * 0.6} q${cw * 0.11},${-ch * 0.14} ${cw * 0.22},0`} fill={shade(color, -0.35)} />
+        {[0, 1, 2].map((k) => <rect key={k} x={cw * 0.52} y={ch * (0.32 + k * 0.085)} width={cw * (k === 1 ? 0.3 : 0.38)} height={ch * 0.045} rx={ch * 0.02} fill={INK_LINE} opacity={0.65} />)}
+        <rect x={cw * 0.52} y={ch * 0.62} width={cw * 0.18} height={ch * 0.05} rx={ch * 0.025} fill={PAPER.bad} />
+        {Array.from({length: 11}, (_, k) => <rect key={k} x={cw * 0.52 + k * cw * 0.033} y={ch * 0.76 + (k % 3) * ch * 0.012} width={cw * 0.012} height={ch * (0.13 - (k % 3) * 0.02)} fill={PAPER.ink} />)}
+        <circle cx={cw * 0.8} cy={ch * 0.83} r={ch * 0.06} fill="#b9e2c7" stroke={PAPER.ink} strokeWidth={line(T, sw, 0.4)} opacity={0.85} />
+        <polygon points={`${cw * 0.66},0 ${cw * 0.88},0 ${cw * 0.46},${ch} ${cw * 0.26},${ch}`} fill="#ffffff" opacity={0.14} />
+      </>} />
+      <rect x={clip.x - T * 0.07} y={clip.y - T * 0.05} width={T * 0.14} height={T * 0.16} rx={T * 0.03} fill="#b9bfd0" stroke={PAPER.ink} strokeWidth={sw * 0.7} />
+      <rect x={clip.x - T * 0.03} y={clip.y + T * 0.005} width={T * 0.06} height={T * 0.07} rx={T * 0.012} fill={PAPER.ink} opacity={0.45} />
+      <path d={strap} fill="none" stroke={PAPER.ink} strokeWidth={sw * 2.2} strokeLinecap="round" />
+      <path d={strap} fill="none" stroke={PAPER.bad} strokeWidth={sw * 1.1} strokeLinecap="round" />
+    </g>
+  );
+};
+
+/** Recorder: an upright handheld recorder with a dual-capsule mic, REC screen and speaker grille. */
+const Recorder: FC<ArtProps> = (p) => {
+  const {g, zz, T, o, sw, color} = p;
+  const body: Geo = {x: g.x + g.w * 0.2, y: g.y + g.d * 0.46, z: zz, w: g.w * 0.6, d: 0.24, h: g.h * 0.86};
+  const bw = body.w, bh = body.h;
+  const wave = Array.from({length: 10}, (_, k) => `${(bw * (0.12 + k * 0.075)).toFixed(2)},${(bh * (0.28 + Math.sin(k * 1.9) * 0.038)).toFixed(2)}`).join(' ');
+  return (
+    <g>
+      <IsoShadow x={body.x} y={body.y} w={bw} d={body.d} opacity={0.5} T={T} o={o} sw={sw} />
+      <Decorated {...p} g={body} radius={T * 0.09}
+        front={<>
+          <rect x={bw * 0.08} y={bh * 0.06} width={bw * 0.84} height={bh * 0.34} rx={0.02} fill={SCREEN} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.6)} />
+          <circle cx={bw * 0.17} cy={bh * 0.12} r={0.02} fill={PAPER.bad} />
+          <text x={bw * 0.24} y={bh * 0.155} fontFamily={PAPER.font} fontWeight={700} fontSize={bh * 0.085} fill="#f4a596">REC</text>
+          <polyline points={wave} fill="none" stroke={LED} strokeWidth={line(T, sw, 0.8)} strokeLinejoin="round" />
+          <circle cx={bw * 0.2} cy={bh * 0.48} r={0.075} fill={PAPER.bad} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.5)} />
+          <rect x={bw * 0.36} y={bh * 0.455} width={bw * 0.2} height={bh * 0.05} rx={0.012} fill={shade(color, -0.35)} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.4)} />
+          <rect x={bw * 0.6} y={bh * 0.455} width={bw * 0.2} height={bh * 0.05} rx={0.012} fill={shade(color, -0.2)} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.4)} />
+          {Array.from({length: 4}, (_, r) => Array.from({length: 6}, (_, c) => (
+            <circle key={`${r}-${c}`} cx={bw * (0.14 + c * 0.13)} cy={bh * (0.6 + r * 0.06)} r={0.009} fill={shade(color, -0.45)} />
+          )))}
+        </>}
+        side={<>
+          <rect x={body.d * 0.28} y={bh * 0.1} width={body.d * 0.44} height={bh * 0.16} rx={0.01} fill={shade(color, -0.3)} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.4)} />
+          <rect x={body.d * 0.28} y={bh * 0.55} width={body.d * 0.44} height={bh * 0.22} rx={0.01} fill={shade(color, -0.2)} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.4)} />
+        </>}
+        top={<rect x={bw * 0.12} y={body.d * 0.3} width={bw * 0.76} height={body.d * 0.4} rx={0.008} fill={shade(color, -0.3)} opacity={0.45} />}
+      />
+      {/* stereo capsules */}
+      <IsoCylinder cx={body.x + bw * 0.28} cy={body.y + body.d / 2} z={zz + bh} r={0.09} h={0.17} color="#4a5068" T={T} o={o} sw={sw * 0.7} bands={2} />
+      <IsoCylinder cx={body.x + bw * 0.72} cy={body.y + body.d / 2} z={zz + bh} r={0.09} h={0.17} color="#4a5068" T={T} o={o} sw={sw * 0.7} bands={2} />
+      {(() => { const led = project(body.x + bw * 0.5, body.y + body.d / 2, zz + bh + 0.02, T, o); return <circle cx={led.x} cy={led.y} r={sw * 0.9} fill={PAPER.bad} />; })()}
+    </g>
+  );
+};
+
+/** Newsroom desk: a studio desk with a NEWS front panel, two monitors, a mic, papers and a chair. */
+const NewsDesk: FC<ArtProps> = (p) => {
+  const {id, g, zz, T, o, sw, color} = p;
+  const topZ = zz + g.h * 0.58;
+  const deskW = g.w * 0.84;
+  const desk: Geo = {x: g.x, y: g.y, z: topZ, w: deskW, d: g.d, h: 0.1};
+  const panel: Geo = {x: g.x + 0.08, y: g.y + g.d - 0.1, z: zz, w: deskW - 0.16, d: 0.1, h: topZ - zz};
+  const monW = deskW * 0.3, monH = g.h * 0.5;
+  const monitors: Geo[] = [0.11, 0.47].map((u) => ({x: g.x + deskW * u, y: g.y + g.d * 0.16, z: topZ + 0.2, w: monW, d: 0.14, h: monH}));
+  const P = (x: number, y: number, z: number) => project(x, y, z, T, o);
+  const chairX = g.x + deskW * 0.6, chairY = g.y - 0.18;
+  const mug = P(g.x + deskW * 0.2, g.y + g.d * 0.68, topZ + 0.1);
+  const micBase = P(g.x + deskW * 0.5, g.y + g.d * 0.55, topZ + 0.1);
+  return (
+    <g>
+      {/* chair */}
+      {[[chairX - 0.18, chairY - 0.1], [chairX + 0.16, chairY - 0.1], [chairX - 0.18, chairY + 0.3], [chairX + 0.16, chairY + 0.3]].map(([x, y], k) => (
+        <IsoBox key={k} id={`${id}-cl${k}`} x={x} y={y} z={zz} w={0.07} d={0.07} h={0.42} color={shade(color, -0.42)} T={T} o={o} sw={sw * 0.7} radius={1} />
+      ))}
+      <IsoBox id={`${id}-seat`} x={chairX - 0.3} y={chairY + 0.02} z={zz + 0.42} w={0.6} d={0.5} h={0.08} color={shade(color, -0.12)} T={T} o={o} sw={sw} radius={T * 0.05} />
+      <IsoBox id={`${id}-back`} x={chairX - 0.3} y={chairY - 0.08} z={zz + 0.42} w={0.6} d={0.08} h={0.66} color={shade(color, -0.06)} T={T} o={o} sw={sw} radius={T * 0.05} />
+      {/* desk body: front panel with the NEWS wordmark */}
+      <IsoBox id={`${id}-panel`} {...panel} color={shade(color, -0.02)} T={T} o={o} sw={sw} radius={T * 0.03} />
+      <g transform={face('front', panel, zz, p)}>
+        <rect x={0.05} y={0} width={panel.w - 0.1} height={0.13} fill={PAPER.bad} />
+        {[0, 1, 2, 3, 4].map((k) => <rect key={k} x={0.12 + k * 0.16} y={0.045} width={0.1} height={0.04} fill="#fffaf1" opacity={0.9} />)}
+        <text x={panel.w / 2} y={panel.h * 0.44} textAnchor="middle" fontFamily={PAPER.sans} fontWeight={800} fontSize={0.34} fill={shade(color, -0.55)} letterSpacing={0.05}>NEWS</text>
+        <text x={panel.w / 2} y={panel.h * 0.6} textAnchor="middle" fontFamily={PAPER.font} fontWeight={700} fontSize={0.11} fill={shade(color, -0.4)} letterSpacing={0.03}>THE DAILY DESK</text>
+        <rect x={0.05} y={panel.h - 0.09} width={panel.w - 0.1} height={0.05} fill={shade(color, -0.35)} opacity={0.7} />
+      </g>
+      <IsoBox id={`${id}-top`} {...desk} color={shade('#f4da93', 0.08)} T={T} o={o} sw={sw} radius={T * 0.04} />
+      {/* monitors */}
+      {monitors.map((s, k) => (
+        <g key={k}>
+          <IsoBox id={`${id}-foot${k}`} x={s.x + s.w / 2 - 0.16} y={s.y + s.d / 2 - 0.1} z={topZ + 0.1} w={0.32} d={0.2} h={0.06} color={shade(color, -0.3)} T={T} o={o} sw={sw * 0.7} radius={T * 0.03} />
+          <IsoBox id={`${id}-neck${k}`} x={s.x + s.w / 2 - 0.07} y={s.y + s.d / 2 - 0.05} z={topZ + 0.16} w={0.14} d={0.1} h={0.05} color={shade(color, -0.42)} T={T} o={o} sw={sw * 0.7} radius={1} />
+          <Decorated {...p} id={`${id}-mon${k}`} g={s} zz={s.z} radius={T * 0.04} front={<>
+            <rect x={s.w * 0.05} y={s.h * 0.04} width={s.w * 0.9} height={s.h * 0.92} rx={0.02} fill={SCREEN} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.6)} />
+            <rect x={s.w * 0.08} y={s.h * 0.08} width={s.w * 0.84} height={s.h * 0.16} fill={PAPER.bad} />
+            <rect x={s.w * 0.11} y={s.h * 0.115} width={s.w * 0.4} height={s.h * 0.05} fill="#fffaf1" opacity={0.9} />
+            <rect x={s.w * 0.08} y={s.h * 0.3} width={s.w * 0.5} height={s.h * 0.4} rx={0.012} fill="#9fc4ec" />
+            <rect x={s.w * 0.62} y={s.h * 0.3} width={s.w * 0.3} height={s.h * 0.05} fill={PAPER.card} opacity={0.8} />
+            <rect x={s.w * 0.62} y={s.h * 0.39} width={s.w * 0.3} height={s.h * 0.05} fill={PAPER.card} opacity={0.55} />
+            <rect x={s.w * 0.62} y={s.h * 0.48} width={s.w * 0.24} height={s.h * 0.05} fill={PAPER.card} opacity={0.55} />
+            <rect x={s.w * 0.08} y={s.h * 0.76} width={s.w * 0.84} height={s.h * 0.14} rx={0.012} fill={shade(color, -0.05)} />
+            <circle cx={s.w * 0.13} cy={s.h * 0.83} r={s.h * 0.035} fill={PAPER.bad} />
+          </>} />
+        </g>
+      ))}
+      {/* desk mic */}
+      <IsoCylinder cx={g.x + deskW * 0.5} cy={g.y + g.d * 0.55} z={topZ + 0.1} r={0.11} h={0.05} color={shade(color, -0.3)} T={T} o={o} sw={sw * 0.7} bands={1} />
+      <line x1={micBase.x} y1={micBase.y} x2={micBase.x} y2={micBase.y - T * 0.46} stroke={PAPER.ink} strokeWidth={sw * 1.3} strokeLinecap="round" />
+      <circle cx={micBase.x} cy={micBase.y - T * 0.46} r={sw * 1.2} fill={shade(color, -0.45)} stroke={PAPER.ink} strokeWidth={sw * 0.5} />
+      <line x1={micBase.x} y1={micBase.y - T * 0.46} x2={micBase.x + T * 0.045} y2={micBase.y - T * 0.55} stroke={PAPER.ink} strokeWidth={sw * 1.1} strokeLinecap="round" />
+      <g transform={`rotate(-18 ${micBase.x + T * 0.055} ${micBase.y - T * 0.58})`}>
+        <rect x={micBase.x - T * 0.035} y={micBase.y - T * 0.66} width={T * 0.18} height={T * 0.16} rx={T * 0.08} fill="#4a5068" stroke={PAPER.ink} strokeWidth={sw * 0.7} />
+        {[0.53, 0.565, 0.6].map((v) => <line key={v} x1={micBase.x - T * 0.005} y1={micBase.y - T * v} x2={micBase.x + T * 0.05} y2={micBase.y - T * v} stroke="#8890a8" strokeWidth={sw * 0.45} />)}
+        <rect x={micBase.x - T * 0.035} y={micBase.y - T * 0.52} width={T * 0.05} height={T * 0.03} rx={T * 0.015} fill={PAPER.bad} />
+      </g>
+      {/* mug */}
+      <IsoCylinder cx={g.x + deskW * 0.2} cy={g.y + g.d * 0.68} z={topZ + 0.1} r={0.1} h={0.2} color="#f3b9c6" T={T} o={o} sw={sw * 0.7} bands={1} />
+      <path d={`M${mug.x + T * 0.08},${mug.y - T * 0.14} q${T * 0.12},${T * 0.03} 0,${T * 0.09}`} fill="none" stroke={PAPER.ink} strokeWidth={sw * 0.8} />
+      {/* proof sheets */}
+      <IsoBox id={`${id}-paper`} x={g.x + deskW * 0.3} y={g.y + g.d * 0.66} z={topZ + 0.1} w={0.52} d={0.34} h={0.035} color={PAPER.card} T={T} o={o} sw={sw * 0.5} radius={T * 0.02} />
+      <g transform={face('top', {x: g.x + deskW * 0.3, y: g.y + g.d * 0.66, z: topZ + 0.1, w: 0.52, d: 0.34, h: 0.035}, topZ + 0.1, {T, o, sw})}>
+        <rect x={0.06} y={0.06} width={0.22} height={0.04} fill={PAPER.ink} />
+        {[0, 1, 2].map((k) => <rect key={k} x={0.06} y={0.14 + k * 0.055} width={0.38 - k * 0.08} height={0.025} fill={INK_LINE} opacity={0.5} />)}
+      </g>
+      {/* phone */}
+      <IsoBox id={`${id}-phone`} x={g.x + deskW * 0.64} y={g.y + g.d * 0.66} z={topZ + 0.1} w={0.3} d={0.2} h={0.07} color={shade(color, -0.28)} T={T} o={o} sw={sw * 0.6} radius={T * 0.03} />
+      <IsoBox id={`${id}-handset`} x={g.x + deskW * 0.66} y={g.y + g.d * 0.7} z={topZ + 0.17} w={0.26} d={0.08} h={0.04} color={shade(color, -0.5)} T={T} o={o} sw={sw * 0.5} radius={T * 0.02} />
+    </g>
+  );
+};
+
+/** News-agency hub: a stepped HQ tower with a satellite dish, beacon mast and three wire outposts. */
+const NewsHub: FC<ArtProps> = ({id, g, zz, T, o, sw, color}) => {
+  const P = (x: number, y: number, z: number) => project(x, y, z, T, o);
+  const pad: Geo = {x: g.x + 0.06, y: g.y + 0.12, z: zz, w: g.w - 0.12, d: g.d - 0.24, h: 0.08};
+  const cx = g.x + g.w * 0.5, cy = g.y + g.d * 0.44;
+  const t1: Geo = {x: cx - g.w * 0.19, y: cy - g.d * 0.19, z: zz + 0.08, w: g.w * 0.38, d: g.d * 0.38, h: g.h * 0.5};
+  const t2: Geo = {x: cx - g.w * 0.15, y: cy - g.d * 0.15, z: t1.z + t1.h, w: g.w * 0.3, d: g.d * 0.3, h: g.h * 0.22};
+  const t3: Geo = {x: cx - g.w * 0.11, y: cy - g.d * 0.11, z: t2.z + t2.h, w: g.w * 0.22, d: g.d * 0.22, h: g.h * 0.1};
+  const roofZ = t3.z + t3.h;
+  const outs = [
+    {x: g.x + 0.16, y: g.y + g.d - 0.82},
+    {x: g.x + g.w - 0.78, y: g.y + g.d - 0.82},
+    {x: g.x + g.w - 0.72, y: g.y + 0.2},
+  ];
+  const dish = P(cx + g.w * 0.05, cy - 0.02, roofZ + 0.34);
+  const mount = P(cx + g.w * 0.05, cy - 0.02, roofZ);
+  const feed = {x: dish.x + T * 0.17, y: dish.y - T * 0.12};
+  const mastBase = P(cx - g.w * 0.07, cy + 0.02, roofZ);
+  return (
+    <g>
+      <IsoShadow x={pad.x} y={pad.y} w={pad.w} d={pad.d} opacity={0.55} T={T} o={o} sw={sw} />
+      <IsoBox id={`${id}-pad`} {...pad} color={shade(color, 0.24)} T={T} o={o} sw={sw * 0.8} radius={T * 0.05} />
+      {/* dashed wire links from the roof to the outposts */}
+      {outs.map((n, k) => {
+        const nx = n.x + 0.3, ny = n.y + 0.23;
+        const fx = Math.max(t3.x + 0.05, Math.min(t3.x + t3.w - 0.05, nx));
+        const fy = Math.max(t3.y + 0.05, Math.min(t3.y + t3.d - 0.05, ny));
+        const from = P(fx, fy, roofZ + 0.01);
+        const to = P(nx, ny, zz + 0.5);
+        const mid = {x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 - T * 0.3};
+        return (
+          <g key={`link${k}`}>
+            <path d={`M${from.x},${from.y} Q${mid.x},${mid.y} ${to.x},${to.y}`} fill="none" stroke={PAPER.ink} strokeWidth={sw * 1.1} strokeDasharray={`${sw * 3.2} ${sw * 2.2}`} opacity={0.7} />
+            <circle cx={from.x} cy={from.y} r={sw * 1.4} fill={PAPER.ink} opacity={0.75} />
+            <circle cx={to.x} cy={to.y} r={sw * 1.6} fill={shade(color, -0.2)} stroke={PAPER.ink} strokeWidth={sw * 0.5} />
+          </g>
+        );
+      })}
+      {/* outposts */}
+      {outs.map((n, k) => {
+        const scr: Geo = {x: n.x + 0.06, y: n.y + 0.19, z: zz + 0.32, w: 0.48, d: 0.06, h: 0.38};
+        const ant = project(n.x + 0.3, n.y + 0.22, scr.z + scr.h, T, o);
+        return (
+          <g key={`out${k}`}>
+            <IsoBox id={`${id}-ob${k}`} x={n.x} y={n.y} z={zz + 0.08} w={0.6} d={0.5} h={0.24} color={shade(color, -0.12)} T={T} o={o} sw={sw * 0.8} radius={T * 0.04} />
+            <Decorated id={`${id}-os${k}`} g={scr} zz={scr.z} color={shade(color, 0.16)} T={T} o={o} sw={sw} radius={T * 0.03} front={<>
+              <rect x={0.04} y={0.04} width={scr.w - 0.08} height={scr.h - 0.08} rx={0.015} fill={SCREEN} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.5)} />
+              <rect x={0.07} y={0.07} width={scr.w - 0.14} height={scr.h * 0.18} fill={PAPER.bad} />
+              <rect x={0.1} y={scr.h * 0.34} width={scr.w * 0.5} height={scr.h * 0.07} fill={PAPER.card} opacity={0.75} />
+              <rect x={0.1} y={scr.h * 0.48} width={scr.w * 0.7} height={scr.h * 0.06} fill={PAPER.card} opacity={0.5} />
+              <rect x={0.1} y={scr.h * 0.61} width={scr.w * 0.4} height={scr.h * 0.06} fill={PAPER.card} opacity={0.5} />
+            </>} />
+            <line x1={ant.x} y1={ant.y} x2={ant.x} y2={ant.y - T * 0.22} stroke={PAPER.ink} strokeWidth={sw * 1.1} strokeLinecap="round" />
+            <circle cx={ant.x} cy={ant.y - T * 0.23} r={sw * 1.2} fill={PAPER.bad} stroke={PAPER.ink} strokeWidth={sw * 0.4} />
+          </g>
+        );
+      })}
+      {/* tower: three setbacks */}
+      <IsoBox id={`${id}-t1`} {...t1} color={color} T={T} o={o} sw={sw} radius={T * 0.05} />
+      <g transform={face('front', t1, t1.z, {T, o, sw})}>
+        {Array.from({length: 4}, (_, c) => Array.from({length: 3}, (_, r) => (
+          <rect key={`${c}-${r}`} x={0.12 + c * ((t1.w - 0.24) / 4)} y={0.14 + r * ((t1.h * 0.4) / 3)} width={(t1.w - 0.24) / 4 - 0.08} height={(t1.h * 0.4) / 3 - 0.1} rx={0.028}
+            fill={(r + c) % 4 === 0 ? '#f4da93' : '#9fc4ec'} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.35)} />
+        )))}
+        <rect x={0} y={t1.h * 0.51} width={t1.w} height={t1.h * 0.145} fill={PAPER.bad} />
+        <text x={t1.w / 2} y={t1.h * 0.615} textAnchor="middle" fontFamily={PAPER.sans} fontWeight={800} fontSize={t1.h * 0.105} fill="#fffaf1" letterSpacing={0.035}>NEWS</text>
+        <rect x={t1.w / 2 - 0.2} y={t1.h - 0.45} width={0.4} height={0.45} rx={0.035} fill={shade(color, -0.38)} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.5)} />
+        <rect x={t1.w / 2 - 0.2} y={t1.h - 0.45} width={0.4} height={0.055} rx={0.02} fill={shade(color, -0.5)} opacity={0.8} />
+        <circle cx={t1.w / 2 + 0.11} cy={t1.h - 0.24} r={0.015} fill="#f4da93" />
+        <rect x={t1.w / 2 - 0.06} y={t1.h - 0.36} width={0.22} height={0.14} rx={0.02} fill="#9fc4ec" opacity={0.55} />
+      </g>
+      <g transform={face('side', t1, t1.z, {T, o, sw})}>
+        {Array.from({length: 3}, (_, c) => Array.from({length: 3}, (_, r) => (
+          <rect key={`${c}-${r}`} x={0.1 + c * ((t1.d - 0.2) / 3)} y={0.14 + r * ((t1.h * 0.4) / 3)} width={(t1.d - 0.2) / 3 - 0.08} height={(t1.h * 0.4) / 3 - 0.1} rx={0.028}
+            fill="#9fc4ec" stroke={PAPER.ink} strokeWidth={line(T, sw, 0.35)} opacity={0.9} />
+        )))}
+        <rect x={t1.d * 0.36} y={t1.h - 0.4} width={t1.d * 0.3} height={0.4} rx={0.02} fill="#6d7185" stroke={PAPER.ink} strokeWidth={line(T, sw, 0.5)} />
+        {[0.1, 0.2, 0.3].map((v) => <line key={v} x1={t1.d * 0.38} y1={t1.h - 0.4 + v} x2={t1.d * 0.64} y2={t1.h - 0.4 + v} stroke="#c9cbd6" strokeWidth={line(T, sw, 0.4)} opacity={0.6} />)}
+      </g>
+      <IsoBox id={`${id}-t2`} {...t2} color={shade(color, 0.04)} T={T} o={o} sw={sw} radius={T * 0.04} />
+      <g transform={face('front', t2, t2.z, {T, o, sw})}>
+        {Array.from({length: 3}, (_, c) => (
+          <rect key={c} x={0.12 + c * ((t2.w - 0.24) / 3)} y={t2.h * 0.24} width={(t2.w - 0.24) / 3 - 0.07} height={t2.h * 0.4} rx={0.03} fill="#9fc4ec" stroke={PAPER.ink} strokeWidth={line(T, sw, 0.35)} />
+        ))}
+      </g>
+      <IsoBox id={`${id}-t3`} {...t3} color={shade(color, 0.1)} T={T} o={o} sw={sw} radius={T * 0.04} />
+      <g transform={face('front', t3, t3.z, {T, o, sw})}>
+        {[0.16, 0.56].map((u) => (
+          <rect key={u} x={t3.w * u} y={0.07} width={t3.w * 0.26} height={0.1} rx={0.018} fill="#9fc4ec" stroke={PAPER.ink} strokeWidth={line(T, sw, 0.4)} />
+        ))}
+      </g>
+      {/* roof dish + mast */}
+      <line x1={mount.x} y1={mount.y} x2={dish.x} y2={dish.y} stroke={PAPER.ink} strokeWidth={sw * 1.3} strokeLinecap="round" />
+      <ellipse cx={dish.x} cy={dish.y} rx={T * 0.3} ry={T * 0.105} fill={PAPER.card} stroke={PAPER.ink} strokeWidth={sw} transform={`rotate(-24 ${dish.x} ${dish.y})`} />
+      <ellipse cx={dish.x} cy={dish.y} rx={T * 0.2} ry={T * 0.07} fill="#dfe3ee" stroke={PAPER.ink} strokeWidth={sw * 0.5} opacity={0.7} transform={`rotate(-24 ${dish.x} ${dish.y})`} />
+      <line x1={dish.x} y1={dish.y} x2={feed.x} y2={feed.y} stroke={PAPER.ink} strokeWidth={sw * 0.9} strokeLinecap="round" />
+      <circle cx={feed.x} cy={feed.y} r={sw * 1.3} fill={PAPER.ink} />
+      {[0.34, 0.5].map((r, k) => {
+        const R = T * r, a0 = -2.0, a1 = -0.55;
+        const p0 = {x: feed.x + R * Math.cos(a0), y: feed.y + R * Math.sin(a0)};
+        const p1 = {x: feed.x + R * Math.cos(a1), y: feed.y + R * Math.sin(a1)};
+        return <path key={k} d={`M${p0.x},${p0.y} A${R},${R} 0 0 1 ${p1.x},${p1.y}`} fill="none" stroke={PAPER.bad} strokeWidth={sw * 0.9} opacity={0.55 - k * 0.14} strokeLinecap="round" />;
+      })}
+      <line x1={mastBase.x} y1={mastBase.y} x2={mastBase.x} y2={mastBase.y - T * 0.62} stroke={PAPER.ink} strokeWidth={sw * 1.2} strokeLinecap="round" />
+      <line x1={mastBase.x - T * 0.08} y1={mastBase.y - T * 0.44} x2={mastBase.x + T * 0.08} y2={mastBase.y - T * 0.44} stroke={PAPER.ink} strokeWidth={sw * 0.8} />
+      <circle cx={mastBase.x} cy={mastBase.y - T * 0.64} r={sw * 1.4} fill={PAPER.bad} stroke={PAPER.ink} strokeWidth={sw * 0.4} />
+    </g>
+  );
+};
+
+/** Source documents: a manila folder of fanned papers with highlights, redactions and a stamp. */
+const SourceDocs: FC<ArtProps> = (p) => {
+  const {T, sw, g, zz, id, o} = p;
+  const manila = '#dfc07c';
+  const folder: Geo = {x: g.x, y: g.y, z: zz, w: g.w, d: g.d, h: 0.1};
+  const tab: Geo = {x: g.x + g.w * 0.52, y: g.y - 0.03, z: zz + 0.1, w: g.w * 0.3, d: 0.1, h: 0.035};
+  const p1: Geo = {x: g.x + 0.06, y: g.y + 0.06, z: zz + 0.1, w: g.w - 0.12, d: g.d - 0.12, h: 0.035};
+  const p2: Geo = {x: g.x + 0.14, y: g.y + 0.14, z: zz + 0.135, w: g.w * 0.68, d: g.d * 0.58, h: 0.035};
+  const w = p2.w, d = p2.d;
+  return (
+    <g>
+      <IsoShadow x={g.x + 0.05} y={g.y + 0.06} w={g.w} d={g.d} opacity={0.5} T={T} o={o} sw={sw} />
+      <IsoBox id={`${id}-folder`} {...folder} color={manila} T={T} o={o} sw={sw} radius={T * 0.02} />
+      <IsoBox id={`${id}-tab`} {...tab} color={shade(manila, 0.12)} T={T} o={o} sw={sw * 0.7} radius={T * 0.02} />
+      <IsoBox id={`${id}-p1`} {...p1} color={shade('#fffaf1', -0.04)} T={T} o={o} sw={sw * 0.6} radius={T * 0.015} />
+      <Decorated {...p} g={p2} zz={p2.z} radius={T * 0.015} top={<>
+        <rect x={0.02} y={0.02} width={w - 0.04} height={d - 0.04} rx={0.008} fill={PAPER.card} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.45)} />
+        {/* masthead and column rules */}
+        <rect x={0.1} y={0.09} width={w * 0.46} height={0.07} fill={PAPER.ink} />
+        <rect x={w - 0.08 - w * 0.16} y={0.09} width={w * 0.16} height={0.07} fill={PAPER.bad} opacity={0.85} />
+        <line x1={0.08} y1={0.2} x2={w - 0.08} y2={0.2} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.9)} />
+        <line x1={w * 0.42} y1={0.24} x2={w * 0.42} y2={d - 0.12} stroke={INK_LINE} strokeWidth={line(T, sw, 0.4)} opacity={0.5} />
+        {/* headline + body text in two columns */}
+        <rect x={0.1} y={0.26} width={w * 0.26} height={0.07} fill={PAPER.ink} />
+        {[0.37, 0.44, 0.51, 0.58, 0.65, 0.72].map((v, k) => (
+          <rect key={v} x={0.1} y={v} width={w * (k === 5 ? 0.16 : 0.25)} height={0.028} fill={INK_LINE} opacity={0.55} />
+        ))}
+        <rect x={0.1} y={0.47} width={w * 0.26} height={0.045} fill="#f4da93" opacity={0.9} />
+        {[0.26, 0.33, 0.4, 0.47, 0.54, 0.61, 0.68, 0.75].map((v, k) => (
+          <rect key={v} x={w * 0.46} y={v} width={w * (k % 4 === 3 ? 0.28 : 0.44)} height={0.026} fill={INK_LINE} opacity={0.5} />
+        ))}
+        <rect x={w * 0.46} y={0.34} width={w * 0.2} height={0.035} fill={PAPER.ink} opacity={0.75} />
+        <rect x={w * 0.46} y={0.6} width={w * 0.26} height={0.045} fill="#f4da93" opacity={0.9} />
+        <rect x={w * 0.46} y={0.7} width={w * 0.3} height={0.05} fill={PAPER.ink} />
+        {/* red ink marks */}
+        <polyline points={`${w * 0.12},${0.39} ${w * 0.2},${0.385} ${w * 0.22},${0.44}`} fill="none" stroke={PAPER.bad} strokeWidth={line(T, sw, 1)} strokeLinejoin="round" />
+        <circle cx={w * 0.3} cy={0.49} r={0.07} fill="none" stroke={PAPER.bad} strokeWidth={line(T, sw, 0.9)} />
+        <path d={`M${w * 0.5},${d * 0.86} q${w * 0.08},${-0.06} ${w * 0.16},0`} fill="none" stroke={PAPER.bad} strokeWidth={line(T, sw, 1.1)} strokeLinecap="round" />
+        {/* confidential stamp */}
+        <g transform={`rotate(-9 ${w * 0.66} ${d * 0.66})`} opacity={0.92}>
+          <rect x={w * 0.38} y={d * 0.56} width={w * 0.52} height={0.17} rx={0.014} fill="none" stroke={PAPER.bad} strokeWidth={line(T, sw, 1.3)} />
+          <rect x={w * 0.4} y={d * 0.578} width={w * 0.48} height={0.13} rx={0.01} fill="none" stroke={PAPER.bad} strokeWidth={line(T, sw, 0.55)} />
+          <text x={w * 0.64} y={d * 0.655} textAnchor="middle" fontFamily={PAPER.sans} fontWeight={800} fontSize={0.075} fill={PAPER.bad} letterSpacing={0.003}>CONFIDENTIAL</text>
+        </g>
+        {/* paperclip */}
+        <g transform={`translate(${w * 0.14} ${d * 0.08}) rotate(24)`}>
+          <rect x={-0.045} y={0} width={0.09} height={0.3} rx={0.045} fill="none" stroke="#8a8fa3" strokeWidth={line(T, sw, 1.2)} />
+          <rect x={-0.012} y={0.05} width={0.024} height={0.19} rx={0.012} fill="none" stroke="#8a8fa3" strokeWidth={line(T, sw, 0.9)} />
+        </g>
+        {/* folded corner */}
+        <path d={`M${w - 0.24},0.02 L${w - 0.02},0.02 L${w - 0.02},0.24 Z`} fill={shade(manila, 0.28)} stroke={PAPER.ink} strokeWidth={line(T, sw, 0.45)} />
+      </>} />
+    </g>
+  );
+};
+
 /* ---------------------------------------------------------------------------- dispatch */
 
-export type ArtKind = RoadKind | GeneralKind | 'server' | 'database' | 'storage' | 'cache' | 'cloud' | 'loadbalancer' | 'router' | 'api' | 'queue' | 'client' |
+export type ArtKind = CommunicationKind | RoadKind | GeneralKind | 'server' | 'database' | 'storage' | 'cache' | 'cloud' | 'loadbalancer' | 'router' | 'api' | 'queue' | 'client' |
   'laptop' | 'phone' | 'cpu' | 'memory' | 'globe' | 'lock' | 'file' | 'code' | 'box' |
   'tile' | 'tv' | 'radio' | 'newspaper' | 'tower' | 'satellite' | 'building' | 'book' | 'mic' | 'camera' | 'billboard' |
   'hospital' | 'doctor' | 'bed' | 'ambulance' | 'pill' | 'syringe' | 'heartmonitor' | 'microscope' | 'testtubes' | 'dna' |
   'school' | 'teacher' | 'desk' | 'bookshelf' | 'gradcap' | 'backpack' | 'standglobe' | 'certificate' | 'notebook' |
   'bank' | 'coins' | 'wallet' | 'creditcard' | 'atm' | 'safe' | 'piggybank' | 'cash' | 'stockchart' | 'calculator' | 'receipt' |
   'shop' | 'shoppingcart' | 'conveyor' | 'register' | 'warehouse' | 'pricetag' | 'shoppingbag' | 'factory' | 'officedesk' | 'handshake' | 'meetingtable' |
-  'car' | 'truck' | 'road' | 'bus' | 'train' | 'airplane' | 'ship' | 'bicycle' | 'trafficlight' | 'fuelpump' | 'mappin';
+  'car' | 'truck' | 'road' | 'bus' | 'train' | 'airplane' | 'ship' | 'bicycle' | 'trafficlight' | 'fuelpump' | 'mappin' |
+  'reporter' | 'editor' | 'interview' | 'presspass' | 'recorder' | 'newsdesk' | 'newshub' | 'sourcedocs';
 
 /** Draws one object kind; g is its footprint and height (grid units), zz its current height above the ground. */
 export const IsoArt: FC<ArtProps & {kind: ArtKind}> = (props) => {
   const {kind, g, zz, color, T, sw} = props;
   if (Object.prototype.hasOwnProperty.call(GENERAL_KINDS, kind)) return <GeneralArt {...props} kind={kind as GeneralKind} />;
+  if (Object.prototype.hasOwnProperty.call(COMMUNICATION_KINDS, kind)) return <CommunicationArt {...props} kind={kind as CommunicationKind} />;
   if (isRoadKind(kind)) return <RoadArt {...props} kind={kind} />;
   switch (kind) {
     case 'server': return <ServerRack {...props} />;
@@ -1752,6 +2332,14 @@ export const IsoArt: FC<ArtProps & {kind: ArtKind}> = (props) => {
     case 'trafficlight': return <TrafficLight {...props} />;
     case 'fuelpump': return <FuelPump {...props} />;
     case 'mappin': return <MapPin {...props} />;
+    case 'reporter': return <Reporter {...props} />;
+    case 'editor': return <Editor {...props} />;
+    case 'interview': return <Interview {...props} />;
+    case 'presspass': return <PressPass {...props} />;
+    case 'recorder': return <Recorder {...props} />;
+    case 'newsdesk': return <NewsDesk {...props} />;
+    case 'newshub': return <NewsHub {...props} />;
+    case 'sourcedocs': return <SourceDocs {...props} />;
     case 'client': { // monitor: screen panel on a neck and base
       const screen: Geo = {...g, y: g.y + g.d / 2 - 0.07, d: 0.14, h: g.h * 0.7, z: g.z};
       const base: Geo = {x: g.x + g.w / 2 - 0.45, y: g.y + g.d / 2 - 0.35, z: 0, w: 0.9, d: 0.7, h: 0.08};

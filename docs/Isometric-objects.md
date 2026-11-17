@@ -53,3 +53,16 @@ From `rendering/`:
 Roads are ground slabs and render behind vehicles. Their length runs along grid x; `size` adjusts length, width and thickness. Place vehicles at `z: 0.12` (`0.18` on highways) and away from the highway median. `single-lane-road`, `two-lane-road`, `four-lane-road`, `divided-highway`, `motorway` and `freeway` are accepted aliases. These are illustrative markings, not country-specific engineering plans.
 
 `examples/iso-roads.json` demonstrates all four road variants with vehicles and trees. The local preview gallery includes a Trees & road types sheet.
+
+## Communication fundamentals
+
+Seven kinds are available: `envelope`, `sender`, `receiver`, `encoder`, `decoder`, `feedback`, and `noise`. The sender and receiver are communication stations with directional indicators; encoder/decoder show text-to-signal and signal-to-text respectively. Feedback uses return arrows with a travelling marker. Noise has an animated interference waveform. These are conceptual illustrations, not encryption or detailed radio-hardware diagrams.
+
+Aliases: `message-envelope`, `message`, `sender-station`, `receiver-station`, `feedback-loop`, `feedbackloop`, `noise-interference`, and `interference`.
+
+`examples/iso-communication.json` connects sender → encoder → message → decoder → receiver, with a feedback return path and a dashed interference link. The gallery includes all seven objects under Communication fundamentals.
+
+
+## Print and publishing
+
+Available kinds: `printingpress`, `newspaperbundle`, `magazine`, `printingplates`, `newsstand`, and `deliverystack`. Use these to show printing, publication formats, retail distribution, and delivery. The preview gallery has a Print & publishing sheet.

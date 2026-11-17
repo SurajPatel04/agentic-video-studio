@@ -47,6 +47,13 @@ class SelectionTests(unittest.TestCase):
                 self.assertIn('video-foundation', chosen)
                 self.assertIn(expected, chosen)
                 self.assertNotIn('teach-code', chosen)
+        otp = skills.select('How OTP login works: a one-time code arrives by SMS on the phone')
+        self.assertIn('screen-demos', otp)
+        self.assertNotIn('teach-code', otp)  # "code" here is a login code, not programming
+        self.assertIn('teach-code', skills.select('Debugging a Python bug and committing with git'))
+        self.assertIn('teach-code', skills.select('How the Node.js event loop works'))
+        self.assertIn('teach-dsa', skills.select('How hash tables work'))
+        self.assertNotIn('teach-dsa', skills.select('Becoming a full stack developer'))  # "stack" is not the data structure
         for brief in ['A poem about autumn', 'प्रकाश संश्लेषण', 'A pottery demonstration']:
             self.assertIn('video-foundation', skills.select(brief))
         self.assertEqual(skills.select('A bakery ad', []), [])
@@ -181,3 +188,13 @@ class StyleSelectionTests(unittest.TestCase):
         self.assertNotIn("teach-networking", picked)  # "internet" is a side mention here
         with patch.object(settings, "PLANNER_DEFAULT_STYLE", ""):
             self.assertNotIn("iso-diagrams", skills.select("history of the printing press"))
+
+
+class SkillSizeTests(unittest.TestCase):
+    def test_every_skill_loads(self):
+        """A skill over the size limit refuses to load and every plan that picks it fails."""
+        from app.utils import skills
+        for role in ("planner", "component"):
+            for name in skills.discover(role):
+                with self.subTest(skill=name):
+                    skills.load(name, role)

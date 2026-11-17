@@ -22,7 +22,7 @@ from typing import Any
 from app.config import settings
 from app.utils.console import step
 from app.utils import subtitles
-from app.utils.iso import expand_continuations
+from app.utils.iso import expand_continuations, paper_code_scenes
 from app.utils.tts import synthesize, word_timings
 
 log = logging.getLogger(__name__)
@@ -209,6 +209,7 @@ async def render_video(
     started = time.perf_counter()
 
     spec = expand_continuations(copy.deepcopy(spec))  # hand-written JSON may use IsoScene "continue" too
+    spec = paper_code_scenes(spec)  # paper-style video: no dark CodeScene
     spec = apply_brand(spec)
     made = cached = 0
     lines: list[str] = []

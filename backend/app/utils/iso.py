@@ -100,3 +100,37 @@ def expand_continuations(spec: dict[str, Any]) -> dict[str, Any]:
                         ghost["status"] = o["status"]
                     props["objects"].append({**ghost, "ghost": True})
     return spec
+
+
+PAPER_SCENES = {"IsoScene", "ScreenScene", "PhoneScene", "TerminalScene", "EditorScene", "ChatScene", "FormScene",
+                "QueryScene", "PipelineScene", "PacketScene", "ArrayScene", "StackScene", "HashScene", "TreeScene",
+                "GraphScene", "LinkedListScene", "EventLoopScene"}
+EXT = {"python": "py", "javascript": "js", "typescript": "ts", "java": "java", "go": "go", "ruby": "rb", "bash": "sh",
+       "shell": "sh", "sql": "sql", "html": "html", "css": "css", "c": "c", "cpp": "cpp", "c++": "cpp", "rust": "rs", "php": "php"}
+
+
+def paper_code_scenes(spec: dict[str, Any]) -> dict[str, Any]:
+    """In a paper-style video, a dark CodeScene would look like another video: show it as an EditorScene
+    (same code, highlighted lines light up one after another). Other videos are left alone."""
+    scenes = spec.get("scenes") or []
+    if not any(s.get("component") in PAPER_SCENES for s in scenes):
+        return spec
+    for s in scenes:
+        props = s.get("props")
+        if s.get("component") != "CodeScene" or not isinstance(props, dict):
+            continue
+        code = str(props.get("code") or "").rstrip("\n")
+        n = len(code.split("\n"))
+        if not code or n > 22:
+            continue  # too long for the editor: keep the original
+        lines = [ln for ln in props.get("highlightLines") or [] if isinstance(ln, int) and 1 <= ln <= n][:6]
+        lang = str(props.get("language") or "python").lower()
+        filename = props.get("filename") or f"main.{EXT.get(lang, 'txt')}"
+        step = 0.6 / max(1, len(lines))
+        editor: dict[str, Any] = {"filename": str(filename)[:40], "code": code,
+                                  "actions": [{"at": round(0.2 + k * step, 3), "do": "highlight", "line": ln} for k, ln in enumerate(lines)]}
+        for key in ("title", "eyebrow"):
+            if props.get(key):
+                editor[key] = str(props[key])[:70 if key == "title" else 40]
+        s["component"], s["props"] = "EditorScene", editor
+    return spec
