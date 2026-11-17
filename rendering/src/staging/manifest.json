@@ -1,0 +1,9 @@
+{
+  "components": {
+    "BubbleSortScene": {
+      "request": "A bubble sort scene for a DSA lesson: vertical bars with their numbers; highlight the two bars being compared, animate the swap when needed, show a pass/step counter and mark sorted bars green at the end. Props: values (list of numbers), title.",
+      "job": "comp-e01e9eea59",
+      "staged_at": "2026-11-16T07:53:47"
+    }
+  }
+}

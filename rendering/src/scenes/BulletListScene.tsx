@@ -1,7 +1,8 @@
 import {z} from 'zod';
 import type {CSSProperties} from 'react';
 import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
-import {entrance, type Entrance} from '../animation';
+import {entrance, entranceSchema, type Entrance} from '../animation';
+import {AnimatedText, textAnimationSchema, type TextAnimation} from '../motion';
 import {useTheme, useUnit} from '../theme';
 
 export type BulletListSceneProps = {
@@ -12,6 +13,7 @@ export type BulletListSceneProps = {
   itemFrames?: number[]; // exact frame per item; overrides startAt/stagger
   bullet?: string;
   animation?: Entrance;
+  textAnimation?: TextAnimation; // how words inside each item appear (default none: item slides in whole)
   titleStyle?: CSSProperties;
   itemStyle?: CSSProperties;
 };
@@ -24,6 +26,7 @@ export const BulletListScene: React.FC<BulletListSceneProps> = ({
   itemFrames,
   bullet = '•',
   animation = 'slide-left',
+  textAnimation = 'none',
   titleStyle,
   itemStyle,
 }) => {
@@ -35,19 +38,12 @@ export const BulletListScene: React.FC<BulletListSceneProps> = ({
   return (
     <AbsoluteFill style={{padding: 120 * u, justifyContent: 'center', gap: 28 * u}}>
       {title ? (
-        <h2
-          style={{
-            margin: 0,
-            marginBottom: 24 * u,
-            fontSize: 84 * u,
-            fontWeight: 700,
-            color: theme.text,
-            ...entrance('fade-up', frame, fps, u),
-            ...titleStyle,
-          }}
-        >
-          {title}
-        </h2>
+        <AnimatedText
+          as="h2"
+          text={title}
+          stagger={4}
+          style={{marginBottom: 24 * u, fontSize: 84 * u, fontWeight: 700, color: theme.text, ...titleStyle}}
+        />
       ) : null}
       {items.map((item, i) => {
         const at = itemFrames?.[i] ?? startAt + i * stagger;
@@ -64,7 +60,7 @@ export const BulletListScene: React.FC<BulletListSceneProps> = ({
             }}
           >
             <span style={{color: theme.accent}}>{bullet}</span>
-            <span>{item}</span>
+            <AnimatedText as="span" text={item} mode={textAnimation} startAt={at} stagger={3} />
           </div>
         );
       })}
@@ -72,6 +68,6 @@ export const BulletListScene: React.FC<BulletListSceneProps> = ({
   );
 };
 
-export const bulletListSceneSchema = z.object({title:z.string().optional(),items:z.array(z.string()).default(['First point','Second point']),startAt:z.number().int().nonnegative().optional(),stagger:z.number().int().nonnegative().optional(),itemFrames:z.array(z.number().int().nonnegative()).optional(),bullet:z.string().optional(),animation:z.enum(['fade-up','fade','zoom','slide-left','none']).optional(),titleStyle:z.record(z.string(),z.unknown()).optional(),itemStyle:z.record(z.string(),z.unknown()).optional()});
+export const bulletListSceneSchema = z.object({title:z.string().optional(),items:z.array(z.string()).default(['First point','Second point']),startAt:z.number().int().nonnegative().optional(),stagger:z.number().int().nonnegative().optional(),itemFrames:z.array(z.number().int().nonnegative()).optional(),bullet:z.string().optional(),animation:entranceSchema.optional(),textAnimation:textAnimationSchema.optional(),titleStyle:z.record(z.string(),z.unknown()).optional(),itemStyle:z.record(z.string(),z.unknown()).optional()});
 export const description = 'A bullet list with frame-timed item reveals.';
 export const tags = ['text', 'list', 'bullets'];

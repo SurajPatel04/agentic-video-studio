@@ -1,0 +1,135 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "radial-gradient(circle at 30% 30%, #1b2f52 0%, #070d1c 75%)",
+    "accent": "#38bdf8"
+  },
+  "defaultTransition": {"type": "fade", "durationInFrames": 10},
+  "scenes": [
+    {
+      "id": "intro",
+      "component": "TitleScene",
+      "durationInFrames": 90,
+      "props": {"title": "**Text effects** showcase", "subtitle": "Every effect, one by one"}
+    },
+    {
+      "id": "words",
+      "component": "ExplainScene",
+      "durationInFrames": 110,
+      "props": {"eyebrow": "textAnimation: words", "heading": "Each word rises in, one after another", "body": "This is the default style for all text."}
+    },
+    {
+      "id": "letters",
+      "component": "ExplainScene",
+      "durationInFrames": 110,
+      "props": {"eyebrow": "textAnimation: letters", "heading": "Letters appear one by one", "textAnimation": "letters", "entrance": "pop"}
+    },
+    {
+      "id": "lines",
+      "component": "ExplainScene",
+      "durationInFrames": 110,
+      "props": {"eyebrow": "textAnimation: lines", "heading": "Whole lines\nappear together\none line at a time", "textAnimation": "lines", "wordStagger": 6}
+    },
+    {
+      "id": "typewriter",
+      "component": "ExplainScene",
+      "durationInFrames": 130,
+      "props": {"eyebrow": "textAnimation: typewriter", "heading": "ping 192.168.1.1", "body": "Reply from 192.168.1.1: bytes=32 time=2ms", "textAnimation": "typewriter", "device": "computer"}
+    },
+    {
+      "id": "fade",
+      "component": "ExplainScene",
+      "durationInFrames": 90,
+      "props": {"eyebrow": "textAnimation: fade", "heading": "The whole sentence fades in at once", "textAnimation": "fade"}
+    },
+    {
+      "id": "bold",
+      "component": "ExplainScene",
+      "durationInFrames": 100,
+      "props": {"eyebrow": "markup: **word**", "heading": "A **LAN** is a **Local Area Network**"}
+    },
+    {
+      "id": "highlight",
+      "component": "ExplainScene",
+      "durationInFrames": 110,
+      "props": {"eyebrow": "markup: ==word==", "heading": "A LAN connects devices in ==one building=="}
+    },
+    {
+      "id": "underline",
+      "component": "ExplainScene",
+      "durationInFrames": 110,
+      "props": {"eyebrow": "markup: __word__", "heading": "Home Wi-Fi is __a LAN__ too"}
+    },
+    {
+      "id": "circle",
+      "component": "ExplainScene",
+      "durationInFrames": 110,
+      "props": {"eyebrow": "markup: ((word))", "heading": "The Internet is the ((largest WAN))"}
+    },
+    {
+      "id": "all-marks",
+      "component": "ExplainScene",
+      "durationInFrames": 200,
+      "props": {
+        "eyebrow": "all together",
+        "heading": "A **LAN** covers ==one building==",
+        "body": "A __MAN__ covers a city.\nA ((WAN)) covers the whole world.",
+        "points": ["Fast and private", "Owned by ==one organisation=="],
+        "device": "router"
+      }
+    },
+    {
+      "id": "pop",
+      "component": "TitleScene",
+      "durationInFrames": 80,
+      "props": {"title": "animation: pop", "subtitle": "Springy entrance", "animation": "pop"}
+    },
+    {
+      "id": "blur",
+      "component": "TitleScene",
+      "durationInFrames": 80,
+      "props": {"title": "animation: blur", "subtitle": "Comes into focus", "animation": "blur"}
+    },
+    {
+      "id": "slide",
+      "component": "TitleScene",
+      "durationInFrames": 80,
+      "props": {"title": "animation: slide-right", "subtitle": "Slides in from the left", "animation": "slide-right"}
+    },
+    {
+      "id": "zoom",
+      "component": "TitleScene",
+      "durationInFrames": 80,
+      "props": {"title": "animation: zoom", "subtitle": "Grows into place", "animation": "zoom"}
+    },
+    {
+      "id": "list",
+      "component": "BulletListScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Lists with **marks**",
+        "items": ["**LAN** — one building", "**MAN** — one ==city==", "**WAN** — the __whole world__"],
+        "textAnimation": "words"
+      }
+    },
+    {
+      "id": "stat",
+      "component": "ExplainScene",
+      "durationInFrames": 160,
+      "props": {
+        "eyebrow": "CountUp + Pulse + DrawArrow",
+        "heading": "A typical office LAN runs at",
+        "stat": {"value": 1000, "suffix": " Mbps", "label": "per device"},
+        "arrows": [{"from": {"x": 62, "y": 86}, "to": {"x": 30, "y": 70}, "label": "1 Gigabit", "bend": -0.25}]
+      }
+    },
+    {
+      "id": "quote",
+      "component": "QuoteScene",
+      "durationInFrames": 120,
+      "props": {"text": "The Internet is the ==largest WAN== in the world.", "author": "QuoteScene"}
+    }
+  ]
+}

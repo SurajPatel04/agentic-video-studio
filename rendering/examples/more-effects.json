@@ -1,0 +1,342 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "defaultTransition": {
+    "type": "fade",
+    "durationInFrames": 15
+  },
+  "scenes": [
+    {
+      "id": "circuit-3d",
+      "component": "CircuitScene",
+      "durationInFrames": 150,
+      "props": {
+        "mode": "3d"
+      }
+    },
+    {
+      "id": "wireless-2d",
+      "component": "WirelessScene",
+      "durationInFrames": 120,
+      "props": {}
+    },
+    {
+      "id": "devices-3d",
+      "component": "Device3DScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Lock, magnet, speaker",
+        "devices": [
+          {
+            "kind": "lock",
+            "label": "Lock",
+            "state": "off"
+          },
+          {
+            "kind": "magnet",
+            "label": "Magnet",
+            "state": "active",
+            "glow": "#facc15"
+          },
+          {
+            "kind": "speaker",
+            "label": "Speaker",
+            "state": "active",
+            "glow": "#a78bfa"
+          },
+          {
+            "kind": "tv",
+            "label": "TV",
+            "state": "on",
+            "color": "#e11d48",
+            "glow": "#22c55e"
+          }
+        ],
+        "changes": [
+          {
+            "index": 0,
+            "at": 60,
+            "state": "active"
+          }
+        ]
+      }
+    },
+    {
+      "id": "colours-2d",
+      "component": "DeviceGridScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "Every device its own colour",
+        "devices": [
+          {
+            "kind": "lock",
+            "label": "Lock",
+            "state": "active",
+            "color": "#22c55e"
+          },
+          {
+            "kind": "magnet",
+            "label": "Magnet",
+            "state": "active",
+            "color": "#ef4444",
+            "glow": "#3b82f6"
+          },
+          {
+            "kind": "speaker",
+            "label": "Speaker",
+            "state": "on",
+            "color": "#a78bfa"
+          },
+          {
+            "kind": "router",
+            "label": "Router",
+            "state": "active",
+            "color": "#f59e0b",
+            "glow": "#f59e0b"
+          }
+        ],
+        "changes": []
+      }
+    },
+    {
+      "id": "physics",
+      "component": "BlankScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Fields and **waves**"
+      },
+      "overlays": [
+        {
+          "type": "field",
+          "at": {
+            "x": 28,
+            "y": 52
+          },
+          "kind": "magnet",
+          "size": 330
+        },
+        {
+          "type": "sound",
+          "from": {
+            "x": 56,
+            "y": 52
+          },
+          "to": {
+            "x": 92,
+            "y": 52
+          },
+          "startAt": 15
+        },
+        {
+          "type": "tooltip",
+          "at": {
+            "x": 74,
+            "y": 44
+          },
+          "text": "Sound wave",
+          "startAt": 40
+        },
+        {
+          "type": "progress",
+          "at": "bottom",
+          "label": "Uploading",
+          "doneLabel": "Uploaded",
+          "startAt": 20,
+          "duration": 90
+        }
+      ]
+    },
+    {
+      "id": "security",
+      "component": "BlankScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Encryption"
+      },
+      "overlays": [
+        {
+          "type": "lock",
+          "at": {
+            "x": 26,
+            "y": 52
+          },
+          "text": "my password",
+          "startAt": 10,
+          "lockAt": 40
+        },
+        {
+          "type": "terminal",
+          "at": {
+            "x": 68,
+            "y": 52
+          },
+          "width": 820,
+          "startAt": 15,
+          "lines": [
+            {
+              "text": "openssl enc -aes-256 -in note.txt",
+              "prompt": true
+            },
+            {
+              "text": "encrypted: U2FsdGVkX1+8k3Qz\u2026",
+              "color": "#4ade80"
+            }
+          ]
+        },
+        {
+          "type": "notification",
+          "at": "top-right",
+          "title": "File encrypted",
+          "text": "note.txt is **safe**",
+          "icon": "lock",
+          "startAt": 120
+        }
+      ]
+    },
+    {
+      "id": "ui",
+      "component": "BlankScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Apps and settings"
+      },
+      "overlays": [
+        {
+          "type": "chat",
+          "at": {
+            "x": 32,
+            "y": 55
+          },
+          "width": 720,
+          "startAt": 10,
+          "names": {
+            "them": "Asha"
+          },
+          "messages": [
+            {
+              "from": "them",
+              "text": "Is the Wi-Fi on?"
+            },
+            {
+              "from": "me",
+              "text": "Turning it on **now**"
+            }
+          ]
+        },
+        {
+          "type": "toggle",
+          "at": {
+            "x": 72,
+            "y": 45
+          },
+          "label": "Wi-Fi",
+          "flipAt": [
+            90
+          ]
+        },
+        {
+          "type": "toggle",
+          "at": {
+            "x": 72,
+            "y": 60
+          },
+          "label": "Remember me",
+          "style": "checkbox",
+          "flipAt": [
+            110
+          ]
+        },
+        {
+          "type": "pointer",
+          "path": [
+            {
+              "x": 90,
+              "y": 90,
+              "at": 60
+            },
+            {
+              "x": 66,
+              "y": 46,
+              "at": 86
+            },
+            {
+              "x": 66,
+              "y": 46,
+              "at": 96
+            },
+            {
+              "x": 63.5,
+              "y": 61,
+              "at": 106
+            }
+          ],
+          "clicks": [
+            88,
+            108
+          ]
+        }
+      ]
+    },
+    {
+      "id": "focus",
+      "component": "DeviceGridScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Spot the router",
+        "devices": [
+          {
+            "kind": "laptop",
+            "label": "Laptop"
+          },
+          {
+            "kind": "router",
+            "label": "Router",
+            "state": "active"
+          },
+          {
+            "kind": "server",
+            "label": "Server"
+          }
+        ],
+        "changes": []
+      },
+      "overlays": [
+        {
+          "type": "highlight",
+          "at": {
+            "x": 50,
+            "y": 56.5
+          },
+          "width": 12,
+          "height": 23,
+          "spotlight": true,
+          "startAt": 30
+        },
+        {
+          "type": "tooltip",
+          "at": {
+            "x": 50,
+            "y": 45
+          },
+          "text": "This is the **router**",
+          "startAt": 45
+        },
+        {
+          "type": "zoom",
+          "at": {
+            "x": 50,
+            "y": 53.7
+          },
+          "lensAt": {
+            "x": 80,
+            "y": 32
+          },
+          "radius": 160,
+          "zoom": 2.2,
+          "startAt": 70
+        }
+      ]
+    }
+  ]
+}

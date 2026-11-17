@@ -11,6 +11,8 @@ const checks=[
  ['NetworkScene',{topology:'star'},100],['NetworkScene',{topology:'bus'},100],['NetworkScene',{topology:'ring'},100],['NetworkScene',{topology:'mesh'},100],
  ['CityNetworkScene',{},100],['ZoomOutScene',{},60],['ZoomOutScene',{},170],['ZoomOutScene',{},290],
  ['ComparisonTableScene',{},120],['PacketJourneyScene',{},160],['DefinitionScene',{},60],['ExampleCardScene',{},60],['StepsScene',{},120],['QuizScene',{},60],['QuizScene',{},150],['SummaryScene',{},120],
+ ['ChartScene',{chartType:'bar'},110],['EquationScene',{},80],['TimelineScene',{},110],['FlowchartScene',{},110],['CodeScene',{},80],['MapScene',{},120],['StatScene',{},70],['ImageScene',{title:'Earth from space',eyebrow:'FIGURE / A REAL IMAGE',src:'earth/blue-marble.png',alt:'Satellite image of Earth',caption:'Real images, diagrams, and PDF figures can sit beside the code-generated scenes.',credit:'NASA Blue Marble'},100],
+ ['CycleScene',{centerLabel:'Water keeps moving'},110],['VennScene',{},100],
 ];
 try {
  for (const [i,[component,props,frame]] of checks.entries()) {

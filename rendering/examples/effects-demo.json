@@ -1,0 +1,354 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "defaultTransition": {
+    "type": "fade",
+    "durationInFrames": 15
+  },
+  "scenes": [
+    {
+      "id": "wifi-2d",
+      "component": "ConnectionScene",
+      "durationInFrames": 180,
+      "props": {
+        "mode": "2d",
+        "title": "From your phone to the server",
+        "devices": [
+          {
+            "kind": "phone",
+            "label": "Phone"
+          },
+          {
+            "kind": "router",
+            "label": "Router",
+            "state": "active"
+          },
+          {
+            "kind": "isp",
+            "label": "ISP"
+          },
+          {
+            "kind": "server",
+            "label": "Server"
+          }
+        ],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "effect": "waves",
+            "label": "Wi-Fi"
+          },
+          {
+            "from": 1,
+            "to": 2,
+            "effect": "light",
+            "label": "fibre"
+          },
+          {
+            "from": 2,
+            "to": 3,
+            "effect": "packet",
+            "label": "GET /",
+            "count": 2
+          }
+        ],
+        "caption": "Radio waves, then light, then packets"
+      }
+    },
+    {
+      "id": "wifi-3d",
+      "component": "ConnectionScene",
+      "durationInFrames": 180,
+      "props": {
+        "mode": "3d",
+        "title": "The same trip in 3D",
+        "devices": [
+          {
+            "kind": "phone",
+            "label": "Phone"
+          },
+          {
+            "kind": "router",
+            "label": "Router",
+            "state": "active"
+          },
+          {
+            "kind": "isp",
+            "label": "ISP"
+          },
+          {
+            "kind": "server",
+            "label": "Server"
+          }
+        ],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "effect": "waves",
+            "label": "Wi-Fi"
+          },
+          {
+            "from": 1,
+            "to": 2,
+            "effect": "light",
+            "label": "fibre"
+          },
+          {
+            "from": 2,
+            "to": 3,
+            "effect": "packet",
+            "label": "data"
+          }
+        ]
+      }
+    },
+    {
+      "id": "circuit-2d",
+      "component": "ConnectionScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Electric current",
+        "devices": [
+          {
+            "kind": "battery",
+            "label": "Battery",
+            "x": 25,
+            "y": 55
+          },
+          {
+            "kind": "bulb",
+            "label": "Bulb",
+            "x": 75,
+            "y": 55,
+            "state": "off"
+          }
+        ],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "effect": "current",
+            "bend": 0.25,
+            "label": "current"
+          }
+        ],
+        "changes": [
+          {
+            "index": 1,
+            "at": 45,
+            "state": "active"
+          }
+        ]
+      }
+    },
+    {
+      "id": "circuit-3d",
+      "component": "ConnectionScene",
+      "durationInFrames": 150,
+      "props": {
+        "mode": "3d",
+        "title": "Electric current in 3D",
+        "devices": [
+          {
+            "kind": "battery",
+            "label": "Battery"
+          },
+          {
+            "kind": "resistor",
+            "label": "Resistor",
+            "state": "active"
+          },
+          {
+            "kind": "bulb",
+            "label": "Bulb",
+            "state": "off"
+          }
+        ],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "effect": "current"
+          },
+          {
+            "from": 1,
+            "to": 2,
+            "effect": "current"
+          }
+        ],
+        "changes": [
+          {
+            "index": 2,
+            "at": 50,
+            "state": "active"
+          }
+        ]
+      }
+    },
+    {
+      "id": "demo-3d",
+      "component": "DeviceDemoScene",
+      "durationInFrames": 210,
+      "props": {
+        "title": "Connect your TV",
+        "app": "Smart Home",
+        "input": {
+          "label": "Wi-Fi password",
+          "text": "hello123",
+          "mask": true
+        },
+        "button": "Connect",
+        "device": {
+          "kind": "tv",
+          "label": "Smart TV",
+          "mode": "3d"
+        },
+        "status": "TV is **online**"
+      }
+    },
+    {
+      "id": "demo-2d",
+      "component": "DeviceDemoScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Turn on the light",
+        "url": "home.local/lights",
+        "button": "Light on",
+        "device": {
+          "kind": "bulb",
+          "label": "Living room",
+          "mode": "2d"
+        },
+        "after": "active",
+        "status": "Light is on"
+      }
+    },
+    {
+      "id": "annotations",
+      "component": "DeviceGridScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Which one is safe?",
+        "devices": [
+          {
+            "kind": "firewall",
+            "label": "Firewall"
+          },
+          {
+            "kind": "hacker",
+            "label": "Attacker",
+            "state": "error"
+          },
+          {
+            "kind": "server",
+            "label": "Server"
+          }
+        ]
+      },
+      "overlays": [
+        {
+          "type": "badge",
+          "at": {
+            "x": 33.5,
+            "y": 47
+          },
+          "text": 1,
+          "size": 54,
+          "startAt": 20
+        },
+        {
+          "type": "badge",
+          "at": {
+            "x": 46.0,
+            "y": 47
+          },
+          "text": 2,
+          "size": 54,
+          "startAt": 26
+        },
+        {
+          "type": "badge",
+          "at": {
+            "x": 58.5,
+            "y": 47
+          },
+          "text": 3,
+          "size": 54,
+          "startAt": 32
+        },
+        {
+          "type": "waves",
+          "at": {
+            "x": 50,
+            "y": 54.2
+          },
+          "spread": 360,
+          "reach": 150,
+          "inset": 70,
+          "startAt": 40,
+          "stopAt": 120,
+          "color": "#ef4444"
+        },
+        {
+          "type": "callout",
+          "at": {
+            "x": 50,
+            "y": 57.5
+          },
+          "offset": {
+            "x": 8,
+            "y": 20
+          },
+          "label": "Blocked by the **firewall**",
+          "startAt": 50
+        },
+        {
+          "type": "check",
+          "at": {
+            "x": 41.5,
+            "y": 47
+          },
+          "size": 64,
+          "startAt": 90
+        },
+        {
+          "type": "cross",
+          "at": {
+            "x": 54.0,
+            "y": 47
+          },
+          "size": 64,
+          "startAt": 100
+        },
+        {
+          "type": "check",
+          "at": {
+            "x": 66.5,
+            "y": 47
+          },
+          "size": 64,
+          "startAt": 110
+        },
+        {
+          "type": "flow",
+          "points": [
+            {
+              "x": 10,
+              "y": 88
+            },
+            {
+              "x": 90,
+              "y": 88
+            }
+          ],
+          "effect": "bits",
+          "startAt": 10,
+          "trip": 3
+        }
+      ]
+    }
+  ]
+}

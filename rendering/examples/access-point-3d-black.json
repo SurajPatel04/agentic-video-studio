@@ -1,0 +1,48 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "#101c30",
+    "accent": "#38bdf8"
+  },
+  "scenes": [
+    {
+      "id": "access-point",
+      "component": "Device3DScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Wireless access point \u00b7 Black",
+        "devices": [
+          {
+            "kind": "access-point",
+            "label": "On",
+            "state": "on",
+            "color": "#151a22"
+          },
+          {
+            "kind": "access-point",
+            "label": "Active",
+            "state": "active",
+            "color": "#151a22"
+          },
+          {
+            "kind": "access-point",
+            "label": "Error",
+            "state": "error",
+            "color": "#151a22"
+          },
+          {
+            "kind": "access-point",
+            "label": "Off",
+            "state": "off",
+            "color": "#151a22"
+          }
+        ],
+        "size": 420,
+        "tilt": 0.7,
+        "motion": "still"
+      }
+    }
+  ]
+}

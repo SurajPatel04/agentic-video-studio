@@ -15,10 +15,10 @@ export const CityWorld: React.FC<{startAt: number; drawFrames: number; packetFra
       <mesh position={[n, -0.02, 0]}><boxGeometry args={[0.6, 0.025, 20]}/><meshStandardMaterial color="#0b1c2c"/></mesh>
       <mesh position={[0, -0.02, n]}><boxGeometry args={[20, 0.025, 0.6]}/><meshStandardMaterial color="#0b1c2c"/></mesh>
     </group>)}
-    {ring.map((points, i) => <Cable key={i} points={points} start={startAt + i * drawFrames} drawFrames={drawFrames} packetFrames={packetFrames} color={color}/>)}
-    {positions.map(([x, , z], i) => <group key={i} position={[x, 0, z]} scale={[0.85, 0.7 + (i % 3) * 0.3, 0.85]}>
-      <InfrastructureObject kind="building" color={i % 2 ? '#476878' : '#4a7893'} opacity={1}/>
+    {ring.map((points, i) => <Cable key={i} points={points} start={startAt + i * drawFrames} drawFrames={drawFrames} packetFrames={packetFrames} color={color} effect="light" size={0.1}/>)}
+    {positions.map(([x, , z], i) => <group key={i} position={[x, 0, z]} scale={[1.1, 0.9 + (i % 3) * 0.3, 1.1]}>
+      <InfrastructureObject kind={(['building', 'office', 'building', 'hospital', 'school', 'factory'] as const)[i % 6]} color={i % 2 ? '#476878' : undefined}/>
     </group>)}
-    {!centerGap && <group scale={[1.4, 1.5, 1.4]}><InfrastructureObject kind="building" color="#57788c" opacity={1}/></group>}
+    {!centerGap && <group scale={[1.4, 1.5, 1.4]}><InfrastructureObject kind="building" color="#57788c"/></group>}
   </group>;
 };

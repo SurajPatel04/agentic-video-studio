@@ -23,6 +23,10 @@ export type SceneSpec = {
   theme?: Partial<Theme>; // per-scene theme override
   background?: string; // shortcut for theme.background
   transition?: TransitionSpec; // transition INTO this scene
+  overlays?: unknown[]; // effects / annotations on top (see src/effects/overlays.tsx)
+  narration?: {text: string; voice?: string; delay?: number}; // turned into `voice` by the backend (app/utils/tts.py, Deepgram)
+  voice?: {src: string; startAt?: number; frames?: number; volume?: number; words?: {t: string; s: number; e: number}[]}; // narration audio (+ word timings for captions)
+  sfx?: {sound: string; at: number; volume?: number}[]; // sound effects at frames (see src/audio)
 };
 
 export type CompositionSpec = {
@@ -31,5 +35,7 @@ export type CompositionSpec = {
   height: number;
   theme?: Partial<Theme>;
   defaultTransition?: TransitionSpec;
+  captions?: boolean | Record<string, unknown>; // subtitles from narration; false / {enabled: false} = off (see src/audio/Captions.tsx)
+  audio?: Record<string, unknown>; // music, effects on/off, volumes, voice (see src/audio)
   scenes: SceneSpec[];
 };

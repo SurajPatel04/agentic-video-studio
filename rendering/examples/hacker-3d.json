@@ -1,0 +1,29 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "#101c30",
+    "accent": "#38bdf8"
+  },
+  "scenes": [
+    {
+      "id": "hacker-terminal",
+      "component": "Device3DScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Hacker \u00b7 Terminal workstation",
+        "devices": [
+          {
+            "kind": "hacker",
+            "label": "Hacker",
+            "state": "active"
+          }
+        ],
+        "size": 800,
+        "tilt": 0.25,
+        "motion": "still"
+      }
+    }
+  ]
+}

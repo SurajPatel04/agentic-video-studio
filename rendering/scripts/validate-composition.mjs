@@ -16,12 +16,13 @@ const root = path.resolve(import.meta.dirname, '..');
 await mkdir(path.join(root, 'out'), {recursive: true});
 const bundled = path.join(root, 'out', 'validate-catalog.mjs');
 await build({
-  stdin: {contents: `export {sceneCatalog} from './src/registry';`, resolveDir: root, loader: 'ts'},
+  stdin: {contents: `export {sceneCatalog, overlaysSchema} from './src/registry'; export {audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} from './src/audio';`, resolveDir: root, loader: 'ts'},
   outfile: bundled,
   bundle: true,
   platform: 'node',
   format: 'esm',
   packages: 'external',
+  loader: {'.css': 'empty'},
   plugins: [{
     name: 'bundle-world-map',
     setup(b) {
@@ -30,7 +31,7 @@ await build({
   }],
   logLevel: 'silent',
 });
-const {sceneCatalog} = await import(pathToFileURL(bundled));
+const {sceneCatalog, overlaysSchema, audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} = await import(pathToFileURL(bundled));
 
 const fmtPath = (parts) => parts.map((p) => (typeof p === 'number' ? `[${p}]` : `.${p}`)).join('');
 
@@ -44,6 +45,14 @@ export const validateComposition = (spec) => {
     errors.push('scenes: must be a non-empty array');
     return errors;
   }
+  if (spec.audio !== undefined) {
+    const r = audioSettingsSchema.safeParse(spec.audio);
+    if (!r.success) for (const issue of r.error.issues) errors.push(`audio${fmtPath(issue.path)}: ${issue.message}`);
+  }
+  if (spec.captions !== undefined) {
+    const r = captionsSettingsSchema.safeParse(spec.captions);
+    if (!r.success) for (const issue of r.error.issues) errors.push(`captions${fmtPath(issue.path)}: ${issue.message}`);
+  }
   const seen = new Set();
   spec.scenes.forEach((scene, i) => {
     const where = `scenes[${i}]${scene?.id ? ` (${scene.id})` : ''}`;
@@ -52,6 +61,17 @@ export const validateComposition = (spec) => {
     seen.add(scene?.id);
     if (!Number.isInteger(scene?.durationInFrames) || scene.durationInFrames <= 0) {
       errors.push(`${where}.durationInFrames: must be a positive integer`);
+    }
+    for (const [field, schema] of [['narration', narrationSchema], ['voice', voiceSchema], ['sfx', sfxCuesSchema]]) {
+      if (scene?.[field] === undefined) continue;
+      const r = schema.safeParse(scene[field]);
+      if (!r.success) for (const issue of r.error.issues) errors.push(`${where}.${field}${fmtPath(issue.path)}: ${issue.message}`);
+    }
+    if (scene?.overlays !== undefined) {
+      const o = overlaysSchema.safeParse(scene.overlays);
+      if (!o.success) {
+        for (const issue of o.error.issues) errors.push(`${where}.overlays${fmtPath(issue.path)}: ${issue.message}`);
+      }
     }
     const entry = sceneCatalog[scene?.component];
     if (!entry) {

@@ -1,0 +1,95 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "#101c30",
+    "accent": "#38bdf8"
+  },
+  "scenes": [
+    {
+      "id": "detail-0",
+      "component": "Device3DScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Electronics",
+        "devices": [
+          {
+            "kind": "smartwatch",
+            "label": "Watch",
+            "state": "active"
+          },
+          {
+            "kind": "ram",
+            "label": "RAM",
+            "state": "active"
+          },
+          {
+            "kind": "cpu",
+            "label": "CPU",
+            "state": "active"
+          }
+        ],
+        "size": 530,
+        "tilt": 0.28,
+        "motion": "still"
+      }
+    },
+    {
+      "id": "detail-1",
+      "component": "Device3DScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Network and space",
+        "devices": [
+          {
+            "kind": "satellite",
+            "label": "Satellite",
+            "state": "active"
+          },
+          {
+            "kind": "cloud",
+            "label": "Cloud",
+            "state": "active"
+          },
+          {
+            "kind": "cable",
+            "label": "Cable",
+            "state": "active"
+          }
+        ],
+        "size": 530,
+        "tilt": 0.28,
+        "motion": "still"
+      }
+    },
+    {
+      "id": "detail-2",
+      "component": "Device3DScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "People and environment",
+        "devices": [
+          {
+            "kind": "hacker",
+            "label": "Hacker",
+            "state": "active"
+          },
+          {
+            "kind": "factory",
+            "label": "Factory \u00b7 Pollution",
+            "state": "active"
+          },
+          {
+            "kind": "bulb",
+            "label": "Bulb",
+            "state": "active"
+          }
+        ],
+        "size": 530,
+        "tilt": 0.28,
+        "motion": "still"
+      }
+    }
+  ]
+}

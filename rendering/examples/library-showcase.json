@@ -1,0 +1,218 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+    "text": "#f8fafc",
+    "muted": "#94a3b8",
+    "accent": "#38bdf8"
+  },
+  "defaultTransition": { "type": "fade", "durationInFrames": 12 },
+  "scenes": [
+    {
+      "id": "intro",
+      "component": "TitleScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "One library. Every lesson.",
+        "subtitle": "10 new planner-ready scenes",
+        "animation": "fade-up"
+      }
+    },
+    {
+      "id": "stat",
+      "component": "StatScene",
+      "durationInFrames": 120,
+      "theme": { "accent": "#fbbf24" },
+      "transition": { "type": "slide", "direction": "from-bottom", "durationInFrames": 14 },
+      "props": {
+        "title": "The Sun holds almost everything",
+        "value": 99.8,
+        "suffix": "%",
+        "label": "of the Solar System's mass",
+        "detail": "Every planet, moon, and asteroid is a rounding error by comparison.",
+        "accentColor": "#fbbf24",
+        "comparisons": [
+          { "label": "Sun", "value": 99.8 },
+          { "label": "Jupiter", "value": 0.1 },
+          { "label": "Everything else", "value": 0.1 }
+        ]
+      }
+    },
+    {
+      "id": "chart-bar",
+      "component": "ChartScene",
+      "durationInFrames": 135,
+      "props": {
+        "title": "Global internet users",
+        "eyebrow": "CHART / SEE THE TREND",
+        "chartType": "bar",
+        "categories": ["2019", "2020", "2021", "2022", "2023", "2024"],
+        "series": [
+          { "name": "Internet users", "values": [4.1, 4.6, 4.9, 5.0, 5.2, 5.5], "color": "#38bdf8" }
+        ],
+        "yLabel": "Billions of people",
+        "xLabel": "Year",
+        "valueSuffix": "B",
+        "footer": "A bar chart makes differences between categories easy to compare."
+      }
+    },
+    {
+      "id": "chart-line",
+      "component": "ChartScene",
+      "durationInFrames": 135,
+      "theme": { "accent": "#34d399" },
+      "props": {
+        "title": "Renewable capacity keeps climbing",
+        "eyebrow": "CHART / SHOW THE DIRECTION",
+        "chartType": "line",
+        "categories": ["2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024"],
+        "series": [
+          { "name": "Installed capacity", "values": [1.0, 1.1, 1.2, 1.3, 1.5, 1.7, 2.0, 2.3, 2.8, 3.4], "color": "#34d399" }
+        ],
+        "yLabel": "Terawatts",
+        "xLabel": "Year",
+        "valueSuffix": " TW",
+        "footer": "The same component switches to a line or area chart from JSON."
+      }
+    },
+    {
+      "id": "equation",
+      "component": "EquationScene",
+      "durationInFrames": 135,
+      "theme": { "accent": "#a78bfa" },
+      "props": {
+        "title": "Solving a quadratic equation",
+        "steps": [
+          { "latex": "ax^2 + bx + c = 0", "note": "Start with the standard form." },
+          { "latex": "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}", "note": "Apply the quadratic formula.", "highlight": true },
+          { "latex": "b^2 - 4ac", "note": "The discriminant tells you how many real roots exist." }
+        ]
+      }
+    },
+    {
+      "id": "timeline",
+      "component": "TimelineScene",
+      "durationInFrames": 150,
+      "theme": { "accent": "#f59e0b" },
+      "props": {
+        "title": "A short history of the internet",
+        "events": [
+          { "date": "1969", "title": "ARPANET", "detail": "The first packet-switched network connects four university computers." },
+          { "date": "1983", "title": "TCP/IP", "detail": "A common protocol lets separate networks talk to each other." },
+          { "date": "1991", "title": "World Wide Web", "detail": "Pages, links, and browsers make the internet usable for everyone." },
+          { "date": "2007", "title": "The smartphone", "detail": "The internet moves from desks into pockets." },
+          { "date": "2020s", "title": "Always connected", "detail": "Cloud services, video, and remote work depend on the network." }
+        ]
+      }
+    },
+    {
+      "id": "map",
+      "component": "MapScene",
+      "durationInFrames": 135,
+      "theme": { "accent": "#22d3ee" },
+      "props": {
+        "title": "Three routes. One connected world.",
+        "footer": "Flat maps trade geographic accuracy for a clean, readable overview."
+      }
+    },
+    {
+      "id": "flowchart",
+      "component": "FlowchartScene",
+      "durationInFrames": 135,
+      "theme": { "accent": "#f472b6" },
+      "props": {
+        "title": "How a prompt becomes a video"
+      }
+    },
+    {
+      "id": "code",
+      "component": "CodeScene",
+      "durationInFrames": 135,
+      "theme": { "accent": "#34d399" },
+      "props": {
+        "title": "A recursive function",
+        "filename": "factorial.py",
+        "language": "python",
+        "code": "def factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n\nprint(factorial(5))",
+        "highlightLines": [3, 4],
+        "footer": "Highlight the lines that carry the key idea."
+      }
+    },
+    {
+      "id": "image",
+      "component": "ImageScene",
+      "durationInFrames": 135,
+      "props": {
+        "title": "Earth from space",
+        "eyebrow": "FIGURE / A REAL IMAGE",
+        "src": "earth/blue-marble.png",
+        "alt": "Satellite image of Earth",
+        "caption": "Real images, diagrams, and PDF figures can sit beside the code-generated scenes.",
+        "credit": "NASA Blue Marble",
+        "fit": "cover",
+        "motion": "pan-right",
+        "zoom": 1.16,
+        "motionFrames": 135
+      }
+    },
+    {
+      "id": "cycle",
+      "component": "CycleScene",
+      "durationInFrames": 150,
+      "theme": { "accent": "#22d3ee" },
+      "props": {
+        "title": "The water cycle",
+        "eyebrow": "CYCLE / A LOOP THAT REPEATS",
+        "centerLabel": "Water keeps moving",
+        "steps": [
+          { "label": "Evaporation", "detail": "Heat turns liquid water into vapor." },
+          { "label": "Condensation", "detail": "Vapor cools and forms clouds." },
+          { "label": "Precipitation", "detail": "Rain, snow, or hail falls." },
+          { "label": "Collection", "detail": "Water gathers in rivers, lakes, and oceans." }
+        ],
+        "footer": "A cycle has no first step; follow the arrows around the loop."
+      }
+    },
+    {
+      "id": "venn",
+      "component": "VennScene",
+      "durationInFrames": 150,
+      "theme": { "accent": "#34d399" },
+      "props": {
+        "title": "Plant cells vs animal cells",
+        "left": {
+          "label": "Plant cells",
+          "items": ["Cell wall", "Chloroplasts", "Large vacuole"]
+        },
+        "right": {
+          "label": "Animal cells",
+          "items": ["Centrioles", "Small vacuoles", "Flexible shape"]
+        },
+        "both": ["Nucleus", "Mitochondria", "Cell membrane", "Cytoplasm"],
+        "bothLabel": "Both",
+        "footer": "Use a Venn diagram when two ideas overlap but are not identical."
+      }
+    },
+    {
+      "id": "summary",
+      "component": "SummaryScene",
+      "durationInFrames": 135,
+      "theme": { "accent": "#38bdf8" },
+      "props": {
+        "title": "Ten new ways to explain an idea",
+        "points": [
+          "Charts show values and trends.",
+          "Equations reveal the math step by step.",
+          "Timelines, cycles, and flowcharts explain processes.",
+          "Code scenes walk through an algorithm.",
+          "Maps and Venn diagrams show relationships.",
+          "Key numbers and figures anchor the big idea."
+        ],
+        "startAt": 10,
+        "stagger": 16
+      }
+    }
+  ]
+}

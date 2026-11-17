@@ -1,0 +1,49 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "defaultTransition": {"type": "fade", "durationInFrames": 15},
+  "audio": {"effects": true, "effectsVolume": 0.5, "transitions": true, "voice": "aura-2-thalia-en"},
+  "scenes": [
+    {
+      "id": "intro",
+      "component": "TitleScene",
+      "durationInFrames": 90,
+      "props": {"title": "What is a LAN?", "subtitle": "Local Area Network"},
+      "narration": {"text": "What is a LAN? A local area network connects the devices in one home, school or office.", "delay": 8}
+    },
+    {
+      "id": "path",
+      "component": "ConnectionScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "Your data's first stop",
+        "devices": [
+          {"kind": "phone", "label": "Phone"},
+          {"kind": "router", "label": "Router", "state": "active"},
+          {"kind": "server", "label": "Server"}
+        ],
+        "links": [
+          {"from": 0, "to": 1, "effect": "waves", "label": "Wi-Fi"},
+          {"from": 1, "to": 2, "effect": "packet", "label": "data"}
+        ]
+      },
+      "narration": {"text": "Your phone sends data over Wi-Fi to the router. The router passes it on as packets."},
+      "overlays": [{"type": "check", "at": {"x": 86, "y": 40}, "startAt": 100}]
+    },
+    {
+      "id": "demo",
+      "component": "DeviceDemoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Join the network",
+        "app": "Settings",
+        "input": {"label": "Wi-Fi password", "text": "hello123", "mask": true},
+        "button": "Connect",
+        "device": {"kind": "laptop", "label": "Laptop", "mode": "3d"},
+        "status": "Connected to **Home-WiFi**"
+      },
+      "narration": {"text": "To join, type the Wi-Fi password and press connect. Now your laptop is part of the LAN.", "delay": 20}
+    }
+  ]
+}

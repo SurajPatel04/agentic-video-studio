@@ -8,6 +8,7 @@
       "introduction"
     ],
     "path": "rendering/src/scenes/TitleScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -33,6 +34,22 @@
             "fade",
             "zoom",
             "slide-left",
+            "slide-right",
+            "slide-down",
+            "pop",
+            "blur",
+            "rise",
+            "none"
+          ]
+        },
+        "textAnimation": {
+          "type": "string",
+          "enum": [
+            "words",
+            "letters",
+            "lines",
+            "typewriter",
+            "fade",
             "none"
           ]
         },
@@ -56,9 +73,6 @@
           "additionalProperties": {}
         }
       },
-      "required": [
-        "title"
-      ],
       "additionalProperties": false
     },
     "example": {
@@ -75,6 +89,7 @@
       "bullets"
     ],
     "path": "rendering/src/scenes/BulletListScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -120,6 +135,22 @@
             "fade",
             "zoom",
             "slide-left",
+            "slide-right",
+            "slide-down",
+            "pop",
+            "blur",
+            "rise",
+            "none"
+          ]
+        },
+        "textAnimation": {
+          "type": "string",
+          "enum": [
+            "words",
+            "letters",
+            "lines",
+            "typewriter",
+            "fade",
             "none"
           ]
         },
@@ -138,9 +169,6 @@
           "additionalProperties": {}
         }
       },
-      "required": [
-        "items"
-      ],
       "additionalProperties": false
     },
     "example": {
@@ -159,6 +187,7 @@
       "fact"
     ],
     "path": "rendering/src/scenes/QuoteScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -177,6 +206,22 @@
             "fade",
             "zoom",
             "slide-left",
+            "slide-right",
+            "slide-down",
+            "pop",
+            "blur",
+            "rise",
+            "none"
+          ]
+        },
+        "textAnimation": {
+          "type": "string",
+          "enum": [
+            "words",
+            "letters",
+            "lines",
+            "typewriter",
+            "fade",
             "none"
           ]
         },
@@ -198,9 +243,6 @@
           "additionalProperties": {}
         }
       },
-      "required": [
-        "text"
-      ],
       "additionalProperties": false
     },
     "example": {
@@ -218,6 +260,7 @@
       "routes"
     ],
     "path": "rendering/src/scenes/GlobeScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -251,8 +294,7 @@
             "required": [
               "from",
               "to"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "links": {
@@ -295,8 +337,7 @@
               "name",
               "lat",
               "lon"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "camera": {
@@ -441,6 +482,7 @@
       "infrastructure"
     ],
     "path": "rendering/src/scenes/InfrastructureScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -472,11 +514,71 @@
                 "default": "building",
                 "type": "string",
                 "enum": [
-                  "building",
-                  "server",
                   "computer",
                   "laptop",
-                  "router"
+                  "phone",
+                  "tablet",
+                  "smartwatch",
+                  "mouse",
+                  "keyboard",
+                  "monitor",
+                  "tv",
+                  "printer",
+                  "speaker",
+                  "headphones",
+                  "webcam",
+                  "camera",
+                  "microphone",
+                  "gamepad",
+                  "router",
+                  "modem",
+                  "hub",
+                  "server",
+                  "switch",
+                  "access-point",
+                  "wifi",
+                  "firewall",
+                  "security",
+                  "load-balancer",
+                  "cell-tower",
+                  "satellite",
+                  "cloud",
+                  "internet",
+                  "database",
+                  "data-center",
+                  "ethernet",
+                  "cable",
+                  "usb",
+                  "coaxial",
+                  "fibre",
+                  "undersea-cable",
+                  "cpu",
+                  "ram",
+                  "storage",
+                  "battery",
+                  "charging",
+                  "bulb",
+                  "plug",
+                  "power",
+                  "resistor",
+                  "capacitor",
+                  "motherboard",
+                  "house",
+                  "building",
+                  "office",
+                  "school",
+                  "hospital",
+                  "factory",
+                  "shop",
+                  "isp",
+                  "user",
+                  "users",
+                  "robot",
+                  "car",
+                  "drone",
+                  "hacker",
+                  "lock",
+                  "magnet"
                 ]
               },
               "label": {
@@ -524,6 +626,9 @@
               "color": {
                 "type": "string"
               },
+              "glow": {
+                "type": "string"
+              },
               "delay": {
                 "type": "integer",
                 "minimum": 0,
@@ -539,16 +644,7 @@
                 "minimum": 0,
                 "maximum": 9007199254740991
               }
-            },
-            "required": [
-              "kind",
-              "size",
-              "scale",
-              "width",
-              "height",
-              "y"
-            ],
-            "additionalProperties": false
+            }
           }
         },
         "scale": {
@@ -602,19 +698,6 @@
           ]
         }
       },
-      "required": [
-        "title",
-        "caption",
-        "preset",
-        "scale",
-        "stagger",
-        "growFrames",
-        "disappear",
-        "disappearFrames",
-        "showLabels",
-        "showPlatform",
-        "animation"
-      ],
       "additionalProperties": false
     },
     "example": {
@@ -645,6 +728,7 @@
       "infrastructure"
     ],
     "path": "rendering/src/scenes/InfrastructureScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -676,11 +760,71 @@
                 "default": "building",
                 "type": "string",
                 "enum": [
-                  "building",
-                  "server",
                   "computer",
                   "laptop",
-                  "router"
+                  "phone",
+                  "tablet",
+                  "smartwatch",
+                  "mouse",
+                  "keyboard",
+                  "monitor",
+                  "tv",
+                  "printer",
+                  "speaker",
+                  "headphones",
+                  "webcam",
+                  "camera",
+                  "microphone",
+                  "gamepad",
+                  "router",
+                  "modem",
+                  "hub",
+                  "server",
+                  "switch",
+                  "access-point",
+                  "wifi",
+                  "firewall",
+                  "security",
+                  "load-balancer",
+                  "cell-tower",
+                  "satellite",
+                  "cloud",
+                  "internet",
+                  "database",
+                  "data-center",
+                  "ethernet",
+                  "cable",
+                  "usb",
+                  "coaxial",
+                  "fibre",
+                  "undersea-cable",
+                  "cpu",
+                  "ram",
+                  "storage",
+                  "battery",
+                  "charging",
+                  "bulb",
+                  "plug",
+                  "power",
+                  "resistor",
+                  "capacitor",
+                  "motherboard",
+                  "house",
+                  "building",
+                  "office",
+                  "school",
+                  "hospital",
+                  "factory",
+                  "shop",
+                  "isp",
+                  "user",
+                  "users",
+                  "robot",
+                  "car",
+                  "drone",
+                  "hacker",
+                  "lock",
+                  "magnet"
                 ]
               },
               "label": {
@@ -728,6 +872,9 @@
               "color": {
                 "type": "string"
               },
+              "glow": {
+                "type": "string"
+              },
               "delay": {
                 "type": "integer",
                 "minimum": 0,
@@ -743,16 +890,7 @@
                 "minimum": 0,
                 "maximum": 9007199254740991
               }
-            },
-            "required": [
-              "kind",
-              "size",
-              "scale",
-              "width",
-              "height",
-              "y"
-            ],
-            "additionalProperties": false
+            }
           }
         },
         "scale": {
@@ -806,19 +944,6 @@
           ]
         }
       },
-      "required": [
-        "title",
-        "caption",
-        "preset",
-        "scale",
-        "stagger",
-        "growFrames",
-        "disappear",
-        "disappearFrames",
-        "showLabels",
-        "showPlatform",
-        "animation"
-      ],
       "additionalProperties": false
     },
     "example": {
@@ -849,6 +974,7 @@
       "infrastructure"
     ],
     "path": "rendering/src/scenes/InfrastructureScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -880,11 +1006,71 @@
                 "default": "building",
                 "type": "string",
                 "enum": [
-                  "building",
-                  "server",
                   "computer",
                   "laptop",
-                  "router"
+                  "phone",
+                  "tablet",
+                  "smartwatch",
+                  "mouse",
+                  "keyboard",
+                  "monitor",
+                  "tv",
+                  "printer",
+                  "speaker",
+                  "headphones",
+                  "webcam",
+                  "camera",
+                  "microphone",
+                  "gamepad",
+                  "router",
+                  "modem",
+                  "hub",
+                  "server",
+                  "switch",
+                  "access-point",
+                  "wifi",
+                  "firewall",
+                  "security",
+                  "load-balancer",
+                  "cell-tower",
+                  "satellite",
+                  "cloud",
+                  "internet",
+                  "database",
+                  "data-center",
+                  "ethernet",
+                  "cable",
+                  "usb",
+                  "coaxial",
+                  "fibre",
+                  "undersea-cable",
+                  "cpu",
+                  "ram",
+                  "storage",
+                  "battery",
+                  "charging",
+                  "bulb",
+                  "plug",
+                  "power",
+                  "resistor",
+                  "capacitor",
+                  "motherboard",
+                  "house",
+                  "building",
+                  "office",
+                  "school",
+                  "hospital",
+                  "factory",
+                  "shop",
+                  "isp",
+                  "user",
+                  "users",
+                  "robot",
+                  "car",
+                  "drone",
+                  "hacker",
+                  "lock",
+                  "magnet"
                 ]
               },
               "label": {
@@ -932,6 +1118,9 @@
               "color": {
                 "type": "string"
               },
+              "glow": {
+                "type": "string"
+              },
               "delay": {
                 "type": "integer",
                 "minimum": 0,
@@ -947,16 +1136,7 @@
                 "minimum": 0,
                 "maximum": 9007199254740991
               }
-            },
-            "required": [
-              "kind",
-              "size",
-              "scale",
-              "width",
-              "height",
-              "y"
-            ],
-            "additionalProperties": false
+            }
           }
         },
         "scale": {
@@ -1010,19 +1190,6 @@
           ]
         }
       },
-      "required": [
-        "title",
-        "caption",
-        "preset",
-        "scale",
-        "stagger",
-        "growFrames",
-        "disappear",
-        "disappearFrames",
-        "showLabels",
-        "showPlatform",
-        "animation"
-      ],
       "additionalProperties": false
     },
     "example": {
@@ -1050,6 +1217,7 @@
       "packets"
     ],
     "path": "rendering/src/scenes/NetworkScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -1083,11 +1251,82 @@
             "type": "string",
             "enum": [
               "computer",
+              "laptop",
+              "phone",
+              "tablet",
+              "smartwatch",
+              "mouse",
+              "keyboard",
+              "monitor",
+              "tv",
+              "printer",
+              "speaker",
+              "headphones",
+              "webcam",
+              "camera",
+              "microphone",
+              "gamepad",
               "router",
+              "modem",
+              "hub",
               "server",
-              "laptop"
+              "switch",
+              "access-point",
+              "wifi",
+              "firewall",
+              "security",
+              "load-balancer",
+              "cell-tower",
+              "satellite",
+              "cloud",
+              "internet",
+              "database",
+              "data-center",
+              "ethernet",
+              "cable",
+              "usb",
+              "coaxial",
+              "fibre",
+              "undersea-cable",
+              "cpu",
+              "ram",
+              "storage",
+              "battery",
+              "charging",
+              "bulb",
+              "plug",
+              "power",
+              "resistor",
+              "capacitor",
+              "motherboard",
+              "house",
+              "building",
+              "office",
+              "school",
+              "hospital",
+              "factory",
+              "shop",
+              "isp",
+              "user",
+              "users",
+              "robot",
+              "car",
+              "drone",
+              "hacker",
+              "lock",
+              "magnet"
             ]
           }
+        },
+        "effect": {
+          "default": "packet",
+          "type": "string",
+          "enum": [
+            "packet",
+            "light",
+            "current",
+            "dot"
+          ]
         },
         "startAt": {
           "default": 20,
@@ -1117,15 +1356,6 @@
           "type": "string"
         }
       },
-      "required": [
-        "title",
-        "topology",
-        "devices",
-        "startAt",
-        "stagger",
-        "drawFrames",
-        "packetFrames"
-      ],
       "additionalProperties": false
     },
     "example": {
@@ -1138,6 +1368,7 @@
         "server",
         "laptop"
       ],
+      "effect": "packet",
       "startAt": 20,
       "stagger": 3,
       "drawFrames": 24,
@@ -1155,6 +1386,7 @@
       "ring"
     ],
     "path": "rendering/src/scenes/CityNetworkScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -1192,14 +1424,6 @@
           "type": "string"
         }
       },
-      "required": [
-        "title",
-        "buildingCount",
-        "startAt",
-        "drawFrames",
-        "packetFrames",
-        "caption"
-      ],
       "additionalProperties": false
     },
     "example": {
@@ -1223,6 +1447,7 @@
       "scale"
     ],
     "path": "rendering/src/scenes/ZoomOutScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -1262,15 +1487,6 @@
           "maximum": 9007199254740991
         }
       },
-      "required": [
-        "title",
-        "lanLabel",
-        "manLabel",
-        "wanLabel",
-        "cityAt",
-        "globeAt",
-        "transitionFrames"
-      ],
       "additionalProperties": false
     },
     "example": {
@@ -1294,6 +1510,7 @@
       "journey"
     ],
     "path": "rendering/src/scenes/PacketJourneyScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -1345,11 +1562,71 @@
               "kind": {
                 "type": "string",
                 "enum": [
-                  "laptop",
-                  "router",
-                  "server",
                   "computer",
-                  "internet"
+                  "laptop",
+                  "phone",
+                  "tablet",
+                  "smartwatch",
+                  "mouse",
+                  "keyboard",
+                  "monitor",
+                  "tv",
+                  "printer",
+                  "speaker",
+                  "headphones",
+                  "webcam",
+                  "camera",
+                  "microphone",
+                  "gamepad",
+                  "router",
+                  "modem",
+                  "hub",
+                  "server",
+                  "switch",
+                  "access-point",
+                  "wifi",
+                  "firewall",
+                  "security",
+                  "load-balancer",
+                  "cell-tower",
+                  "satellite",
+                  "cloud",
+                  "internet",
+                  "database",
+                  "data-center",
+                  "ethernet",
+                  "cable",
+                  "usb",
+                  "coaxial",
+                  "fibre",
+                  "undersea-cable",
+                  "cpu",
+                  "ram",
+                  "storage",
+                  "battery",
+                  "charging",
+                  "bulb",
+                  "plug",
+                  "power",
+                  "resistor",
+                  "capacitor",
+                  "motherboard",
+                  "house",
+                  "building",
+                  "office",
+                  "school",
+                  "hospital",
+                  "factory",
+                  "shop",
+                  "isp",
+                  "user",
+                  "users",
+                  "robot",
+                  "car",
+                  "drone",
+                  "hacker",
+                  "lock",
+                  "magnet"
                 ]
               }
             },
@@ -1357,8 +1634,7 @@
               "label",
               "detail",
               "kind"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "startAt": {
@@ -1380,13 +1656,6 @@
           "maximum": 9007199254740991
         }
       },
-      "required": [
-        "title",
-        "stops",
-        "startAt",
-        "travelFrames",
-        "holdFrames"
-      ],
       "additionalProperties": false
     },
     "example": {
@@ -1435,6 +1704,7 @@
       "WAN"
     ],
     "path": "rendering/src/scenes/ComparisonTableScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -1517,15 +1787,6 @@
           "type": "string"
         }
       },
-      "required": [
-        "title",
-        "columns",
-        "rows",
-        "startAt",
-        "rowStagger",
-        "revealFrames",
-        "footer"
-      ],
       "additionalProperties": false
     },
     "example": {
@@ -1577,6 +1838,7 @@
       "term"
     ],
     "path": "rendering/src/scenes/DefinitionScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -1590,11 +1852,11 @@
           "type": "string"
         },
         "meaning": {
-          "default": "A network that connects devices within a limited area, such as a home, school, or office.",
+          "default": "A network that connects devices within a ==limited area==, such as a home, school, or office.",
           "type": "string"
         },
         "detail": {
-          "default": "Think: nearby devices sharing a connection.",
+          "default": "Think: **nearby devices** sharing a connection.",
           "type": "string"
         },
         "revealAt": {
@@ -1602,23 +1864,29 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
+        },
+        "textAnimation": {
+          "default": "words",
+          "type": "string",
+          "enum": [
+            "words",
+            "letters",
+            "lines",
+            "typewriter",
+            "fade",
+            "none"
+          ]
         }
       },
-      "required": [
-        "term",
-        "abbreviation",
-        "meaning",
-        "detail",
-        "revealAt"
-      ],
       "additionalProperties": false
     },
     "example": {
       "term": "Local Area Network",
       "abbreviation": "LAN",
-      "meaning": "A network that connects devices within a limited area, such as a home, school, or office.",
-      "detail": "Think: nearby devices sharing a connection.",
-      "revealAt": 20
+      "meaning": "A network that connects devices within a ==limited area==, such as a home, school, or office.",
+      "detail": "Think: **nearby devices** sharing a connection.",
+      "revealAt": 20,
+      "textAnimation": "words"
     }
   },
   {
@@ -1630,16 +1898,17 @@
       "application"
     ],
     "path": "rendering/src/scenes/ExampleCardScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
         "title": {
-          "default": "Home Wi-Fi is a LAN",
+          "default": "Home Wi-Fi is a **LAN**",
           "type": "string"
         },
         "example": {
-          "default": "Your phone, laptop, and printer connect through the home router.",
+          "default": "Your phone, laptop, and printer connect through the ==home router==.",
           "type": "string"
         },
         "takeaway": {
@@ -1650,27 +1919,94 @@
           "default": "router",
           "type": "string",
           "enum": [
-            "router",
             "computer",
             "laptop",
+            "phone",
+            "tablet",
+            "smartwatch",
+            "mouse",
+            "keyboard",
+            "monitor",
+            "tv",
+            "printer",
+            "speaker",
+            "headphones",
+            "webcam",
+            "camera",
+            "microphone",
+            "gamepad",
+            "router",
+            "modem",
+            "hub",
             "server",
-            "building"
+            "switch",
+            "access-point",
+            "wifi",
+            "firewall",
+            "security",
+            "load-balancer",
+            "cell-tower",
+            "satellite",
+            "cloud",
+            "internet",
+            "database",
+            "data-center",
+            "ethernet",
+            "cable",
+            "usb",
+            "coaxial",
+            "fibre",
+            "undersea-cable",
+            "cpu",
+            "ram",
+            "storage",
+            "battery",
+            "charging",
+            "bulb",
+            "plug",
+            "power",
+            "resistor",
+            "capacitor",
+            "motherboard",
+            "house",
+            "building",
+            "office",
+            "school",
+            "hospital",
+            "factory",
+            "shop",
+            "isp",
+            "user",
+            "users",
+            "robot",
+            "car",
+            "drone",
+            "hacker",
+            "lock",
+            "magnet"
+          ]
+        },
+        "textAnimation": {
+          "default": "words",
+          "type": "string",
+          "enum": [
+            "words",
+            "letters",
+            "lines",
+            "typewriter",
+            "fade",
+            "none"
           ]
         }
       },
-      "required": [
-        "title",
-        "example",
-        "takeaway",
-        "kind"
-      ],
       "additionalProperties": false
     },
     "example": {
-      "title": "Home Wi-Fi is a LAN",
-      "example": "Your phone, laptop, and printer connect through the home router.",
+      "title": "Home Wi-Fi is a **LAN**",
+      "example": "Your phone, laptop, and printer connect through the ==home router==.",
       "takeaway": "One small area. Several connected devices.",
-      "kind": "router"
+      "kind": "router",
+      "textAnimation": "words"
     }
   },
   {
@@ -1682,6 +2018,7 @@
       "steps"
     ],
     "path": "rendering/src/scenes/StepsScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -1693,9 +2030,9 @@
         "steps": {
           "default": [
             "Create the message",
-            "Split into packets",
+            "Split into ==packets==",
             "Forward across the network",
-            "Reassemble at the destination"
+            "Reassemble at the **destination**"
           ],
           "minItems": 2,
           "maxItems": 6,
@@ -1715,26 +2052,33 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
+        },
+        "textAnimation": {
+          "default": "words",
+          "type": "string",
+          "enum": [
+            "words",
+            "letters",
+            "lines",
+            "typewriter",
+            "fade",
+            "none"
+          ]
         }
       },
-      "required": [
-        "title",
-        "steps",
-        "startAt",
-        "stagger"
-      ],
       "additionalProperties": false
     },
     "example": {
       "title": "How a message moves",
       "steps": [
         "Create the message",
-        "Split into packets",
+        "Split into ==packets==",
         "Forward across the network",
-        "Reassemble at the destination"
+        "Reassemble at the **destination**"
       ],
       "startAt": 10,
-      "stagger": 30
+      "stagger": 30,
+      "textAnimation": "words"
     }
   },
   {
@@ -1746,12 +2090,13 @@
       "assessment"
     ],
     "path": "rendering/src/scenes/QuizScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
         "question": {
-          "default": "Which network typically spans a city?",
+          "default": "Which network typically spans a **city**?",
           "type": "string"
         },
         "options": {
@@ -1781,21 +2126,38 @@
           "maximum": 9007199254740991
         },
         "explanation": {
-          "default": "A MAN connects sites across a metropolitan area.",
+          "default": "A **MAN** connects sites across a ==metropolitan area==.",
           "type": "string"
+        },
+        "optionsAt": {
+          "default": 25,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "optionStagger": {
+          "default": 8,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "textAnimation": {
+          "default": "words",
+          "type": "string",
+          "enum": [
+            "words",
+            "letters",
+            "lines",
+            "typewriter",
+            "fade",
+            "none"
+          ]
         }
       },
-      "required": [
-        "question",
-        "options",
-        "correctIndex",
-        "answerAt",
-        "explanation"
-      ],
       "additionalProperties": false
     },
     "example": {
-      "question": "Which network typically spans a city?",
+      "question": "Which network typically spans a **city**?",
       "options": [
         "LAN",
         "MAN",
@@ -1804,7 +2166,10 @@
       ],
       "correctIndex": 1,
       "answerAt": 120,
-      "explanation": "A MAN connects sites across a metropolitan area."
+      "explanation": "A **MAN** connects sites across a ==metropolitan area==.",
+      "optionsAt": 25,
+      "optionStagger": 8,
+      "textAnimation": "words"
     }
   },
   {
@@ -1816,6 +2181,7 @@
       "recap"
     ],
     "path": "rendering/src/scenes/SummaryScene.tsx",
+    "staged": false,
     "propsSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -1826,9 +2192,9 @@
         },
         "points": {
           "default": [
-            "LAN connects nearby devices.",
-            "MAN connects sites across a city.",
-            "WAN connects networks across large distances."
+            "**LAN** connects nearby devices.",
+            "**MAN** connects sites across a ==city==.",
+            "**WAN** connects networks across __large distances__."
           ],
           "minItems": 1,
           "maxItems": 6,
@@ -1848,25 +2214,4191 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
+        },
+        "textAnimation": {
+          "default": "words",
+          "type": "string",
+          "enum": [
+            "words",
+            "letters",
+            "lines",
+            "typewriter",
+            "fade",
+            "none"
+          ]
         }
       },
-      "required": [
-        "title",
-        "points",
-        "startAt",
-        "stagger"
-      ],
       "additionalProperties": false
     },
     "example": {
       "title": "Three networks. Three scales.",
       "points": [
-        "LAN connects nearby devices.",
-        "MAN connects sites across a city.",
-        "WAN connects networks across large distances."
+        "**LAN** connects nearby devices.",
+        "**MAN** connects sites across a ==city==.",
+        "**WAN** connects networks across __large distances__."
       ],
       "startAt": 10,
-      "stagger": 25
+      "stagger": 25,
+      "textAnimation": "words"
+    }
+  },
+  {
+    "name": "ChartScene",
+    "version": "1.0.0",
+    "description": "A flexible, animated bar, line, or area chart with multiple series, axes, grid lines, and value labels.",
+    "tags": [
+      "chart",
+      "bar",
+      "line",
+      "area",
+      "data",
+      "trend",
+      "statistics"
+    ],
+    "path": "rendering/src/scenes/ChartScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Global internet users",
+          "type": "string"
+        },
+        "eyebrow": {
+          "default": "CHART / SEE THE TREND",
+          "type": "string"
+        },
+        "chartType": {
+          "default": "bar",
+          "type": "string",
+          "enum": [
+            "bar",
+            "line",
+            "area"
+          ]
+        },
+        "categories": {
+          "default": [
+            "2019",
+            "2020",
+            "2021",
+            "2022",
+            "2023",
+            "2024"
+          ],
+          "minItems": 2,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "series": {
+          "default": [
+            {
+              "name": "Internet users (billions)",
+              "values": [
+                4.1,
+                4.6,
+                4.9,
+                5,
+                5.2,
+                5.5
+              ],
+              "color": "#38bdf8"
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "color": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "values"
+            ]
+          }
+        },
+        "yLabel": {
+          "default": "Billions of people",
+          "type": "string"
+        },
+        "xLabel": {
+          "default": "Year",
+          "type": "string"
+        },
+        "valueSuffix": {
+          "default": "B",
+          "type": "string"
+        },
+        "maxValue": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "showValues": {
+          "default": true,
+          "type": "boolean"
+        },
+        "showLegend": {
+          "default": true,
+          "type": "boolean"
+        },
+        "showGrid": {
+          "default": true,
+          "type": "boolean"
+        },
+        "startAt": {
+          "default": 12,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "growFrames": {
+          "default": 42,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "footer": {
+          "default": "Bars and lines are drawn in proportion to the values shown.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Global internet users",
+      "eyebrow": "CHART / SEE THE TREND",
+      "chartType": "bar",
+      "categories": [
+        "2019",
+        "2020",
+        "2021",
+        "2022",
+        "2023",
+        "2024"
+      ],
+      "series": [
+        {
+          "name": "Internet users (billions)",
+          "values": [
+            4.1,
+            4.6,
+            4.9,
+            5,
+            5.2,
+            5.5
+          ],
+          "color": "#38bdf8"
+        }
+      ],
+      "yLabel": "Billions of people",
+      "xLabel": "Year",
+      "valueSuffix": "B",
+      "showValues": true,
+      "showLegend": true,
+      "showGrid": true,
+      "startAt": 12,
+      "growFrames": 42,
+      "footer": "Bars and lines are drawn in proportion to the values shown."
+    }
+  },
+  {
+    "name": "EquationScene",
+    "version": "1.0.0",
+    "description": "A step-by-step equation or derivation rendered with KaTeX and revealed line by line.",
+    "tags": [
+      "equation",
+      "math",
+      "formula",
+      "derivation",
+      "katex",
+      "science"
+    ],
+    "path": "rendering/src/scenes/EquationScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Solving a quadratic equation",
+          "type": "string"
+        },
+        "eyebrow": {
+          "default": "EQUATION / STEP BY STEP",
+          "type": "string"
+        },
+        "steps": {
+          "default": [
+            {
+              "latex": "ax^2 + bx + c = 0",
+              "note": "Start with the standard form."
+            },
+            {
+              "latex": "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+              "note": "Apply the quadratic formula.",
+              "highlight": true
+            },
+            {
+              "latex": "b^2 - 4ac",
+              "note": "The discriminant tells you how many real roots exist."
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "latex": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "highlight": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "latex"
+            ]
+          }
+        },
+        "startAt": {
+          "default": 12,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 26,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "revealFrames": {
+          "default": 18,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "layout": {
+          "default": "stack",
+          "type": "string",
+          "enum": [
+            "stack",
+            "focus"
+          ]
+        },
+        "footer": {
+          "default": "Every line is typeset with KaTeX and revealed on the frame timeline.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Solving a quadratic equation",
+      "eyebrow": "EQUATION / STEP BY STEP",
+      "steps": [
+        {
+          "latex": "ax^2 + bx + c = 0",
+          "note": "Start with the standard form."
+        },
+        {
+          "latex": "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+          "note": "Apply the quadratic formula.",
+          "highlight": true
+        },
+        {
+          "latex": "b^2 - 4ac",
+          "note": "The discriminant tells you how many real roots exist."
+        }
+      ],
+      "startAt": 12,
+      "stagger": 26,
+      "revealFrames": 18,
+      "layout": "stack",
+      "footer": "Every line is typeset with KaTeX and revealed on the frame timeline."
+    }
+  },
+  {
+    "name": "TimelineScene",
+    "version": "1.0.0",
+    "description": "A horizontal or vertical timeline with dated events, connector lines, and sequential reveals.",
+    "tags": [
+      "timeline",
+      "history",
+      "dates",
+      "events",
+      "chronology"
+    ],
+    "path": "rendering/src/scenes/TimelineScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "A short history of the internet",
+          "type": "string"
+        },
+        "eyebrow": {
+          "default": "TIMELINE / HOW WE GOT HERE",
+          "type": "string"
+        },
+        "events": {
+          "default": [
+            {
+              "date": "1969",
+              "title": "ARPANET",
+              "detail": "The first packet-switched network connects four university computers."
+            },
+            {
+              "date": "1983",
+              "title": "TCP/IP",
+              "detail": "A common protocol lets separate networks talk to each other."
+            },
+            {
+              "date": "1991",
+              "title": "World Wide Web",
+              "detail": "Pages, links, and browsers make the internet usable for everyone."
+            },
+            {
+              "date": "2007",
+              "title": "The smartphone",
+              "detail": "The internet moves from desks into pockets."
+            },
+            {
+              "date": "2020s",
+              "title": "Always connected",
+              "detail": "Cloud services, video, and remote work depend on the network."
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "date",
+              "title"
+            ]
+          }
+        },
+        "orientation": {
+          "default": "horizontal",
+          "type": "string",
+          "enum": [
+            "horizontal",
+            "vertical"
+          ]
+        },
+        "startAt": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 22,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "revealFrames": {
+          "default": 16,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "footer": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "A short history of the internet",
+      "eyebrow": "TIMELINE / HOW WE GOT HERE",
+      "events": [
+        {
+          "date": "1969",
+          "title": "ARPANET",
+          "detail": "The first packet-switched network connects four university computers."
+        },
+        {
+          "date": "1983",
+          "title": "TCP/IP",
+          "detail": "A common protocol lets separate networks talk to each other."
+        },
+        {
+          "date": "1991",
+          "title": "World Wide Web",
+          "detail": "Pages, links, and browsers make the internet usable for everyone."
+        },
+        {
+          "date": "2007",
+          "title": "The smartphone",
+          "detail": "The internet moves from desks into pockets."
+        },
+        {
+          "date": "2020s",
+          "title": "Always connected",
+          "detail": "Cloud services, video, and remote work depend on the network."
+        }
+      ],
+      "orientation": "horizontal",
+      "startAt": 10,
+      "stagger": 22,
+      "revealFrames": 16,
+      "footer": ""
+    }
+  },
+  {
+    "name": "FlowchartScene",
+    "version": "1.0.0",
+    "description": "A dagre-laid-out flowchart with start, process, decision, and end nodes, labeled edges, and animated reveals.",
+    "tags": [
+      "flowchart",
+      "diagram",
+      "process",
+      "decision",
+      "dagre",
+      "system"
+    ],
+    "path": "rendering/src/scenes/FlowchartScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "How a prompt becomes a video",
+          "type": "string"
+        },
+        "eyebrow": {
+          "default": "FLOWCHART / FOLLOW THE PATH",
+          "type": "string"
+        },
+        "direction": {
+          "default": "horizontal",
+          "type": "string",
+          "enum": [
+            "horizontal",
+            "vertical"
+          ]
+        },
+        "nodes": {
+          "default": [
+            {
+              "id": "prompt",
+              "label": "User prompt",
+              "detail": "A topic, notes, or a PDF",
+              "kind": "start"
+            },
+            {
+              "id": "planner",
+              "label": "Planner",
+              "detail": "Writes the script and picks scenes",
+              "kind": "process"
+            },
+            {
+              "id": "exists",
+              "label": "Component exists?",
+              "detail": "Search the shared registry",
+              "kind": "decision"
+            },
+            {
+              "id": "compose",
+              "label": "Compose JSON",
+              "detail": "Durations, props, transitions",
+              "kind": "process"
+            },
+            {
+              "id": "done",
+              "label": "MP4 delivered",
+              "detail": "Rendered, uploaded, and returned as a URL",
+              "kind": "end"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "label": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "kind": {
+                "default": "process",
+                "type": "string",
+                "enum": [
+                  "start",
+                  "process",
+                  "decision",
+                  "end"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ]
+          }
+        },
+        "edges": {
+          "default": [
+            {
+              "from": "prompt",
+              "to": "planner"
+            },
+            {
+              "from": "planner",
+              "to": "exists"
+            },
+            {
+              "from": "exists",
+              "to": "compose",
+              "label": "match"
+            },
+            {
+              "from": "compose",
+              "to": "done"
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 14,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ]
+          }
+        },
+        "startAt": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 14,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "revealFrames": {
+          "default": 16,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "footer": {
+          "default": "Reuse first; write a new component only when the library has no match.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "How a prompt becomes a video",
+      "eyebrow": "FLOWCHART / FOLLOW THE PATH",
+      "direction": "horizontal",
+      "nodes": [
+        {
+          "id": "prompt",
+          "label": "User prompt",
+          "detail": "A topic, notes, or a PDF",
+          "kind": "start"
+        },
+        {
+          "id": "planner",
+          "label": "Planner",
+          "detail": "Writes the script and picks scenes",
+          "kind": "process"
+        },
+        {
+          "id": "exists",
+          "label": "Component exists?",
+          "detail": "Search the shared registry",
+          "kind": "decision"
+        },
+        {
+          "id": "compose",
+          "label": "Compose JSON",
+          "detail": "Durations, props, transitions",
+          "kind": "process"
+        },
+        {
+          "id": "done",
+          "label": "MP4 delivered",
+          "detail": "Rendered, uploaded, and returned as a URL",
+          "kind": "end"
+        }
+      ],
+      "edges": [
+        {
+          "from": "prompt",
+          "to": "planner"
+        },
+        {
+          "from": "planner",
+          "to": "exists"
+        },
+        {
+          "from": "exists",
+          "to": "compose",
+          "label": "match"
+        },
+        {
+          "from": "compose",
+          "to": "done"
+        }
+      ],
+      "startAt": 10,
+      "stagger": 14,
+      "revealFrames": 16,
+      "footer": "Reuse first; write a new component only when the library has no match."
+    }
+  },
+  {
+    "name": "CodeScene",
+    "version": "1.0.0",
+    "description": "A syntax-highlighted code snippet with line numbers, line-by-line reveals, and highlighted lines.",
+    "tags": [
+      "code",
+      "programming",
+      "syntax",
+      "algorithm",
+      "computer science"
+    ],
+    "path": "rendering/src/scenes/CodeScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "A recursive function",
+          "type": "string"
+        },
+        "eyebrow": {
+          "default": "CODE / READ IT LINE BY LINE",
+          "type": "string"
+        },
+        "filename": {
+          "default": "factorial.py",
+          "type": "string"
+        },
+        "language": {
+          "default": "python",
+          "type": "string"
+        },
+        "code": {
+          "default": "def factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n\nprint(factorial(5))",
+          "type": "string"
+        },
+        "startAt": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "lineStagger": {
+          "default": 5,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "revealFrames": {
+          "default": 10,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "highlightLines": {
+          "default": [
+            3,
+            4
+          ],
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "showLineNumbers": {
+          "default": true,
+          "type": "boolean"
+        },
+        "fontSize": {
+          "default": 32,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "footer": {
+          "default": "Line numbers and highlights draw attention to the part that matters.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "A recursive function",
+      "eyebrow": "CODE / READ IT LINE BY LINE",
+      "filename": "factorial.py",
+      "language": "python",
+      "code": "def factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n\nprint(factorial(5))",
+      "startAt": 10,
+      "lineStagger": 5,
+      "revealFrames": 10,
+      "highlightLines": [
+        3,
+        4
+      ],
+      "showLineNumbers": true,
+      "fontSize": 32,
+      "footer": "Line numbers and highlights draw attention to the part that matters."
+    }
+  },
+  {
+    "name": "MapScene",
+    "version": "1.0.0",
+    "description": "A flat world map with highlighted countries, city markers, and animated route arcs.",
+    "tags": [
+      "map",
+      "geography",
+      "world",
+      "countries",
+      "cities",
+      "routes",
+      "global"
+    ],
+    "path": "rendering/src/scenes/MapScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "A networked world",
+          "type": "string"
+        },
+        "eyebrow": {
+          "default": "MAP / GLOBAL VIEW",
+          "type": "string"
+        },
+        "highlightCountries": {
+          "default": [
+            "India",
+            "Singapore",
+            "United Kingdom",
+            "United States of America"
+          ],
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cities": {
+          "default": [
+            {
+              "name": "New Delhi",
+              "lat": 28.6139,
+              "lon": 77.209
+            },
+            {
+              "name": "Singapore",
+              "lat": 1.3521,
+              "lon": 103.8198
+            },
+            {
+              "name": "London",
+              "lat": 51.5074,
+              "lon": -0.1278
+            },
+            {
+              "name": "New York",
+              "lat": 40.7128,
+              "lon": -74.006
+            },
+            {
+              "name": "Tokyo",
+              "lat": 35.6762,
+              "lon": 139.6503
+            },
+            {
+              "name": "Sydney",
+              "lat": -33.8688,
+              "lon": 151.2093
+            },
+            {
+              "name": "Dubai",
+              "lat": 25.2048,
+              "lon": 55.2708
+            },
+            {
+              "name": "São Paulo",
+              "lat": -23.5505,
+              "lon": -46.6333
+            }
+          ],
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lon": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "name",
+              "lat",
+              "lon"
+            ]
+          }
+        },
+        "routes": {
+          "default": [
+            {
+              "from": "New Delhi",
+              "to": "Singapore"
+            },
+            {
+              "from": "Singapore",
+              "to": "London"
+            },
+            {
+              "from": "London",
+              "to": "New York"
+            }
+          ],
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ]
+          }
+        },
+        "showLabels": {
+          "default": true,
+          "type": "boolean"
+        },
+        "showGraticule": {
+          "default": true,
+          "type": "boolean"
+        },
+        "startAt": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 14,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "drawFrames": {
+          "default": 38,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "oceanColor": {
+          "default": "#091c2e",
+          "type": "string"
+        },
+        "landColor": {
+          "default": "#173b52",
+          "type": "string"
+        },
+        "highlightColor": {
+          "type": "string"
+        },
+        "borderColor": {
+          "default": "#2d5268",
+          "type": "string"
+        },
+        "routeColor": {
+          "type": "string"
+        },
+        "footer": {
+          "default": "Country outlines are from Natural Earth; this is a visualization, not a survey map.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "A networked world",
+      "eyebrow": "MAP / GLOBAL VIEW",
+      "highlightCountries": [
+        "India",
+        "Singapore",
+        "United Kingdom",
+        "United States of America"
+      ],
+      "cities": [
+        {
+          "name": "New Delhi",
+          "lat": 28.6139,
+          "lon": 77.209
+        },
+        {
+          "name": "Singapore",
+          "lat": 1.3521,
+          "lon": 103.8198
+        },
+        {
+          "name": "London",
+          "lat": 51.5074,
+          "lon": -0.1278
+        },
+        {
+          "name": "New York",
+          "lat": 40.7128,
+          "lon": -74.006
+        },
+        {
+          "name": "Tokyo",
+          "lat": 35.6762,
+          "lon": 139.6503
+        },
+        {
+          "name": "Sydney",
+          "lat": -33.8688,
+          "lon": 151.2093
+        },
+        {
+          "name": "Dubai",
+          "lat": 25.2048,
+          "lon": 55.2708
+        },
+        {
+          "name": "São Paulo",
+          "lat": -23.5505,
+          "lon": -46.6333
+        }
+      ],
+      "routes": [
+        {
+          "from": "New Delhi",
+          "to": "Singapore"
+        },
+        {
+          "from": "Singapore",
+          "to": "London"
+        },
+        {
+          "from": "London",
+          "to": "New York"
+        }
+      ],
+      "showLabels": true,
+      "showGraticule": true,
+      "startAt": 10,
+      "stagger": 14,
+      "drawFrames": 38,
+      "oceanColor": "#091c2e",
+      "landColor": "#173b52",
+      "borderColor": "#2d5268",
+      "footer": "Country outlines are from Natural Earth; this is a visualization, not a survey map."
+    }
+  },
+  {
+    "name": "StatScene",
+    "version": "1.0.0",
+    "description": "A large animated key statistic with a count-up, supporting text, and optional comparison bars.",
+    "tags": [
+      "statistic",
+      "number",
+      "key fact",
+      "data",
+      "count-up",
+      "comparison"
+    ],
+    "path": "rendering/src/scenes/StatScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "The Sun holds almost everything",
+          "type": "string"
+        },
+        "eyebrow": {
+          "default": "KEY NUMBER / WHY IT MATTERS",
+          "type": "string"
+        },
+        "value": {
+          "default": 99.8,
+          "type": "number"
+        },
+        "prefix": {
+          "default": "",
+          "type": "string"
+        },
+        "suffix": {
+          "default": "%",
+          "type": "string"
+        },
+        "decimals": {
+          "default": 1,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "label": {
+          "default": "of the Solar System's mass",
+          "type": "string"
+        },
+        "detail": {
+          "default": "Every planet, moon, and asteroid is a rounding error by comparison.",
+          "type": "string"
+        },
+        "comparisons": {
+          "default": [
+            {
+              "label": "Sun",
+              "value": 99.8
+            },
+            {
+              "label": "Jupiter",
+              "value": 0.1
+            },
+            {
+              "label": "Everything else",
+              "value": 0.1
+            }
+          ],
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "value": {
+                "type": "number",
+                "minimum": 0
+              },
+              "suffix": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ]
+          }
+        },
+        "startAt": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "countFrames": {
+          "default": 42,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "accentColor": {
+          "type": "string"
+        },
+        "footer": {
+          "default": "A single number can anchor an entire explanation.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "The Sun holds almost everything",
+      "eyebrow": "KEY NUMBER / WHY IT MATTERS",
+      "value": 99.8,
+      "prefix": "",
+      "suffix": "%",
+      "decimals": 1,
+      "label": "of the Solar System's mass",
+      "detail": "Every planet, moon, and asteroid is a rounding error by comparison.",
+      "comparisons": [
+        {
+          "label": "Sun",
+          "value": 99.8
+        },
+        {
+          "label": "Jupiter",
+          "value": 0.1
+        },
+        {
+          "label": "Everything else",
+          "value": 0.1
+        }
+      ],
+      "startAt": 10,
+      "countFrames": 42,
+      "footer": "A single number can anchor an entire explanation."
+    }
+  },
+  {
+    "name": "ImageScene",
+    "version": "1.0.0",
+    "description": "A full-width figure or image with a caption, credit, and optional pan or Ken Burns motion.",
+    "tags": [
+      "image",
+      "figure",
+      "diagram",
+      "photo",
+      "pdf",
+      "source material"
+    ],
+    "path": "rendering/src/scenes/ImageScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "A figure from your source",
+          "type": "string"
+        },
+        "eyebrow": {
+          "default": "FIGURE / LOOK CLOSELY",
+          "type": "string"
+        },
+        "src": {
+          "default": "",
+          "type": "string"
+        },
+        "alt": {
+          "default": "",
+          "type": "string"
+        },
+        "caption": {
+          "default": "Add a caption that tells the viewer what to notice.",
+          "type": "string"
+        },
+        "credit": {
+          "default": "",
+          "type": "string"
+        },
+        "fit": {
+          "default": "cover",
+          "type": "string",
+          "enum": [
+            "cover",
+            "contain"
+          ]
+        },
+        "motion": {
+          "default": "zoom-in",
+          "type": "string",
+          "enum": [
+            "none",
+            "pan-left",
+            "pan-right",
+            "zoom-in",
+            "zoom-out"
+          ]
+        },
+        "zoom": {
+          "default": 1.12,
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1.5
+        },
+        "startAt": {
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "motionFrames": {
+          "default": 150,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "footer": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "A figure from your source",
+      "eyebrow": "FIGURE / LOOK CLOSELY",
+      "src": "",
+      "alt": "",
+      "caption": "Add a caption that tells the viewer what to notice.",
+      "credit": "",
+      "fit": "cover",
+      "motion": "zoom-in",
+      "zoom": 1.12,
+      "startAt": 0,
+      "motionFrames": 150,
+      "footer": ""
+    }
+  },
+  {
+    "name": "CycleScene",
+    "version": "1.0.0",
+    "description": "A circular process diagram with 3–8 labeled stages, animated arrows, and a center label.",
+    "tags": [
+      "cycle",
+      "process",
+      "loop",
+      "stages",
+      "science",
+      "diagram"
+    ],
+    "path": "rendering/src/scenes/CycleScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "The water cycle",
+          "type": "string"
+        },
+        "eyebrow": {
+          "default": "CYCLE / A LOOP THAT REPEATS",
+          "type": "string"
+        },
+        "steps": {
+          "default": [
+            {
+              "label": "Evaporation",
+              "detail": "Heat turns liquid water into vapor."
+            },
+            {
+              "label": "Condensation",
+              "detail": "Vapor cools and forms clouds."
+            },
+            {
+              "label": "Precipitation",
+              "detail": "Rain, snow, or hail falls."
+            },
+            {
+              "label": "Collection",
+              "detail": "Water gathers in rivers, lakes, and oceans."
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "label"
+            ]
+          }
+        },
+        "centerLabel": {
+          "default": "The water cycle",
+          "type": "string"
+        },
+        "direction": {
+          "default": "clockwise",
+          "type": "string",
+          "enum": [
+            "clockwise",
+            "counterclockwise"
+          ]
+        },
+        "startAt": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 22,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "revealFrames": {
+          "default": 16,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "footer": {
+          "default": "A cycle has no first step; follow the arrows around the loop.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "The water cycle",
+      "eyebrow": "CYCLE / A LOOP THAT REPEATS",
+      "steps": [
+        {
+          "label": "Evaporation",
+          "detail": "Heat turns liquid water into vapor."
+        },
+        {
+          "label": "Condensation",
+          "detail": "Vapor cools and forms clouds."
+        },
+        {
+          "label": "Precipitation",
+          "detail": "Rain, snow, or hail falls."
+        },
+        {
+          "label": "Collection",
+          "detail": "Water gathers in rivers, lakes, and oceans."
+        }
+      ],
+      "centerLabel": "The water cycle",
+      "direction": "clockwise",
+      "startAt": 10,
+      "stagger": 22,
+      "revealFrames": 16,
+      "footer": "A cycle has no first step; follow the arrows around the loop."
+    }
+  },
+  {
+    "name": "VennScene",
+    "version": "1.0.0",
+    "description": "A two-circle Venn diagram for comparing two ideas, with left-only, right-only, and shared points.",
+    "tags": [
+      "venn",
+      "compare",
+      "contrast",
+      "overlap",
+      "diagram"
+    ],
+    "path": "rendering/src/scenes/VennScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Plant cells vs animal cells",
+          "type": "string"
+        },
+        "eyebrow": {
+          "default": "VENN / COMPARE & CONTRAST",
+          "type": "string"
+        },
+        "left": {
+          "default": {
+            "label": "Plant cells",
+            "items": [
+              "Cell wall",
+              "Chloroplasts",
+              "Large vacuole"
+            ]
+          },
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "items": {
+              "minItems": 1,
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "label",
+            "items"
+          ]
+        },
+        "right": {
+          "default": {
+            "label": "Animal cells",
+            "items": [
+              "Centrioles",
+              "Small vacuoles",
+              "Flexible shape"
+            ]
+          },
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "items": {
+              "minItems": 1,
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "label",
+            "items"
+          ]
+        },
+        "both": {
+          "default": [
+            "Nucleus",
+            "Mitochondria",
+            "Cell membrane",
+            "Cytoplasm"
+          ],
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "bothLabel": {
+          "default": "Both",
+          "type": "string"
+        },
+        "leftColor": {
+          "type": "string"
+        },
+        "rightColor": {
+          "type": "string"
+        },
+        "startAt": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 14,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "revealFrames": {
+          "default": 14,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "footer": {
+          "default": "Use a Venn diagram when two ideas overlap but are not identical.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Plant cells vs animal cells",
+      "eyebrow": "VENN / COMPARE & CONTRAST",
+      "left": {
+        "label": "Plant cells",
+        "items": [
+          "Cell wall",
+          "Chloroplasts",
+          "Large vacuole"
+        ]
+      },
+      "right": {
+        "label": "Animal cells",
+        "items": [
+          "Centrioles",
+          "Small vacuoles",
+          "Flexible shape"
+        ]
+      },
+      "both": [
+        "Nucleus",
+        "Mitochondria",
+        "Cell membrane",
+        "Cytoplasm"
+      ],
+      "bothLabel": "Both",
+      "startAt": 10,
+      "stagger": 14,
+      "revealFrames": 14,
+      "footer": "Use a Venn diagram when two ideas overlap but are not identical."
+    }
+  },
+  {
+    "name": "DeviceGridScene",
+    "version": "1.0.0",
+    "description": "A grid of devices (keyboard, mouse, TV, router, phone, server, ...) that pop in; each can be off/on/active/error and change state at given frames.",
+    "tags": [
+      "devices",
+      "hardware",
+      "icons",
+      "computer",
+      "network",
+      "electronics"
+    ],
+    "path": "rendering/src/scenes/DeviceGridScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "devices": {
+          "default": [
+            {
+              "kind": "keyboard",
+              "label": "Keyboard",
+              "state": "on"
+            },
+            {
+              "kind": "mouse",
+              "label": "Mouse",
+              "state": "on"
+            },
+            {
+              "kind": "computer",
+              "label": "Computer",
+              "state": "active"
+            },
+            {
+              "kind": "tv",
+              "label": "TV",
+              "state": "off"
+            },
+            {
+              "kind": "router",
+              "label": "Router",
+              "state": "active"
+            },
+            {
+              "kind": "phone",
+              "label": "Phone",
+              "state": "on"
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "computer",
+                  "laptop",
+                  "phone",
+                  "tablet",
+                  "smartwatch",
+                  "mouse",
+                  "keyboard",
+                  "monitor",
+                  "tv",
+                  "printer",
+                  "speaker",
+                  "headphones",
+                  "webcam",
+                  "camera",
+                  "microphone",
+                  "gamepad",
+                  "router",
+                  "modem",
+                  "hub",
+                  "server",
+                  "switch",
+                  "access-point",
+                  "wifi",
+                  "firewall",
+                  "security",
+                  "load-balancer",
+                  "cell-tower",
+                  "satellite",
+                  "cloud",
+                  "internet",
+                  "database",
+                  "data-center",
+                  "ethernet",
+                  "cable",
+                  "usb",
+                  "coaxial",
+                  "fibre",
+                  "undersea-cable",
+                  "cpu",
+                  "ram",
+                  "storage",
+                  "battery",
+                  "charging",
+                  "bulb",
+                  "plug",
+                  "power",
+                  "resistor",
+                  "capacitor",
+                  "motherboard",
+                  "house",
+                  "building",
+                  "office",
+                  "school",
+                  "hospital",
+                  "factory",
+                  "shop",
+                  "isp",
+                  "user",
+                  "users",
+                  "robot",
+                  "car",
+                  "drone",
+                  "hacker",
+                  "lock",
+                  "magnet"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "state": {
+                "default": "on",
+                "type": "string",
+                "enum": [
+                  "off",
+                  "on",
+                  "active",
+                  "error"
+                ]
+              },
+              "color": {
+                "type": "string"
+              },
+              "glow": {
+                "type": "string"
+              },
+              "appearAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "changes": {
+          "default": [
+            {
+              "index": 3,
+              "at": 75,
+              "state": "active"
+            }
+          ],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "on",
+                  "active",
+                  "error"
+                ]
+              }
+            },
+            "required": [
+              "index",
+              "at",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "size": {
+          "default": 150,
+          "type": "number",
+          "minimum": 60,
+          "maximum": 260
+        },
+        "startAt": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 8,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "showLabels": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "devices": [
+        {
+          "kind": "keyboard",
+          "label": "Keyboard",
+          "state": "on"
+        },
+        {
+          "kind": "mouse",
+          "label": "Mouse",
+          "state": "on"
+        },
+        {
+          "kind": "computer",
+          "label": "Computer",
+          "state": "active"
+        },
+        {
+          "kind": "tv",
+          "label": "TV",
+          "state": "off"
+        },
+        {
+          "kind": "router",
+          "label": "Router",
+          "state": "active"
+        },
+        {
+          "kind": "phone",
+          "label": "Phone",
+          "state": "on"
+        }
+      ],
+      "changes": [
+        {
+          "index": 3,
+          "at": 75,
+          "state": "active"
+        }
+      ],
+      "size": 150,
+      "startAt": 10,
+      "stagger": 8,
+      "showLabels": true
+    }
+  },
+  {
+    "name": "Device3DScene",
+    "version": "1.0.0",
+    "description": "Realistic 3D devices (mouse, keyboard, TV, router, phone, server, bulb, car, ... any of 65 kinds) on a turntable with labels; states off/on/active/error, state changes at frames, and an optional mouse pointer that moves and clicks.",
+    "tags": [
+      "3d",
+      "devices",
+      "hardware",
+      "computer",
+      "network",
+      "electronics",
+      "pointer",
+      "mouse"
+    ],
+    "path": "rendering/src/scenes/Device3DScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "devices": {
+          "default": [
+            {
+              "kind": "mouse",
+              "label": "Mouse",
+              "state": "on"
+            },
+            {
+              "kind": "keyboard",
+              "label": "Keyboard",
+              "state": "on"
+            },
+            {
+              "kind": "computer",
+              "label": "Computer",
+              "state": "active"
+            },
+            {
+              "kind": "tv",
+              "label": "Smart TV",
+              "state": "off"
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "computer",
+                  "laptop",
+                  "phone",
+                  "tablet",
+                  "smartwatch",
+                  "mouse",
+                  "keyboard",
+                  "monitor",
+                  "tv",
+                  "printer",
+                  "speaker",
+                  "headphones",
+                  "webcam",
+                  "camera",
+                  "microphone",
+                  "gamepad",
+                  "router",
+                  "modem",
+                  "hub",
+                  "server",
+                  "switch",
+                  "access-point",
+                  "wifi",
+                  "firewall",
+                  "security",
+                  "load-balancer",
+                  "cell-tower",
+                  "satellite",
+                  "cloud",
+                  "internet",
+                  "database",
+                  "data-center",
+                  "ethernet",
+                  "cable",
+                  "usb",
+                  "coaxial",
+                  "fibre",
+                  "undersea-cable",
+                  "cpu",
+                  "ram",
+                  "storage",
+                  "battery",
+                  "charging",
+                  "bulb",
+                  "plug",
+                  "power",
+                  "resistor",
+                  "capacitor",
+                  "motherboard",
+                  "house",
+                  "building",
+                  "office",
+                  "school",
+                  "hospital",
+                  "factory",
+                  "shop",
+                  "isp",
+                  "user",
+                  "users",
+                  "robot",
+                  "car",
+                  "drone",
+                  "hacker",
+                  "lock",
+                  "magnet"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "state": {
+                "default": "on",
+                "type": "string",
+                "enum": [
+                  "off",
+                  "on",
+                  "active",
+                  "error"
+                ]
+              },
+              "color": {
+                "type": "string"
+              },
+              "glow": {
+                "type": "string"
+              },
+              "appearAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "changes": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "on",
+                  "active",
+                  "error"
+                ]
+              }
+            },
+            "required": [
+              "index",
+              "at",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "size": {
+          "type": "number",
+          "minimum": 160,
+          "maximum": 900
+        },
+        "motion": {
+          "default": "sway",
+          "type": "string",
+          "enum": [
+            "sway",
+            "spin",
+            "still"
+          ]
+        },
+        "spin": {
+          "default": 0.35,
+          "type": "number",
+          "minimum": -3,
+          "maximum": 3
+        },
+        "tilt": {
+          "default": 0.35,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "startAt": {
+          "default": 8,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 8,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "pointer": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "y": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "at": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "at"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "clicks": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "variant": {
+              "default": "arrow",
+              "type": "string",
+              "enum": [
+                "arrow",
+                "hand",
+                "text"
+              ]
+            },
+            "size": {
+              "default": 46,
+              "type": "number",
+              "minimum": 16,
+              "maximum": 120
+            },
+            "appearAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "hideAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "clickColor": {
+              "type": "string"
+            },
+            "sound": {
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "devices": [
+        {
+          "kind": "mouse",
+          "label": "Mouse",
+          "state": "on"
+        },
+        {
+          "kind": "keyboard",
+          "label": "Keyboard",
+          "state": "on"
+        },
+        {
+          "kind": "computer",
+          "label": "Computer",
+          "state": "active"
+        },
+        {
+          "kind": "tv",
+          "label": "Smart TV",
+          "state": "off"
+        }
+      ],
+      "changes": [],
+      "motion": "sway",
+      "spin": 0.35,
+      "tilt": 0.35,
+      "startAt": 8,
+      "stagger": 8
+    }
+  },
+  {
+    "name": "ExplainScene",
+    "version": "1.0.0",
+    "description": "Teaching card: heading and body text revealed word by word with **bold**, ==highlight==, __underline__ and ((circle)) marks; optional staggered points, a count-up stat, a device icon and drawn arrows.",
+    "tags": [
+      "text",
+      "explain",
+      "definition",
+      "highlight",
+      "education",
+      "stat",
+      "arrow"
+    ],
+    "path": "rendering/src/scenes/ExplainScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "heading": {
+          "default": "A **LAN** connects devices in ==one building==",
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "points": {
+          "default": [],
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stat": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "from": {
+              "default": 0,
+              "type": "number"
+            },
+            "prefix": {
+              "default": "",
+              "type": "string"
+            },
+            "suffix": {
+              "default": "",
+              "type": "string"
+            },
+            "decimals": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "device": {
+          "type": "string",
+          "enum": [
+            "computer",
+            "laptop",
+            "phone",
+            "tablet",
+            "smartwatch",
+            "mouse",
+            "keyboard",
+            "monitor",
+            "tv",
+            "printer",
+            "speaker",
+            "headphones",
+            "webcam",
+            "camera",
+            "microphone",
+            "gamepad",
+            "router",
+            "modem",
+            "hub",
+            "server",
+            "switch",
+            "access-point",
+            "wifi",
+            "firewall",
+            "security",
+            "load-balancer",
+            "cell-tower",
+            "satellite",
+            "cloud",
+            "internet",
+            "database",
+            "data-center",
+            "ethernet",
+            "cable",
+            "usb",
+            "coaxial",
+            "fibre",
+            "undersea-cable",
+            "cpu",
+            "ram",
+            "storage",
+            "battery",
+            "charging",
+            "bulb",
+            "plug",
+            "power",
+            "resistor",
+            "capacitor",
+            "motherboard",
+            "house",
+            "building",
+            "office",
+            "school",
+            "hospital",
+            "factory",
+            "shop",
+            "isp",
+            "user",
+            "users",
+            "robot",
+            "car",
+            "drone",
+            "hacker",
+            "lock",
+            "magnet"
+          ]
+        },
+        "deviceState": {
+          "default": "active",
+          "type": "string",
+          "enum": [
+            "off",
+            "on",
+            "active",
+            "error"
+          ]
+        },
+        "arrows": {
+          "default": [],
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "y": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              },
+              "to": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "y": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              },
+              "label": {
+                "type": "string"
+              },
+              "startAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "bend": {
+                "default": 0.25,
+                "type": "number",
+                "minimum": -1,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "textAnimation": {
+          "default": "words",
+          "type": "string",
+          "enum": [
+            "words",
+            "letters",
+            "lines",
+            "typewriter",
+            "fade",
+            "none"
+          ]
+        },
+        "entrance": {
+          "default": "rise",
+          "type": "string",
+          "enum": [
+            "fade-up",
+            "fade",
+            "zoom",
+            "slide-left",
+            "slide-right",
+            "slide-down",
+            "pop",
+            "blur",
+            "rise",
+            "none"
+          ]
+        },
+        "startAt": {
+          "default": 6,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "wordStagger": {
+          "default": 4,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "pointStagger": {
+          "default": 16,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "align": {
+          "default": "left",
+          "type": "string",
+          "enum": [
+            "left",
+            "center"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "heading": "A **LAN** connects devices in ==one building==",
+      "points": [],
+      "deviceState": "active",
+      "arrows": [],
+      "textAnimation": "words",
+      "entrance": "rise",
+      "startAt": 6,
+      "wordStagger": 4,
+      "pointStagger": 16,
+      "align": "left"
+    }
+  },
+  {
+    "name": "ConnectionScene",
+    "version": "1.0.0",
+    "description": "Devices (any of 65 kinds, 2D icons or realistic 3D) joined by animated links: packets, electric current, fibre light, binary bits or wireless waves. Link labels, device state changes at frames. Good for \"how data/current travels from A to B\".",
+    "tags": [
+      "network",
+      "connection",
+      "packet",
+      "current",
+      "fibre",
+      "wireless",
+      "wifi",
+      "circuit",
+      "3d",
+      "2d",
+      "devices"
+    ],
+    "path": "rendering/src/scenes/ConnectionScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "default": "2d",
+          "type": "string",
+          "enum": [
+            "2d",
+            "3d"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "devices": {
+          "default": [
+            {
+              "kind": "phone",
+              "label": "Phone",
+              "state": "on"
+            },
+            {
+              "kind": "router",
+              "label": "Router",
+              "state": "active"
+            },
+            {
+              "kind": "server",
+              "label": "Server",
+              "state": "on"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "computer",
+                  "laptop",
+                  "phone",
+                  "tablet",
+                  "smartwatch",
+                  "mouse",
+                  "keyboard",
+                  "monitor",
+                  "tv",
+                  "printer",
+                  "speaker",
+                  "headphones",
+                  "webcam",
+                  "camera",
+                  "microphone",
+                  "gamepad",
+                  "router",
+                  "modem",
+                  "hub",
+                  "server",
+                  "switch",
+                  "access-point",
+                  "wifi",
+                  "firewall",
+                  "security",
+                  "load-balancer",
+                  "cell-tower",
+                  "satellite",
+                  "cloud",
+                  "internet",
+                  "database",
+                  "data-center",
+                  "ethernet",
+                  "cable",
+                  "usb",
+                  "coaxial",
+                  "fibre",
+                  "undersea-cable",
+                  "cpu",
+                  "ram",
+                  "storage",
+                  "battery",
+                  "charging",
+                  "bulb",
+                  "plug",
+                  "power",
+                  "resistor",
+                  "capacitor",
+                  "motherboard",
+                  "house",
+                  "building",
+                  "office",
+                  "school",
+                  "hospital",
+                  "factory",
+                  "shop",
+                  "isp",
+                  "user",
+                  "users",
+                  "robot",
+                  "car",
+                  "drone",
+                  "hacker",
+                  "lock",
+                  "magnet"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "state": {
+                "default": "on",
+                "type": "string",
+                "enum": [
+                  "off",
+                  "on",
+                  "active",
+                  "error"
+                ]
+              },
+              "color": {
+                "type": "string"
+              },
+              "glow": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "appearAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "links": {
+          "default": [
+            {
+              "from": 0,
+              "to": 1,
+              "effect": "waves",
+              "trip": 1.6,
+              "reverse": false,
+              "bend": 0,
+              "label": "Wi-Fi"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "effect": "packet",
+              "trip": 1.6,
+              "reverse": false,
+              "bend": 0,
+              "label": "data"
+            }
+          ],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "to": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "effect": {
+                "default": "packet",
+                "type": "string",
+                "enum": [
+                  "packet",
+                  "current",
+                  "light",
+                  "bits",
+                  "waves",
+                  "none"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 24
+              },
+              "color": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              },
+              "trip": {
+                "default": 1.6,
+                "type": "number",
+                "minimum": 0.2,
+                "maximum": 30
+              },
+              "reverse": {
+                "default": false,
+                "type": "boolean"
+              },
+              "bend": {
+                "default": 0,
+                "type": "number",
+                "minimum": -1,
+                "maximum": 1
+              },
+              "startAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "stopAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "changes": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "on",
+                  "active",
+                  "error"
+                ]
+              }
+            },
+            "required": [
+              "index",
+              "at",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "size": {
+          "type": "number",
+          "minimum": 60,
+          "maximum": 400
+        },
+        "startAt": {
+          "default": 6,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 8,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "tilt": {
+          "default": 0.35,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "pointer": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "y": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "at": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "at"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "clicks": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "variant": {
+              "default": "arrow",
+              "type": "string",
+              "enum": [
+                "arrow",
+                "hand",
+                "text"
+              ]
+            },
+            "size": {
+              "default": 46,
+              "type": "number",
+              "minimum": 16,
+              "maximum": 120
+            },
+            "appearAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "hideAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "clickColor": {
+              "type": "string"
+            },
+            "sound": {
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "mode": "2d",
+      "devices": [
+        {
+          "kind": "phone",
+          "label": "Phone",
+          "state": "on"
+        },
+        {
+          "kind": "router",
+          "label": "Router",
+          "state": "active"
+        },
+        {
+          "kind": "server",
+          "label": "Server",
+          "state": "on"
+        }
+      ],
+      "links": [
+        {
+          "from": 0,
+          "to": 1,
+          "effect": "waves",
+          "trip": 1.6,
+          "reverse": false,
+          "bend": 0,
+          "label": "Wi-Fi"
+        },
+        {
+          "from": 1,
+          "to": 2,
+          "effect": "packet",
+          "trip": 1.6,
+          "reverse": false,
+          "bend": 0,
+          "label": "data"
+        }
+      ],
+      "changes": [],
+      "startAt": 6,
+      "stagger": 8,
+      "tilt": 0.35
+    }
+  },
+  {
+    "name": "CircuitScene",
+    "version": "1.0.0",
+    "description": "Electric circuit: battery → switch → bulb (any devices) with current flowing along copper wires; the switch and bulb turn on at frames. 2D or 3D.",
+    "tags": [
+      "circuit",
+      "electricity",
+      "current",
+      "battery",
+      "bulb",
+      "physics",
+      "3d"
+    ],
+    "path": "rendering/src/scenes/ConnectionScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "default": "2d",
+          "type": "string",
+          "enum": [
+            "2d",
+            "3d"
+          ]
+        },
+        "title": {
+          "default": "A simple circuit",
+          "type": "string"
+        },
+        "caption": {
+          "default": "Current flows from the battery, through the switch, to the bulb.",
+          "type": "string"
+        },
+        "devices": {
+          "default": [
+            {
+              "kind": "battery",
+              "label": "Battery",
+              "state": "on"
+            },
+            {
+              "kind": "power",
+              "label": "Switch",
+              "state": "off"
+            },
+            {
+              "kind": "bulb",
+              "label": "Bulb",
+              "state": "off"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "computer",
+                  "laptop",
+                  "phone",
+                  "tablet",
+                  "smartwatch",
+                  "mouse",
+                  "keyboard",
+                  "monitor",
+                  "tv",
+                  "printer",
+                  "speaker",
+                  "headphones",
+                  "webcam",
+                  "camera",
+                  "microphone",
+                  "gamepad",
+                  "router",
+                  "modem",
+                  "hub",
+                  "server",
+                  "switch",
+                  "access-point",
+                  "wifi",
+                  "firewall",
+                  "security",
+                  "load-balancer",
+                  "cell-tower",
+                  "satellite",
+                  "cloud",
+                  "internet",
+                  "database",
+                  "data-center",
+                  "ethernet",
+                  "cable",
+                  "usb",
+                  "coaxial",
+                  "fibre",
+                  "undersea-cable",
+                  "cpu",
+                  "ram",
+                  "storage",
+                  "battery",
+                  "charging",
+                  "bulb",
+                  "plug",
+                  "power",
+                  "resistor",
+                  "capacitor",
+                  "motherboard",
+                  "house",
+                  "building",
+                  "office",
+                  "school",
+                  "hospital",
+                  "factory",
+                  "shop",
+                  "isp",
+                  "user",
+                  "users",
+                  "robot",
+                  "car",
+                  "drone",
+                  "hacker",
+                  "lock",
+                  "magnet"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "state": {
+                "default": "on",
+                "type": "string",
+                "enum": [
+                  "off",
+                  "on",
+                  "active",
+                  "error"
+                ]
+              },
+              "color": {
+                "type": "string"
+              },
+              "glow": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "appearAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "links": {
+          "default": [
+            {
+              "from": 0,
+              "to": 1,
+              "effect": "current",
+              "trip": 1.6,
+              "reverse": false,
+              "bend": 0,
+              "startAt": 50
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "effect": "current",
+              "trip": 1.6,
+              "reverse": false,
+              "bend": 0,
+              "startAt": 50
+            }
+          ],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "to": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "effect": {
+                "default": "packet",
+                "type": "string",
+                "enum": [
+                  "packet",
+                  "current",
+                  "light",
+                  "bits",
+                  "waves",
+                  "none"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 24
+              },
+              "color": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              },
+              "trip": {
+                "default": 1.6,
+                "type": "number",
+                "minimum": 0.2,
+                "maximum": 30
+              },
+              "reverse": {
+                "default": false,
+                "type": "boolean"
+              },
+              "bend": {
+                "default": 0,
+                "type": "number",
+                "minimum": -1,
+                "maximum": 1
+              },
+              "startAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "stopAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "changes": {
+          "default": [
+            {
+              "index": 1,
+              "at": 45,
+              "state": "active"
+            },
+            {
+              "index": 2,
+              "at": 55,
+              "state": "active"
+            }
+          ],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "on",
+                  "active",
+                  "error"
+                ]
+              }
+            },
+            "required": [
+              "index",
+              "at",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "size": {
+          "type": "number",
+          "minimum": 60,
+          "maximum": 400
+        },
+        "startAt": {
+          "default": 6,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 8,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "tilt": {
+          "default": 0.35,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "pointer": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "y": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "at": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "at"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "clicks": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "variant": {
+              "default": "arrow",
+              "type": "string",
+              "enum": [
+                "arrow",
+                "hand",
+                "text"
+              ]
+            },
+            "size": {
+              "default": 46,
+              "type": "number",
+              "minimum": 16,
+              "maximum": 120
+            },
+            "appearAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "hideAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "clickColor": {
+              "type": "string"
+            },
+            "sound": {
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "mode": "2d",
+      "title": "A simple circuit",
+      "caption": "Current flows from the battery, through the switch, to the bulb.",
+      "devices": [
+        {
+          "kind": "battery",
+          "label": "Battery",
+          "state": "on"
+        },
+        {
+          "kind": "power",
+          "label": "Switch",
+          "state": "off"
+        },
+        {
+          "kind": "bulb",
+          "label": "Bulb",
+          "state": "off"
+        }
+      ],
+      "links": [
+        {
+          "from": 0,
+          "to": 1,
+          "effect": "current",
+          "trip": 1.6,
+          "reverse": false,
+          "bend": 0,
+          "startAt": 50
+        },
+        {
+          "from": 1,
+          "to": 2,
+          "effect": "current",
+          "trip": 1.6,
+          "reverse": false,
+          "bend": 0,
+          "startAt": 50
+        }
+      ],
+      "changes": [
+        {
+          "index": 1,
+          "at": 45,
+          "state": "active"
+        },
+        {
+          "index": 2,
+          "at": 55,
+          "state": "active"
+        }
+      ],
+      "startAt": 6,
+      "stagger": 8,
+      "tilt": 0.35
+    }
+  },
+  {
+    "name": "WirelessScene",
+    "version": "1.0.0",
+    "description": "Wireless link: router → phone (any devices) with radio waves travelling between them. 2D or 3D.",
+    "tags": [
+      "wireless",
+      "wifi",
+      "radio",
+      "waves",
+      "router",
+      "phone",
+      "3d"
+    ],
+    "path": "rendering/src/scenes/ConnectionScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "default": "2d",
+          "type": "string",
+          "enum": [
+            "2d",
+            "3d"
+          ]
+        },
+        "title": {
+          "default": "Wireless: data on radio waves",
+          "type": "string"
+        },
+        "caption": {
+          "default": "No cable: the router sends radio waves the phone can pick up.",
+          "type": "string"
+        },
+        "devices": {
+          "default": [
+            {
+              "kind": "router",
+              "label": "Router",
+              "state": "active"
+            },
+            {
+              "kind": "phone",
+              "label": "Phone",
+              "state": "on"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "computer",
+                  "laptop",
+                  "phone",
+                  "tablet",
+                  "smartwatch",
+                  "mouse",
+                  "keyboard",
+                  "monitor",
+                  "tv",
+                  "printer",
+                  "speaker",
+                  "headphones",
+                  "webcam",
+                  "camera",
+                  "microphone",
+                  "gamepad",
+                  "router",
+                  "modem",
+                  "hub",
+                  "server",
+                  "switch",
+                  "access-point",
+                  "wifi",
+                  "firewall",
+                  "security",
+                  "load-balancer",
+                  "cell-tower",
+                  "satellite",
+                  "cloud",
+                  "internet",
+                  "database",
+                  "data-center",
+                  "ethernet",
+                  "cable",
+                  "usb",
+                  "coaxial",
+                  "fibre",
+                  "undersea-cable",
+                  "cpu",
+                  "ram",
+                  "storage",
+                  "battery",
+                  "charging",
+                  "bulb",
+                  "plug",
+                  "power",
+                  "resistor",
+                  "capacitor",
+                  "motherboard",
+                  "house",
+                  "building",
+                  "office",
+                  "school",
+                  "hospital",
+                  "factory",
+                  "shop",
+                  "isp",
+                  "user",
+                  "users",
+                  "robot",
+                  "car",
+                  "drone",
+                  "hacker",
+                  "lock",
+                  "magnet"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "state": {
+                "default": "on",
+                "type": "string",
+                "enum": [
+                  "off",
+                  "on",
+                  "active",
+                  "error"
+                ]
+              },
+              "color": {
+                "type": "string"
+              },
+              "glow": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "appearAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "links": {
+          "default": [
+            {
+              "from": 0,
+              "to": 1,
+              "effect": "waves",
+              "trip": 1.6,
+              "reverse": false,
+              "bend": 0,
+              "label": "Wi-Fi"
+            }
+          ],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "to": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "effect": {
+                "default": "packet",
+                "type": "string",
+                "enum": [
+                  "packet",
+                  "current",
+                  "light",
+                  "bits",
+                  "waves",
+                  "none"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 24
+              },
+              "color": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              },
+              "trip": {
+                "default": 1.6,
+                "type": "number",
+                "minimum": 0.2,
+                "maximum": 30
+              },
+              "reverse": {
+                "default": false,
+                "type": "boolean"
+              },
+              "bend": {
+                "default": 0,
+                "type": "number",
+                "minimum": -1,
+                "maximum": 1
+              },
+              "startAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "stopAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "changes": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "on",
+                  "active",
+                  "error"
+                ]
+              }
+            },
+            "required": [
+              "index",
+              "at",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "size": {
+          "type": "number",
+          "minimum": 60,
+          "maximum": 400
+        },
+        "startAt": {
+          "default": 6,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stagger": {
+          "default": 8,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "tilt": {
+          "default": 0.35,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "pointer": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "y": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "at": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "at"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "clicks": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "variant": {
+              "default": "arrow",
+              "type": "string",
+              "enum": [
+                "arrow",
+                "hand",
+                "text"
+              ]
+            },
+            "size": {
+              "default": 46,
+              "type": "number",
+              "minimum": 16,
+              "maximum": 120
+            },
+            "appearAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "hideAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "clickColor": {
+              "type": "string"
+            },
+            "sound": {
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "mode": "2d",
+      "title": "Wireless: data on radio waves",
+      "caption": "No cable: the router sends radio waves the phone can pick up.",
+      "devices": [
+        {
+          "kind": "router",
+          "label": "Router",
+          "state": "active"
+        },
+        {
+          "kind": "phone",
+          "label": "Phone",
+          "state": "on"
+        }
+      ],
+      "links": [
+        {
+          "from": 0,
+          "to": 1,
+          "effect": "waves",
+          "trip": 1.6,
+          "reverse": false,
+          "bend": 0,
+          "label": "Wi-Fi"
+        }
+      ],
+      "changes": [],
+      "startAt": 6,
+      "stagger": 8,
+      "tilt": 0.35
+    }
+  },
+  {
+    "name": "BlankScene",
+    "version": "1.0.0",
+    "description": "Empty canvas with an optional title and caption: a base for overlays (terminal, chat, notification, toggle, lock/encrypt, field lines, sound wave, progress bar, callouts, …).",
+    "tags": [
+      "blank",
+      "canvas",
+      "overlays",
+      "ui",
+      "custom"
+    ],
+    "path": "rendering/src/scenes/BlankScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "titleAt": {
+          "default": "top",
+          "type": "string",
+          "enum": [
+            "top",
+            "center"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "titleAt": "top"
+    }
+  },
+  {
+    "name": "DeviceDemoScene",
+    "version": "1.0.0",
+    "description": "How-to demo: an app window with an optional text field (typed, or masked like a password) and a button; a mouse pointer clicks the field, types, presses the button, and a 2D or 3D device changes state (e.g. TV off → on) with a ✓ status line.",
+    "tags": [
+      "demo",
+      "ui",
+      "button",
+      "typing",
+      "pointer",
+      "device",
+      "how-to",
+      "app",
+      "smart home",
+      "3d"
+    ],
+    "path": "rendering/src/scenes/DeviceDemoScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "app": {
+          "default": "Remote app",
+          "type": "string",
+          "maxLength": 30
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "input": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "default": "Device name",
+              "type": "string",
+              "maxLength": 30
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            },
+            "placeholder": {
+              "default": "",
+              "type": "string",
+              "maxLength": 30
+            },
+            "mask": {
+              "default": false,
+              "type": "boolean"
+            },
+            "charsPerSecond": {
+              "default": 10,
+              "type": "number",
+              "minimum": 2,
+              "maximum": 40
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "button": {
+          "default": "Turn on",
+          "type": "string",
+          "maxLength": 24
+        },
+        "buttonColor": {
+          "type": "string"
+        },
+        "device": {
+          "default": {
+            "kind": "tv",
+            "label": "Smart TV",
+            "mode": "3d"
+          },
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "computer",
+                "laptop",
+                "phone",
+                "tablet",
+                "smartwatch",
+                "mouse",
+                "keyboard",
+                "monitor",
+                "tv",
+                "printer",
+                "speaker",
+                "headphones",
+                "webcam",
+                "camera",
+                "microphone",
+                "gamepad",
+                "router",
+                "modem",
+                "hub",
+                "server",
+                "switch",
+                "access-point",
+                "wifi",
+                "firewall",
+                "security",
+                "load-balancer",
+                "cell-tower",
+                "satellite",
+                "cloud",
+                "internet",
+                "database",
+                "data-center",
+                "ethernet",
+                "cable",
+                "usb",
+                "coaxial",
+                "fibre",
+                "undersea-cable",
+                "cpu",
+                "ram",
+                "storage",
+                "battery",
+                "charging",
+                "bulb",
+                "plug",
+                "power",
+                "resistor",
+                "capacitor",
+                "motherboard",
+                "house",
+                "building",
+                "office",
+                "school",
+                "hospital",
+                "factory",
+                "shop",
+                "isp",
+                "user",
+                "users",
+                "robot",
+                "car",
+                "drone",
+                "hacker",
+                "lock",
+                "magnet"
+              ]
+            },
+            "label": {
+              "type": "string",
+              "maxLength": 30
+            },
+            "color": {
+              "type": "string"
+            },
+            "glow": {
+              "type": "string"
+            },
+            "mode": {
+              "default": "3d",
+              "type": "string",
+              "enum": [
+                "3d",
+                "2d"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        "before": {
+          "default": "off",
+          "type": "string",
+          "enum": [
+            "off",
+            "on",
+            "active",
+            "error"
+          ]
+        },
+        "after": {
+          "default": "active",
+          "type": "string",
+          "enum": [
+            "off",
+            "on",
+            "active",
+            "error"
+          ]
+        },
+        "status": {
+          "default": "Done!",
+          "type": "string",
+          "maxLength": 40
+        },
+        "wireless": {
+          "default": true,
+          "type": "boolean"
+        },
+        "startAt": {
+          "default": 15,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "app": "Remote app",
+      "button": "Turn on",
+      "device": {
+        "kind": "tv",
+        "label": "Smart TV",
+        "mode": "3d"
+      },
+      "before": "off",
+      "after": "active",
+      "status": "Done!",
+      "wireless": true,
+      "startAt": 15
+    }
+  },
+  {
+    "name": "BubbleSortScene",
+    "version": "1.0.0",
+    "description": "Visualizes bubble sort as numbered vertical bars, highlighting each comparison and animating adjacent swaps. Use it to introduce passes, comparisons, and the final sorted result.",
+    "tags": [
+      "sorting",
+      "bubble-sort",
+      "algorithms",
+      "DSA",
+      "arrays"
+    ],
+    "path": "rendering/src/staging/BubbleSortScene.tsx",
+    "staged": true,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Bubble Sort",
+          "type": "string"
+        },
+        "values": {
+          "default": [
+            5,
+            1,
+            4,
+            2,
+            8
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Bubble Sort",
+      "values": [
+        5,
+        1,
+        4,
+        2,
+        8
+      ]
     }
   }
 ]

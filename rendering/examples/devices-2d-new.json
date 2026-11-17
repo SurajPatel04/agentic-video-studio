@@ -1,0 +1,30 @@
+{
+  "fps": 30, "width": 1920, "height": 1080,
+  "theme": {"background": "radial-gradient(circle at 50% 40%, #13294b 0%, #070d1c 75%)", "accent": "#38bdf8"},
+  "defaultTransition": {"type": "none"},
+  "scenes": [
+    {
+      "id": "new-icons",
+      "component": "DeviceGridScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "New 2D devices",
+        "columns": 5,
+        "size": 170,
+        "changes": [],
+        "devices": [
+          {"kind": "modem", "label": "Modem", "state": "active"},
+          {"kind": "hub", "label": "Hub"},
+          {"kind": "coaxial", "label": "Coaxial cable"},
+          {"kind": "fibre", "label": "Fibre optic", "state": "active"},
+          {"kind": "undersea-cable", "label": "Undersea cable"},
+          {"kind": "isp", "label": "ISP"},
+          {"kind": "resistor", "label": "Resistor"},
+          {"kind": "capacitor", "label": "Capacitor", "state": "off"},
+          {"kind": "motherboard", "label": "Motherboard"},
+          {"kind": "hacker", "label": "Hacker", "state": "error"}
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "radial-gradient(circle at 50% 40%, #1b2f52 0%, #070d1c 75%)",
+    "accent": "#38bdf8"
+  },
+  "defaultTransition": {"type": "fade", "durationInFrames": 15},
+  "scenes": [
+    {
+      "id": "desk",
+      "component": "Device3DScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Input and output devices",
+        "caption": "Click the TV to switch it on",
+        "devices": [
+          {"kind": "mouse", "label": "Mouse"},
+          {"kind": "keyboard", "label": "Keyboard"},
+          {"kind": "computer", "label": "Computer", "state": "active"},
+          {"kind": "tv", "label": "Smart TV", "state": "off"}
+        ],
+        "changes": [{"index": 3, "at": 112, "state": "active"}],
+        "pointer": {
+          "path": [
+            {"x": 30, "y": 75, "at": 40},
+            {"x": 52, "y": 58, "at": 75},
+            {"x": 80, "y": 46, "at": 105}
+          ],
+          "clicks": [110],
+          "variant": "arrow"
+        }
+      }
+    },
+    {
+      "id": "light",
+      "component": "Device3DScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Power on",
+        "devices": [
+          {"kind": "power", "label": "Switch", "state": "off"},
+          {"kind": "bulb", "label": "Bulb", "state": "off"}
+        ],
+        "changes": [
+          {"index": 0, "at": 70, "state": "active"},
+          {"index": 1, "at": 72, "state": "on"}
+        ],
+        "pointer": {
+          "path": [{"x": 50, "y": 85, "at": 20}, {"x": 33, "y": 52, "at": 62}],
+          "clicks": [68],
+          "variant": "hand"
+        }
+      }
+    }
+  ]
+}

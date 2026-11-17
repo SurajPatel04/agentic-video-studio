@@ -1,0 +1,50 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "defaultTransition": {"type": "fade", "durationInFrames": 15},
+  "scenes": [
+    {
+      "id": "network-3d",
+      "component": "Device3DScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Getting online",
+        "devices": [
+          {"kind": "isp", "label": "ISP", "state": "active"},
+          {"kind": "undersea-cable", "label": "Undersea cable", "state": "active"},
+          {"kind": "modem", "label": "Modem", "state": "on"},
+          {"kind": "hub", "label": "Hub", "state": "active"}
+        ],
+        "changes": [{"index": 2, "at": 90, "state": "active"}]
+      }
+    },
+    {
+      "id": "cables-3d",
+      "component": "Device3DScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Copper vs light",
+        "devices": [
+          {"kind": "coaxial", "label": "Coaxial", "state": "active"},
+          {"kind": "fibre", "label": "Fibre optic", "state": "active"}
+        ]
+      }
+    },
+    {
+      "id": "electronics-3d",
+      "component": "Device3DScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Inside the hardware",
+        "devices": [
+          {"kind": "motherboard", "label": "Motherboard", "state": "active"},
+          {"kind": "resistor", "label": "Resistor", "state": "active"},
+          {"kind": "capacitor", "label": "Capacitor", "state": "on"},
+          {"kind": "hacker", "label": "Attacker", "state": "active"}
+        ],
+        "changes": [{"index": 2, "at": 100, "state": "error"}]
+      }
+    }
+  ]
+}

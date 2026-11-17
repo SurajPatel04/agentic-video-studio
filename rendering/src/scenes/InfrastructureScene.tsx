@@ -2,11 +2,12 @@ import {ThreeCanvas} from '@remotion/three';
 import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
 import {z} from 'zod';
 import {InfrastructureObject} from '../components/InfrastructureObject';
+import {deviceKindSchema} from '../components/Device';
 import {useTheme} from '../theme';
 
 const frameNumber = z.number().int().nonnegative();
 export const infrastructureObjectSchema = z.object({
-  kind: z.enum(['building', 'server', 'computer', 'laptop', 'router']).default('building'),
+  kind: deviceKindSchema.default('building'), // any of the 65 device kinds
   label: z.string().max(40).optional(),
   size: z.enum(['small', 'medium', 'large']).default('medium'),
   scale: z.number().min(0.25).max(2).default(1),
@@ -14,7 +15,8 @@ export const infrastructureObjectSchema = z.object({
   height: z.number().min(0.4).max(1.8).default(1),
   x: z.number().min(0).max(100).optional(),
   y: z.number().min(0).max(100).default(76),
-  color: z.string().optional(),
+  color: z.string().optional(), // body colour
+  glow: z.string().optional(), // screen / LED colour
   delay: frameNumber.optional(),
   growFrames: z.number().int().min(1).optional(),
   disappearAt: frameNumber.optional(),
@@ -45,16 +47,16 @@ const presets: Record<'city' | 'technology' | 'mixed', z.input<typeof infrastruc
     {kind: 'building', label: 'Studio', size: 'small', width: 1.3, color: '#687b85'},
   ],
   technology: [
-    {kind: 'server', label: 'Server rack', color: '#3f6179'},
-    {kind: 'computer', label: 'Desktop', color: '#426775'},
-    {kind: 'laptop', label: 'Laptop', color: '#536c7d'},
-    {kind: 'router', label: 'Router', color: '#687b85'},
+    {kind: 'server', label: 'Server rack'},
+    {kind: 'computer', label: 'Desktop'},
+    {kind: 'laptop', label: 'Laptop'},
+    {kind: 'router', label: 'Router'},
   ],
   mixed: [
     {kind: 'building', label: 'Office', size: 'large', color: '#3f6179'},
-    {kind: 'server', label: 'Server', color: '#536c7d'},
-    {kind: 'computer', label: 'Computer', color: '#426775'},
-    {kind: 'router', label: 'Network', color: '#687b85'},
+    {kind: 'server', label: 'Server'},
+    {kind: 'computer', label: 'Computer'},
+    {kind: 'router', label: 'Network'},
   ],
 };
 const smooth = (value: number) => {
@@ -104,7 +106,7 @@ export const InfrastructureScene: React.FC<InfrastructureSceneProps> = (input) =
             <meshStandardMaterial color="#303d4b" metalness={0.5} roughness={0.4}/>
           </mesh>}
           {visibility > 0 && <group scale={[scale * o.width, scale * o.height * (props.animation === 'grow' ? Math.max(0.001, visibility) : 1), scale * o.width]}>
-            <InfrastructureObject kind={o.kind} color={o.color ?? '#41677e'} opacity={visibility}/>
+            <InfrastructureObject kind={o.kind} color={o.color} glow={o.glow} opacity={visibility}/>
           </group>}
         </group>)}
       </ThreeCanvas>

@@ -1,5 +1,7 @@
 import type {ComponentType} from 'react';
 import {ZodObject, type ZodType} from 'zod';
+export {overlaysSchema, overlaySchema} from './effects/overlays';
+import {stagingCatalog} from './staging';
 import * as Infrastructure from './scenes/InfrastructureScene';
 import * as Title from './scenes/TitleScene';
 import * as Bullet from './scenes/BulletListScene';
@@ -15,6 +17,22 @@ import * as Example from './scenes/ExampleCardScene';
 import * as Steps from './scenes/StepsScene';
 import * as Quiz from './scenes/QuizScene';
 import * as Summary from './scenes/SummaryScene';
+import * as Chart from './scenes/ChartScene';
+import * as Equation from './scenes/EquationScene';
+import * as Timeline from './scenes/TimelineScene';
+import * as Flowchart from './scenes/FlowchartScene';
+import * as Code from './scenes/CodeScene';
+import * as Map from './scenes/MapScene';
+import * as Stat from './scenes/StatScene';
+import * as Image from './scenes/ImageScene';
+import * as Cycle from './scenes/CycleScene';
+import * as Venn from './scenes/VennScene';
+import * as DeviceGrid from './scenes/DeviceGridScene';
+import * as Device3D from './scenes/Device3DScene';
+import * as Explain from './scenes/ExplainScene';
+import * as Connection from './scenes/ConnectionScene';
+import * as DeviceDemo from './scenes/DeviceDemoScene';
+import * as Blank from './scenes/BlankScene';
 
 // A single contract for scene lookup, validation, and LLM discovery.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,6 +55,26 @@ const baseCatalog: Record<string, SceneEntry> = {
   StepsScene: {...Steps, component: Steps.StepsScene, schema: Steps.stepsSceneSchema},
   QuizScene: {...Quiz, component: Quiz.QuizScene, schema: Quiz.quizSceneSchema},
   SummaryScene: {...Summary, component: Summary.SummaryScene, schema: Summary.summarySceneSchema},
+  ChartScene: {...Chart, component: Chart.ChartScene, schema: Chart.chartSceneSchema},
+  EquationScene: {...Equation, component: Equation.EquationScene, schema: Equation.equationSceneSchema},
+  TimelineScene: {...Timeline, component: Timeline.TimelineScene, schema: Timeline.timelineSceneSchema},
+  FlowchartScene: {...Flowchart, component: Flowchart.FlowchartScene, schema: Flowchart.flowchartSceneSchema},
+  CodeScene: {...Code, component: Code.CodeScene, schema: Code.codeSceneSchema},
+  MapScene: {...Map, component: Map.MapScene, schema: Map.mapSceneSchema},
+  StatScene: {...Stat, component: Stat.StatScene, schema: Stat.statSceneSchema},
+  ImageScene: {...Image, component: Image.ImageScene, schema: Image.imageSceneSchema},
+  CycleScene: {...Cycle, component: Cycle.CycleScene, schema: Cycle.cycleSceneSchema},
+  VennScene: {...Venn, component: Venn.VennScene, schema: Venn.vennSceneSchema},
+  DeviceGridScene: {...DeviceGrid, component: DeviceGrid.DeviceGridScene, schema: DeviceGrid.deviceGridSceneSchema},
+  Device3DScene: {...Device3D, component: Device3D.Device3DScene, schema: Device3D.device3DSceneSchema},
+  ExplainScene: {...Explain, component: Explain.ExplainScene, schema: Explain.explainSceneSchema},
+  ConnectionScene: {...Connection, component: Connection.ConnectionScene, schema: Connection.connectionSceneSchema},
+  CircuitScene: {component: Connection.ConnectionScene, schema: Connection.circuitSceneSchema, description: Connection.circuitDescription, tags: ['circuit', 'electricity', 'current', 'battery', 'bulb', 'physics', '3d']},
+  WirelessScene: {component: Connection.ConnectionScene, schema: Connection.wirelessSceneSchema, description: Connection.wirelessDescription, tags: ['wireless', 'wifi', 'radio', 'waves', 'router', 'phone', '3d']},
+  BlankScene: {...Blank, component: Blank.BlankScene, schema: Blank.blankSceneSchema},
+  DeviceDemoScene: {...DeviceDemo, component: DeviceDemo.DeviceDemoScene, schema: DeviceDemo.deviceDemoSceneSchema},
+  // <promoted-scenes> (the backend adds promoted agent-made scenes above this line)
+  ...stagingCatalog,
 };
 // Unknown props are errors, not silently dropped: a typo like "titel" must fail validation
 // so the planner/agent sees it and fixes the JSON.

@@ -1,0 +1,13 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "defaultTransition": {"type": "fade", "durationInFrames": 10},
+  "scenes": [
+    {"id": "definition", "component": "DefinitionScene", "durationInFrames": 150, "props": {}},
+    {"id": "example", "component": "ExampleCardScene", "durationInFrames": 140, "props": {}},
+    {"id": "steps", "component": "StepsScene", "durationInFrames": 170, "props": {}},
+    {"id": "quiz", "component": "QuizScene", "durationInFrames": 190, "props": {}},
+    {"id": "summary", "component": "SummaryScene", "durationInFrames": 140, "props": {}}
+  ]
+}

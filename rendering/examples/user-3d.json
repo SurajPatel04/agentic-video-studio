@@ -1,0 +1,36 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "#101c30",
+    "accent": "#38bdf8"
+  },
+  "scenes": [
+    {
+      "id": "user-portrait",
+      "component": "Device3DScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "User \u00b7 3D portrait",
+        "devices": [
+          {
+            "kind": "user",
+            "label": "User",
+            "state": "active",
+            "color": "#264c72"
+          },
+          {
+            "kind": "users",
+            "label": "Team",
+            "state": "on",
+            "color": "#264c72"
+          }
+        ],
+        "size": 660,
+        "tilt": 0.15,
+        "motion": "still"
+      }
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "radial-gradient(circle at 50% 40%, #13294b 0%, #070d1c 75%)",
+    "accent": "#38bdf8"
+  },
+  "scenes": [
+    {
+      "id": "devices",
+      "component": "DeviceGridScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Devices on a home network",
+        "caption": "The TV joins the network when it switches on",
+        "devices": [
+          {"kind": "keyboard", "label": "Keyboard"},
+          {"kind": "mouse", "label": "Mouse"},
+          {"kind": "computer", "label": "Computer", "state": "active"},
+          {"kind": "tv", "label": "Smart TV", "state": "off"},
+          {"kind": "router", "label": "Wi-Fi router", "state": "active"},
+          {"kind": "phone", "label": "Phone"},
+          {"kind": "printer", "label": "Printer", "state": "error"},
+          {"kind": "cloud", "label": "Internet"}
+        ],
+        "changes": [{"index": 3, "at": 75, "state": "active"}]
+      }
+    }
+  ]
+}

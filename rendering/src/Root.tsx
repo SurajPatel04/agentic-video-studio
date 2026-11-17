@@ -5,6 +5,7 @@ import globe from '../examples/globe-test.json';
 import networking from '../examples/networking-complete.json';
 import priority from '../examples/networking-priority.json';
 import gallery from '../examples/study-gallery.json';
+import showcase from '../examples/library-showcase.json';
 import {totalFrames} from './transitions';
 import type {CompositionSpec} from './types';
 import {VideoComposition} from './VideoComposition';
@@ -49,7 +50,7 @@ export const RemotionRoot: React.FC = () => (
     defaultProps={globe as CompositionSpec}
     calculateMetadata={calculateMetadata}
   />
-  {[['NetworkingDemo', networking], ['NetworkingPriority', priority], ['StudyGallery', gallery]].map(([id, spec]) => (
+  {[['NetworkingDemo', networking], ['NetworkingPriority', priority], ['StudyGallery', gallery], ['LibraryShowcase', showcase]].map(([id, spec]) => (
     <Composition key={id as string} id={id as string} component={VideoComposition} durationInFrames={1} fps={30} width={1920} height={1080} defaultProps={spec as CompositionSpec} calculateMetadata={calculateMetadata}/>
   ))}
   </>

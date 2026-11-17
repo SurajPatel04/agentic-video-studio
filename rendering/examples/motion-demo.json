@@ -1,0 +1,100 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "radial-gradient(circle at 30% 30%, #1b2f52 0%, #070d1c 75%)",
+    "accent": "#38bdf8"
+  },
+  "defaultTransition": {
+    "type": "fade",
+    "durationInFrames": 12
+  },
+  "scenes": [
+    {
+      "id": "title",
+      "component": "TitleScene",
+      "durationInFrames": 100,
+      "props": {
+        "title": "Types of **Computer Networks**",
+        "subtitle": "LAN \u00b7 MAN \u00b7 WAN"
+      }
+    },
+    {
+      "id": "lan",
+      "component": "ExplainScene",
+      "durationInFrames": 240,
+      "props": {
+        "eyebrow": "Local Area Network",
+        "heading": "A **LAN** connects devices in ==one building==",
+        "body": "Your home Wi-Fi and a school computer lab are __both LANs__.\nThey are fast, private and owned by ((one organisation)).",
+        "points": [
+          "Covers a room, home or office",
+          "Very fast: ==up to 10 Gbps=="
+        ],
+        "device": "router"
+      }
+    },
+    {
+      "id": "speed",
+      "component": "ExplainScene",
+      "durationInFrames": 170,
+      "props": {
+        "heading": "How fast is a typical **office LAN**?",
+        "stat": {
+          "value": 1000,
+          "suffix": " Mbps",
+          "label": "per device"
+        },
+        "arrows": [
+          {
+            "from": {
+              "x": 62,
+              "y": 86
+            },
+            "to": {
+              "x": 30,
+              "y": 70
+            },
+            "label": "1 Gigabit",
+            "bend": -0.25
+          }
+        ]
+      }
+    },
+    {
+      "id": "types",
+      "component": "BulletListScene",
+      "durationInFrames": 160,
+      "props": {
+        "title": "Three types, by **size**",
+        "items": [
+          "**LAN** \u2014 one building",
+          "**MAN** \u2014 one ==city==",
+          "**WAN** \u2014 the __whole world__"
+        ],
+        "textAnimation": "words"
+      }
+    },
+    {
+      "id": "code",
+      "component": "ExplainScene",
+      "durationInFrames": 150,
+      "props": {
+        "heading": "ping 192.168.1.1",
+        "body": "Reply from 192.168.1.1: time=2ms",
+        "textAnimation": "typewriter",
+        "device": "computer"
+      }
+    },
+    {
+      "id": "quote",
+      "component": "QuoteScene",
+      "durationInFrames": 120,
+      "props": {
+        "text": "The Internet is the ==largest WAN== in the world.",
+        "author": "Networking 101"
+      }
+    }
+  ]
+}

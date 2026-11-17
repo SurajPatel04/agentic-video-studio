@@ -1,0 +1,356 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "background": "radial-gradient(circle at 50% 40%, #1b2f52 0%, #070d1c 75%)",
+    "accent": "#38bdf8"
+  },
+  "scenes": [
+    {
+      "id": "g1",
+      "component": "Device3DScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "3D devices 1/7",
+        "spin": 0.4,
+        "devices": [
+          {
+            "kind": "computer",
+            "label": "computer",
+            "state": "on"
+          },
+          {
+            "kind": "laptop",
+            "label": "laptop",
+            "state": "active"
+          },
+          {
+            "kind": "phone",
+            "label": "phone",
+            "state": "on"
+          },
+          {
+            "kind": "tablet",
+            "label": "tablet",
+            "state": "off"
+          },
+          {
+            "kind": "smartwatch",
+            "label": "smartwatch",
+            "state": "on"
+          },
+          {
+            "kind": "mouse",
+            "label": "mouse",
+            "state": "active"
+          },
+          {
+            "kind": "keyboard",
+            "label": "keyboard",
+            "state": "on"
+          },
+          {
+            "kind": "monitor",
+            "label": "monitor",
+            "state": "off"
+          }
+        ]
+      }
+    },
+    {
+      "id": "g2",
+      "component": "Device3DScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "3D devices 2/7",
+        "spin": 0.4,
+        "devices": [
+          {
+            "kind": "tv",
+            "label": "tv",
+            "state": "on"
+          },
+          {
+            "kind": "printer",
+            "label": "printer",
+            "state": "active"
+          },
+          {
+            "kind": "speaker",
+            "label": "speaker",
+            "state": "on"
+          },
+          {
+            "kind": "headphones",
+            "label": "headphones",
+            "state": "off"
+          },
+          {
+            "kind": "webcam",
+            "label": "webcam",
+            "state": "on"
+          },
+          {
+            "kind": "camera",
+            "label": "camera",
+            "state": "active"
+          },
+          {
+            "kind": "microphone",
+            "label": "microphone",
+            "state": "on"
+          },
+          {
+            "kind": "gamepad",
+            "label": "gamepad",
+            "state": "off"
+          }
+        ]
+      }
+    },
+    {
+      "id": "g3",
+      "component": "Device3DScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "3D devices 3/7",
+        "spin": 0.4,
+        "devices": [
+          {
+            "kind": "router",
+            "label": "router",
+            "state": "on"
+          },
+          {
+            "kind": "server",
+            "label": "server",
+            "state": "active"
+          },
+          {
+            "kind": "switch",
+            "label": "switch",
+            "state": "on"
+          },
+          {
+            "kind": "access-point",
+            "label": "access-point",
+            "state": "off"
+          },
+          {
+            "kind": "wifi",
+            "label": "wifi",
+            "state": "on"
+          },
+          {
+            "kind": "firewall",
+            "label": "firewall",
+            "state": "active"
+          },
+          {
+            "kind": "security",
+            "label": "security",
+            "state": "on"
+          },
+          {
+            "kind": "load-balancer",
+            "label": "load-balancer",
+            "state": "off"
+          }
+        ]
+      }
+    },
+    {
+      "id": "g4",
+      "component": "Device3DScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "3D devices 4/7",
+        "spin": 0.4,
+        "devices": [
+          {
+            "kind": "cell-tower",
+            "label": "cell-tower",
+            "state": "on"
+          },
+          {
+            "kind": "satellite",
+            "label": "satellite",
+            "state": "active"
+          },
+          {
+            "kind": "cloud",
+            "label": "cloud",
+            "state": "on"
+          },
+          {
+            "kind": "internet",
+            "label": "internet",
+            "state": "off"
+          },
+          {
+            "kind": "database",
+            "label": "database",
+            "state": "on"
+          },
+          {
+            "kind": "data-center",
+            "label": "data-center",
+            "state": "active"
+          },
+          {
+            "kind": "ethernet",
+            "label": "ethernet",
+            "state": "on"
+          },
+          {
+            "kind": "cable",
+            "label": "cable",
+            "state": "off"
+          }
+        ]
+      }
+    },
+    {
+      "id": "g5",
+      "component": "Device3DScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "3D devices 5/7",
+        "spin": 0.4,
+        "devices": [
+          {
+            "kind": "usb",
+            "label": "usb",
+            "state": "on"
+          },
+          {
+            "kind": "cpu",
+            "label": "cpu",
+            "state": "active"
+          },
+          {
+            "kind": "ram",
+            "label": "ram",
+            "state": "on"
+          },
+          {
+            "kind": "storage",
+            "label": "storage",
+            "state": "off"
+          },
+          {
+            "kind": "battery",
+            "label": "battery",
+            "state": "on"
+          },
+          {
+            "kind": "charging",
+            "label": "charging",
+            "state": "active"
+          },
+          {
+            "kind": "bulb",
+            "label": "bulb",
+            "state": "on"
+          },
+          {
+            "kind": "plug",
+            "label": "plug",
+            "state": "off"
+          }
+        ]
+      }
+    },
+    {
+      "id": "g6",
+      "component": "Device3DScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "3D devices 6/7",
+        "spin": 0.4,
+        "devices": [
+          {
+            "kind": "power",
+            "label": "power",
+            "state": "on"
+          },
+          {
+            "kind": "house",
+            "label": "house",
+            "state": "active"
+          },
+          {
+            "kind": "building",
+            "label": "building",
+            "state": "on"
+          },
+          {
+            "kind": "office",
+            "label": "office",
+            "state": "off"
+          },
+          {
+            "kind": "school",
+            "label": "school",
+            "state": "on"
+          },
+          {
+            "kind": "hospital",
+            "label": "hospital",
+            "state": "active"
+          },
+          {
+            "kind": "factory",
+            "label": "factory",
+            "state": "on"
+          },
+          {
+            "kind": "shop",
+            "label": "shop",
+            "state": "off"
+          }
+        ]
+      }
+    },
+    {
+      "id": "g7",
+      "component": "Device3DScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "3D devices 7/7",
+        "spin": 0.4,
+        "devices": [
+          {
+            "kind": "user",
+            "label": "user",
+            "state": "on"
+          },
+          {
+            "kind": "users",
+            "label": "users",
+            "state": "active"
+          },
+          {
+            "kind": "robot",
+            "label": "robot",
+            "state": "on"
+          },
+          {
+            "kind": "car",
+            "label": "car",
+            "state": "off"
+          },
+          {
+            "kind": "drone",
+            "label": "drone",
+            "state": "on"
+          }
+        ]
+      }
+    }
+  ],
+  "defaultTransition": {
+    "type": "none"
+  }
+}
