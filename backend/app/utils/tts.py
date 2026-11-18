@@ -15,6 +15,7 @@ import struct
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -62,21 +63,48 @@ def wav_seconds(data: bytes) -> float:
     return max(0, len(data) - 44) / 2 / settings.TTS_SAMPLE_RATE
 
 
+_deepgram_slots: dict[int, asyncio.Semaphore] = {}
+
+
+def _slots() -> asyncio.Semaphore:
+    """At most DEEPGRAM_CONCURRENCY requests in flight (a chapter has ~25 clips; firing them all at once
+    gets 429 Too Many Requests). One semaphore per event loop (a semaphore cannot be shared across loops)."""
+    loop = id(asyncio.get_running_loop())
+    if loop not in _deepgram_slots:
+        _deepgram_slots[loop] = asyncio.Semaphore(max(1, settings.DEEPGRAM_CONCURRENCY))
+    return _deepgram_slots[loop]
+
+
+async def _post(what: str, url: str, **kwargs: Any) -> httpx.Response:
+    """POST to Deepgram, limited and retried: 429 / 5xx / network errors wait (Retry-After, else 2, 4, 8, ...
+    seconds) and try again, up to DEEPGRAM_RETRIES times."""
+    tries = max(1, settings.DEEPGRAM_RETRIES)
+    async with _slots(), httpx.AsyncClient(timeout=settings.TTS_TIMEOUT_SECONDS) as client:
+        for attempt in range(1, tries + 1):
+            try:
+                res = await client.post(url, **kwargs)
+            except httpx.TransportError as exc:
+                if attempt == tries:
+                    raise RuntimeError(f"Deepgram {what}: {exc}") from exc
+                await asyncio.sleep(min(30, 2 ** attempt))
+                continue
+            if res.status_code == 200:
+                return res
+            if not (res.status_code == 429 or res.status_code >= 500) or attempt == tries:
+                raise RuntimeError(f"Deepgram {what} {res.status_code}: {res.text[:300]}")
+            wait = res.headers.get("retry-after", "")
+            delay = float(wait) if wait.replace(".", "", 1).isdigit() else min(30, 2 ** attempt)
+            log.warning("deepgram.%s.retry status=%s attempt=%d wait_s=%.0f", what.lower(), res.status_code, attempt, delay)
+            await asyncio.sleep(delay)
+    raise RuntimeError("unreachable")
+
+
 async def _request(text: str, voice: str) -> bytes:
     if not settings.DEEPGRAM_TTS_API_KEY:
         raise RuntimeError("Set DEEPGRAM_TTS_API_KEY in .env")
     params = {"model": voice, "encoding": "linear16", "container": "wav", "sample_rate": settings.TTS_SAMPLE_RATE}
     headers = {"Authorization": f"Token {settings.DEEPGRAM_TTS_API_KEY}", "Content-Type": "application/json"}
-    async with httpx.AsyncClient(timeout=settings.TTS_TIMEOUT_SECONDS) as client:
-        for attempt in range(1, 4):
-            res = await client.post(settings.DEEPGRAM_TTS_URL, params=params, headers=headers, json={"text": text})
-            if res.status_code == 200:
-                return res.content
-            retry = res.status_code == 429 or res.status_code >= 500
-            if not retry or attempt == 3:
-                raise RuntimeError(f"Deepgram TTS {res.status_code}: {res.text[:300]}")
-            await asyncio.sleep(attempt)
-    raise RuntimeError("unreachable")
+    return (await _post("TTS", settings.DEEPGRAM_TTS_URL, params=params, headers=headers, json={"text": text})).content
 
 
 async def synthesize(text: str, voice: str | None = None) -> SpeechClip:
@@ -118,10 +146,7 @@ async def _transcribe(data: bytes) -> list[dict]:
         raise RuntimeError("no Deepgram key")
     params = {"model": settings.STT_MODEL, "punctuate": "true", "smart_format": "false"}
     headers = {"Authorization": f"Token {key}", "Content-Type": "audio/wav"}
-    async with httpx.AsyncClient(timeout=settings.TTS_TIMEOUT_SECONDS) as client:
-        res = await client.post(settings.DEEPGRAM_STT_URL, params=params, headers=headers, content=data)
-    if res.status_code != 200:
-        raise RuntimeError(f"Deepgram STT {res.status_code}: {res.text[:200]}")
+    res = await _post("STT", settings.DEEPGRAM_STT_URL, params=params, headers=headers, content=data)
     return res.json()["results"]["channels"][0]["alternatives"][0]["words"]
 
 

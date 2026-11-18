@@ -36,12 +36,12 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field, ValidationError
 
 from app.config import settings
-from app.utils import skills as teaching_skills
+from app.utils import skill_router, skills as teaching_skills
 from app.utils.console import step
 from app.utils.llm import get_llm, text_of, usage_of
-from app.utils.planner import PlanError, _extract_json, plan_video
+from app.utils.planner import PlanError, _extract_json, apply_layout, plan_video
 from app.utils import subtitles
-from app.utils.render import RenderError, default_caption_mode, render_video, validate, without_intro
+from app.utils.render import RenderError, captions_enabled, default_caption_mode, render_video, validate, without_intro
 
 log = logging.getLogger(__name__)
 
@@ -97,6 +97,8 @@ class LongState(BaseModel):
     mode: str | None = None  # planner mode
     model: str | None = None
     skills: list[str] | None = None  # None migrates older jobs; [] explicitly disables guides
+    layout: Literal["desktop", "mobile", "square"] = "desktop"  # frame size of every chapter
+    max_minutes: float = 0  # the limit asked for; ``minutes`` is what the outline planned (content decides, up to the limit)
     status: Literal["outlined", "running", "planned", "done", "failed"] = "outlined"
     step: str = ""  # what it is doing / did last, for progress
     progress: float = 0  # 0..1
@@ -212,7 +214,7 @@ Reply with ONLY one JSON object, no prose, no code fences:
                  "key_points": ["3-6 concrete things to explain, show or demonstrate"], "minutes": 5}}]
 }}
 Rules:
-- About {chapters} chapters; their minutes add up to {minutes}.
+{length_rule}
 - Order chapters to serve the requested purpose. For lectures, build from prerequisites to explanation,
   examples and application. For explainers, develop the central answer. For promotional videos, connect
   needs, benefits, supported evidence and a next action. Do not force teaching exercises into other formats.
@@ -223,13 +225,29 @@ Rules:
 """
 
 
-async def make_outline(topic: str, minutes: float, *, chapters: int | None = None, model: str | None = None, skills: list[str] | None = None) -> tuple[Outline, int, int, int]:
-    """LLM writes the outline. Returns (outline, llm calls, input tokens, output tokens)."""
+def length_rule(minutes: float, chapters: int | None, fixed: bool) -> str:
+    """How long the outline may be. ``fixed``: exactly ``minutes``; otherwise ``minutes`` is a ceiling and
+    the content decides (a narrow topic is shorter; nothing is padded)."""
+    if fixed:
+        want = chapters or max(2, round(minutes / settings.LONG_CHAPTER_MINUTES))
+        return f"- About {want} chapters; their minutes add up to {minutes:g}."
+    most = chapters or max(2, round(minutes / settings.LONG_CHAPTER_MINUTES))
+    count = f"exactly {chapters} chapters" if chapters else f"2 to {most} chapters"
+    return (f"- Length: UP TO {minutes:g} minutes in total ({count}, usually {settings.LONG_CHAPTER_MINUTES:g} minutes each). "
+            f"Use only as much time as the topic genuinely needs to be explained well: a narrow topic may need "
+            f"{max(settings.LONG_MIN_MINUTES, 6):g}-12 minutes, a broad one the full {minutes:g}. Never pad, repeat or add filler "
+            f"chapters to reach the limit; never go over it.")
+
+
+async def make_outline(topic: str, minutes: float, *, chapters: int | None = None, model: str | None = None,
+                       skills: list[str] | None = None, fixed_length: bool = False) -> tuple[Outline, int, int, int]:
+    """LLM writes the outline. Returns (outline, llm calls, input tokens, output tokens).
+    ``minutes`` is the exact length with ``fixed_length``, else the most the video may take."""
     selected = teaching_skills.select(topic, skills, long_video=True)
-    want = chapters or max(2, round(minutes / settings.LONG_CHAPTER_MINUTES))
+    rule = length_rule(minutes, chapters, fixed_length)
     messages: list[Any] = [
-        SystemMessage(OUTLINE_RULES.format(chapters=want, minutes=minutes) + teaching_skills.guidance(selected)),
-        HumanMessage(f"Topic: {topic}\nTotal length: {minutes} minutes."),
+        SystemMessage(OUTLINE_RULES.format(length_rule=rule) + teaching_skills.guidance(selected)),
+        HumanMessage(f"Topic: {topic}\nTotal length: {'exactly' if fixed_length else 'up to'} {minutes:g} minutes."),
     ]
     llm = get_llm(model or settings.LONG_MODEL or settings.PLANNER_MODEL or None)
     calls = tin = tout = 0
@@ -246,33 +264,47 @@ async def make_outline(topic: str, minutes: float, *, chapters: int | None = Non
             problem = str(exc)[:3000]
             messages += [AIMessage(reply), HumanMessage(f"That outline is invalid:\n{problem}\nReply with ONLY the corrected JSON.")]
             continue
-        return set_budgets(outline, minutes), calls, tin, tout
+        return set_budgets(outline, minutes, fixed=fixed_length), calls, tin, tout
     raise PlanError(f"outline invalid after {calls} tries", problem)
 
 
-def set_budgets(outline: Outline, minutes: float) -> Outline:
-    """Scale chapter minutes to add up to the target and give each a narration word budget."""
+def set_budgets(outline: Outline, minutes: float, *, fixed: bool = True) -> Outline:
+    """Give each chapter a narration word budget. ``fixed``: scale the chapters to add up to ``minutes``;
+    otherwise keep the length the content needs, only shrinking it when it is over the limit (or under
+    LONG_MIN_MINUTES)."""
     total = sum(c.minutes for c in outline.chapters) or 1
+    target = minutes if fixed else min(minutes, max(total, settings.LONG_MIN_MINUTES))
     for c in outline.chapters:
-        c.minutes = round(c.minutes * minutes / total, 2)
+        c.minutes = round(c.minutes * target / total, 2)
         c.words = round(c.minutes * settings.LONG_WORDS_PER_MINUTE)
     return outline
 
 
-def _new_state(topic: str, minutes: float, outline: Outline, **opts: Any) -> LongState:
-    return LongState(id=uuid.uuid4().hex[:10], topic=topic, minutes=minutes, outline=outline,
+def new_id() -> str:
+    return uuid.uuid4().hex[:10]
+
+
+def _new_state(topic: str, minutes: float, outline: Outline, *, job_id: str | None = None, **opts: Any) -> LongState:
+    return LongState(id=job_id or new_id(), topic=topic, minutes=minutes, outline=outline,
                      chapters=[ChapterState(n=i + 1) for i in range(len(outline.chapters))], **opts)
 
 
 async def create_long_video(topic: str, minutes: float, *, chapters: int | None = None, captions: bool = True,
-                            scale: float = 1.0, mode: str | None = None, model: str | None = None, skills: list[str] | None = None) -> LongState:
-    """Write and save the outline (nothing planned or rendered yet). Review it, then run."""
-    selected = teaching_skills.select(topic, skills, long_video=True)
+                            scale: float = 1.0, mode: str | None = None, model: str | None = None, skills: list[str] | None = None,
+                            layout: str = "desktop", job_id: str | None = None, fixed_length: bool = False) -> LongState:
+    """Write and save the outline (nothing planned or rendered yet). Review it, then run.
+    ``minutes`` is the most the video may take (the content decides, never padded); ``fixed_length`` makes it exact.
+    ``job_id``: use this id (from new_id()) so a caller can report on the job while the outline is written."""
+    chosen = await skill_router.route(topic, skills, long_video=True, model=model)  # once; chapters reuse it
+    selected = chosen.skills
     with step("outline", topic=topic, minutes=minutes, skills=",".join(selected)) as s:
-        outline, calls, tin, tout = await make_outline(topic, minutes, chapters=chapters, model=model, skills=selected)
-        s.update(chapters=len(outline.chapters), tokens_in=tin, tokens_out=tout)
-    state = _new_state(topic, minutes, outline, captions=captions, scale=scale, mode=mode, model=model, skills=selected)
-    state.llm_calls, state.input_tokens, state.output_tokens = calls, tin, tout
+        outline, calls, tin, tout = await make_outline(topic, minutes, chapters=chapters, model=model, skills=selected,
+                                                       fixed_length=fixed_length)
+        planned = round(sum(c.minutes for c in outline.chapters), 1)
+        s.update(chapters=len(outline.chapters), planned_min=planned, limit_min=minutes, tokens_in=tin, tokens_out=tout)
+    state = _new_state(topic, planned, outline, max_minutes=minutes, job_id=job_id, captions=captions, scale=scale, mode=mode, model=model,
+                       skills=selected, layout=layout)
+    state.llm_calls, state.input_tokens, state.output_tokens = calls + chosen.calls, tin + chosen.input_tokens, tout + chosen.output_tokens
     state.step = f"outline: {len(outline.chapters)} chapters"
     save(state)
     log.info("long.outline id=%s chapters=%d tokens_in=%d tokens_out=%d", state.id, len(outline.chapters), tin, tout)
@@ -356,7 +388,7 @@ async def plan_chapter(state: LongState, n: int) -> dict[str, Any]:
     note = ""
     for _ in range(2):
         topic = f"{state.outline.title}: chapter {n}, {ch.title}"
-        plan = await plan_video(topic, scenes=scenes, mode=state.mode, model=state.model, context=chapter_context(state, n, note), skills=state.skills)  # type: ignore[arg-type]
+        plan = await plan_video(topic, scenes=scenes, mode=state.mode, model=state.model, context=chapter_context(state, n, note), skills=state.skills, layout=state.layout)  # type: ignore[arg-type]
         cs.llm_calls += plan.llm_calls
         cs.input_tokens += plan.input_tokens
         cs.output_tokens += plan.output_tokens
@@ -400,6 +432,7 @@ async def _render_chapter(state: LongState, n: int) -> None:
     cs = state.chapters[n - 1]
     spec = json.loads(plan_file(state.id, n).read_text())
     cs.job_id = f"long-{state.id}-ch{n:02d}"
+    apply_layout(spec, state.layout)  # hand-edited plans get the job's frame size too
     if n > 1:
         spec = without_intro(spec)  # the logo intro plays once, at the start of the whole video
     result = await render_video(spec, captions=state.captions, job_id=cs.job_id, scale=state.scale,
@@ -440,15 +473,13 @@ async def join_chapters(state: LongState) -> Path:
     videos = [settings.WORKSPACE_DIR / "jobs" / c.job_id / "video.mp4" for c in state.chapters]
     (d / "concat.txt").write_text("".join(f"file '{v.resolve()}'\n" for v in videos))
     meta, stamps, start = [";FFMETADATA1", f"title={state.outline.title}"], [], 0.0
-    cues: list[subtitles.Cue] = []
+    cues, said = long_captions(state)
     mode = ""
     for c, ch in zip(state.chapters, state.outline.chapters):
         end = start + c.seconds
         job = settings.WORKSPACE_DIR / "jobs" / c.job_id
-        if (job / "captions.srt").exists():  # chapter subtitles, shifted to where the chapter starts
-            cues += [subtitles.Cue(q.start + start, q.end + start, q.text) for q in subtitles.parse_srt((job / "captions.srt").read_text())]
-            if (job / "composition.json").exists():
-                mode = subtitles.caption_mode(json.loads((job / "composition.json").read_text()), default_caption_mode())
+        if (job / "captions.srt").exists() and (job / "composition.json").exists():
+            mode = subtitles.caption_mode(json.loads((job / "composition.json").read_text()), default_caption_mode())
         meta += ["[CHAPTER]", "TIMEBASE=1/1000", f"START={round(start * 1000)}", f"END={round(end * 1000)}", f"title={ch.title}"]
         stamps.append(f"{_stamp(start)} {ch.title}")
         start = end
@@ -471,7 +502,59 @@ async def join_chapters(state: LongState) -> Path:
         raise RenderError("joining chapters failed", log_text[-2000:])
     state.video, state.seconds, state.timestamps = str(out), round(start, 1), stamps
     (d / "chapters.txt").write_text("\n".join(stamps) + "\n")
+    if said:
+        subtitles.write_transcript(said, d, [ch.title for ch in state.outline.chapters])
     return out
+
+
+def long_captions(state: LongState) -> tuple[list[subtitles.Cue], list[dict[str, Any]]]:
+    """Captions and transcript for the whole long video: each chapter's lines shifted to where the chapter
+    starts. Built from the chapter's composition.json (word timings), so jobs rendered before subtitle
+    files existed get them too; a chapter's captions.srt is used when there is no composition."""
+    cues: list[subtitles.Cue] = []
+    said: list[dict[str, Any]] = []
+    start = 0.0
+    for n, c in enumerate(state.chapters, 1):
+        job = settings.WORKSPACE_DIR / "jobs" / c.job_id
+        if (job / "composition.json").exists():
+            spec = _as_rendered(json.loads((job / "composition.json").read_text()), c.seconds)
+            if captions_enabled(spec):
+                cues += [subtitles.Cue(q.start + start, q.end + start, q.text) for q in subtitles.cues(spec)]
+            said += subtitles.transcript(spec, offset=start, chapter=n)
+        elif (job / "captions.srt").exists():
+            cues += [subtitles.Cue(q.start + start, q.end + start, q.text) for q in subtitles.parse_srt((job / "captions.srt").read_text())]
+        start += c.seconds
+    return cues, said
+
+
+def _as_rendered(spec: dict[str, Any], seconds: float) -> dict[str, Any]:
+    """Videos rendered before the logo intro existed saved no "brand" key, which now means "intro on".
+    When the real chapter length matches the composition only without the intro, time it without one."""
+    if "brand" in spec or not seconds:
+        return spec
+    fps = int(spec.get("fps", 30))
+    scenes = spec.get("scenes") or []
+    if not scenes:
+        return spec
+    with_intro = (subtitles._scene_starts(spec, fps)[-1] + int(scenes[-1]["durationInFrames"])) / fps
+    if abs(with_intro - seconds) > 0.5 and abs(with_intro - subtitles._brand_offset(spec, fps) / fps - seconds) <= 0.5:
+        return {**spec, "brand": False}
+    return spec
+
+
+def transcript_files(job_id: str) -> dict[str, Path]:
+    """captions.srt/.vtt and transcript.json/.txt of a finished long video, made now if missing (older jobs)."""
+    state = load(job_id)
+    d = _dir(job_id)
+    files = {n: d / n for n in ("captions.srt", "captions.vtt", "transcript.json", "transcript.txt")}
+    if all(p.exists() for p in files.values()) or state.status != "done":
+        return files
+    cues, said = long_captions(state)
+    if cues and not files["captions.srt"].exists():
+        subtitles.write_files(cues, d)
+    if said:
+        subtitles.write_transcript(said, d, [ch.title for ch in state.outline.chapters])
+    return files
 
 
 # --------------------------------------------------------------------------- runner

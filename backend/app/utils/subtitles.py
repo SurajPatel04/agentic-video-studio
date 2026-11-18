@@ -3,6 +3,7 @@
 The renderer can burn styled captions into the picture; a player cannot switch those off. This module
 writes the same lines as ``captions.srt`` / ``captions.vtt`` and muxes them into the MP4 as a subtitle
 track (mov_text), which every common player (VLC, mpv, QuickTime, phones) can switch on and off.
+It also writes ``transcript.json`` (scene by scene, sentences with start/end seconds) and ``transcript.txt``.
 
 Caption mode (JSON ``"captions": {"mode": ...}``, else burn, or both with ``CAPTIONS_PLAYER_TRACK``):
   burn  - styled captions in the picture (current word in the highlight colour); no track
@@ -12,6 +13,7 @@ Timing mirrors rendering/src/audio/Captions.tsx (same line breaks) and the scene
 rendering/src/VideoComposition.tsx (transitions overlap, brand intro shifts everything).
 """
 
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -73,16 +75,24 @@ def _lines(words: list[dict], max_words: int, fps: int) -> list[list[dict]]:
     return lines
 
 
+def _scene_starts(spec: dict[str, Any], fps: int) -> list[int]:
+    """Frame each scene starts at in the final video (sceneStarts() in VideoComposition.tsx + brand intro)."""
+    scenes = spec.get("scenes") or []
+    starts, start = [], _brand_offset(spec, fps)
+    for i in range(len(scenes)):
+        if i > 0:
+            start += int(scenes[i - 1]["durationInFrames"]) - _transition_frames(spec, i)
+        starts.append(start)
+    return starts
+
+
 def cues(spec: dict[str, Any]) -> list[Cue]:
     fps = int(spec.get("fps", 30))
     c = spec.get("captions")
     max_words = int(c.get("maxWords", 7)) if isinstance(c, dict) else 7
     scenes = spec.get("scenes") or []
-    start = _brand_offset(spec, fps)
     out: list[Cue] = []
-    for i, sc in enumerate(scenes):
-        if i > 0:
-            start += int(scenes[i - 1]["durationInFrames"]) - _transition_frames(spec, i)
+    for sc, start in zip(scenes, _scene_starts(spec, fps)):
         words = ((sc.get("voice") or {}).get("words")) or []
         lines = _lines(words, max_words, fps)
         for k, line in enumerate(lines):
@@ -130,6 +140,58 @@ def write_files(items: list[Cue], folder: Path, name: str = "captions") -> tuple
     srt.write_text(to_srt(items))
     vtt.write_text(to_vtt(items))
     return srt, vtt
+
+
+# --------------------------------------------------------------------------- transcript
+
+
+def transcript(spec: dict[str, Any], offset: float = 0.0, chapter: int | None = None) -> list[dict[str, Any]]:
+    """What is said, scene by scene, with times in seconds from the start of the video (``offset`` shifts
+    a chapter to where it starts in a long video). Each scene lists its sentences with their own times."""
+    fps = int(spec.get("fps", 30))
+    out: list[dict[str, Any]] = []
+    for sc, start in zip(spec.get("scenes") or [], _scene_starts(spec, fps)):
+        words = ((sc.get("voice") or {}).get("words")) or []
+        if not words:
+            continue
+        at = lambda frame: round(offset + (start + frame) / fps, 2)  # noqa: E731
+        sentences, cur = [], []
+        for i, w in enumerate(words):
+            cur.append(w)
+            if re.search(r"[.!?][\"')]?$", w["t"]) or i + 1 == len(words):
+                sentences.append({"start": at(cur[0]["s"]), "end": at(cur[-1]["e"]), "text": " ".join(x["t"] for x in cur)})
+                cur = []
+        item = {"scene": sc.get("id"), "component": sc.get("component"), "start": at(words[0]["s"]), "end": at(words[-1]["e"]),
+                "text": " ".join(s["text"] for s in sentences), "sentences": sentences}
+        out.append({"chapter": chapter, **item} if chapter is not None else item)
+    return out
+
+
+def _clock(sec: float) -> str:
+    s = int(sec)
+    return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}" if s >= 3600 else f"{s // 60:02d}:{s % 60:02d}"
+
+
+def to_txt(items: list[dict[str, Any]], chapters: list[str] | None = None) -> str:
+    """Readable transcript: one sentence per line with its time, a blank line between scenes and a
+    heading per chapter (``chapters`` = titles, for a long video)."""
+    out, last = [], None
+    for item in items:
+        ch = item.get("chapter")
+        if chapters and ch is not None and ch != last:
+            title = chapters[ch - 1] if 0 < ch <= len(chapters) else ""
+            out += ["", f"## Chapter {ch}: {title}".rstrip(": ")] if out else [f"## Chapter {ch}: {title}".rstrip(": ")]
+            last = ch
+        out.append("")
+        out += [f"[{_clock(s['start'])}] {s['text']}" for s in item["sentences"]]
+    return "\n".join(out).strip() + "\n"
+
+
+def write_transcript(items: list[dict[str, Any]], folder: Path, chapters: list[str] | None = None) -> tuple[Path, Path]:
+    js, txt = folder / "transcript.json", folder / "transcript.txt"
+    js.write_text(json.dumps(items, indent=2, ensure_ascii=False))
+    txt.write_text(to_txt(items, chapters))
+    return js, txt
 
 
 def mux_args(video_in: Path, srt: Path, video_out: Path, *, shown: bool, language: str = "eng") -> list[str]:

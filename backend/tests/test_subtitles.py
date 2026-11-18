@@ -41,6 +41,18 @@ class SubtitleTest(unittest.TestCase):
         self.assertAlmostEqual(branded[0].start - plain[0].start, (90 - subtitles.HANDOFF) / 30)
         self.assertEqual(subtitles.cues(spec(brand={"intro": False}))[0].start, plain[0].start)
 
+    def test_transcript_scenes_sentences_and_offset(self):
+        items = subtitles.transcript(spec())
+        self.assertEqual([i["scene"] for i in items], ["a", "b"])
+        self.assertEqual([s["text"] for s in items[0]["sentences"]], ["Hello world.", "Next"])
+        self.assertEqual(items[0]["text"], "Hello world. Next")
+        self.assertEqual((items[0]["start"], items[0]["end"]), (round(10 / 30, 2), round(80 / 30, 2)))
+        self.assertEqual(items[1]["start"], round((105 + 10) / 30, 2))  # same scene start as the captions
+        shifted = subtitles.transcript(spec(), offset=60, chapter=2)
+        self.assertEqual((shifted[0]["chapter"], shifted[0]["start"]), (2, round(60 + 10 / 30, 2)))
+        txt = subtitles.to_txt(shifted, ["Intro", "How it works"])
+        self.assertTrue(txt.startswith("## Chapter 2: How it works\n\n[01:00] Hello world.\n[01:02] Next\n\n[01:03] Bye"))
+
     def test_srt_vtt_round_trip(self):
         cues = subtitles.cues(spec())
         srt = subtitles.to_srt(cues)

@@ -17,6 +17,8 @@ from app.utils import long_video as lv
 from app.utils.planner import Plan
 from app.utils.render import RenderResult
 
+settings.SKILL_ROUTER = "keyword"  # offline tests: no skill-router LLM call (tested with a mock in test_skills)
+
 OUTLINE = {
     "title": "How Node.js works", "audience": "beginners", "style": "event loop is always blue",
     "glossary": [{"term": "event loop", "meaning": "runs callbacks when the stack is empty"}],
@@ -52,7 +54,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         self.contexts: list[str] = []
         self.rendered: list[str] = []
 
-    async def fake_plan(self, topic, *, scenes, mode, model, context, skills=None):
+    async def fake_plan(self, topic, *, scenes, mode, model, context, skills=None, layout="desktop"):
         self.contexts.append(context)
         n = int(topic.split("chapter ")[1].split(",")[0])
         budget = self.state.outline.chapters[n - 1].words
@@ -66,7 +68,8 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
 
     def test_outline_budgets_scale_to_target(self):
         chapters = self.state.outline.chapters
-        self.assertAlmostEqual(sum(c.minutes for c in chapters), 10, places=1)  # 2+4+2 scaled to 10
+        self.assertAlmostEqual(sum(c.minutes for c in chapters), 8, places=1)  # 2+4+2: the content needs 8 of the 10 allowed
+        self.assertEqual((self.state.minutes, self.state.max_minutes), (8, 10))
         self.assertEqual(chapters[1].words, round(chapters[1].minutes * settings.LONG_WORDS_PER_MINUTE))
         self.assertEqual(self.state.input_tokens, 100)
         self.assertTrue((settings.WORKSPACE_DIR / "long" / self.state.id / "state.json").exists())
@@ -299,3 +302,30 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LengthLimitTests(unittest.TestCase):
+    """minutes is a ceiling by default: the content decides (never padded); fixed_length makes it exact."""
+
+    def outline(self, *mins):
+        return lv.Outline(title="t", chapters=[lv.ChapterOutline(title=f"c{i}", goal="goal one", key_points=["k"], minutes=m)
+                                                       for i, m in enumerate(mins)])
+
+    def test_content_decides_up_to_the_limit(self):
+        short = lv.set_budgets(self.outline(4, 4), 30, fixed=False)  # a narrow topic stays 8 minutes
+        self.assertEqual([c.minutes for c in short.chapters], [4, 4])
+        self.assertEqual(short.chapters[0].words, 4 * settings.LONG_WORDS_PER_MINUTE)
+        over = lv.set_budgets(self.outline(20, 20), 30, fixed=False)  # over the limit: shrunk to 30
+        self.assertAlmostEqual(sum(c.minutes for c in over.chapters), 30, places=1)
+        tiny = lv.set_budgets(self.outline(0.5, 0.5), 30, fixed=False)  # not below LONG_MIN_MINUTES
+        self.assertAlmostEqual(sum(c.minutes for c in tiny.chapters), settings.LONG_MIN_MINUTES, places=1)
+        exact = lv.set_budgets(self.outline(4, 4), 30, fixed=True)  # fixed: stretched to 30
+        self.assertAlmostEqual(sum(c.minutes for c in exact.chapters), 30, places=1)
+
+    def test_prompt_says_up_to_and_never_pad(self):
+        rule = lv.length_rule(30, None, False)
+        self.assertIn("UP TO 30 minutes", rule)
+        self.assertIn("2 to 6 chapters", rule)
+        self.assertIn("Never pad", rule)
+        self.assertIn("add up to 30", lv.length_rule(30, None, True))
+        self.assertIn("exactly 4 chapters", lv.length_rule(30, 4, False))

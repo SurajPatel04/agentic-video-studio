@@ -16,7 +16,7 @@ from app.utils.console import fmt_seconds, paint, request_id, setup_logging
 from app.utils.llm import call_model, resolve_base_url
 from app.agent.component_agent import build_component
 from app.agent.staging import manifest, promote, unstage
-from app.utils import long_video, skills as teaching_skills
+from app.utils import long_video, skills as teaching_skills, subtitles, video_jobs
 from app.utils.planner import PlanError, plan_video
 from app.utils.render import RenderError, render_video
 from app.utils.tts import MAX_CHARS, synthesize
@@ -197,6 +197,23 @@ def render_captions_file(job_id: str, format: Literal["vtt", "srt"] = "vtt") -> 
     return FileResponse(_job_file(job_id, f"captions.{format}"), media_type=media, filename=f"{job_id}.{format}")
 
 
+TRANSCRIPT_MEDIA = {"json": "application/json", "txt": "text/plain; charset=utf-8"}
+
+
+@app.get("/render/{job_id}/transcript", response_class=FileResponse)
+def render_transcript_file(job_id: str, format: Literal["json", "txt"] = "json") -> FileResponse:
+    """What is said, with times: json = per scene {scene, start, end, text, sentences}; txt = "[mm:ss] sentence".
+    Made from composition.json when missing (videos rendered before transcripts existed)."""
+    job_dir = _job_file(job_id, "composition.json").parent
+    path = job_dir / f"transcript.{format}"
+    if not path.exists():
+        items = subtitles.transcript(json.loads((job_dir / "composition.json").read_text()))
+        if not items:
+            raise HTTPException(status_code=404, detail="no narration in this video")
+        subtitles.write_transcript(items, job_dir)
+    return FileResponse(path, media_type=TRANSCRIPT_MEDIA[format], filename=f"{job_id}-transcript.{format}")
+
+
 @app.get("/render/{job_id}/composition", response_class=FileResponse)
 def render_composition_file(job_id: str) -> FileResponse:
     return FileResponse(_job_file(job_id, "composition.json"), media_type="application/json")
@@ -224,6 +241,7 @@ class PlanRequest(BaseModel):
     scenes: int | None = Field(default=None, ge=2, le=20)  # rough number of scenes
     model: str | None = None  # MLflow gateway route; defaults to PLANNER_MODEL / DEFAULT_MODEL
     mode: Literal["auto", "catalog", "tools"] | None = None  # how the LLM learns the library (default PLANNER_MODE)
+    layout: Literal["desktop", "mobile", "square"] = "desktop"  # 1920x1080 | 1080x1920 | 1080x1080
 
 
 class PlanResponse(BaseModel):
@@ -241,7 +259,7 @@ async def plan(req: PlanRequest) -> PlanResponse:
     """LLM writes the composition JSON (scenes, props, narration). Nothing is rendered."""
     _check_skills(req.skills)
     try:
-        p = await plan_video(req.prompt, scenes=req.scenes, model=req.model, mode=req.mode, skills=req.skills)
+        p = await plan_video(req.prompt, scenes=req.scenes, model=req.model, mode=req.mode, skills=req.skills, layout=req.layout)
     except PlanError as exc:
         raise HTTPException(status_code=422, detail={"error": str(exc), "details": exc.details}) from exc
     except Exception as exc:
@@ -266,11 +284,88 @@ class VideoResponse(RenderResponse):
 @app.post("/video", response_model=VideoResponse)
 async def video(req: VideoRequest) -> VideoResponse:
     """Prompt → plan (LLM) → narration (Deepgram) → captions → render. Waits until the MP4 is ready."""
-    planned = await plan(PlanRequest(prompt=req.prompt, scenes=req.scenes, model=req.model, mode=req.mode, skills=req.skills))
+    planned = await plan(PlanRequest(prompt=req.prompt, scenes=req.scenes, model=req.model, mode=req.mode, skills=req.skills, layout=req.layout))
     rendered = await render(RenderRequest(composition=planned.composition, narrate=req.narrate, captions=req.captions, scale=req.scale,
                                           captions_mode=req.captions_mode))
     return VideoResponse(**rendered.model_dump(), plan_attempts=planned.attempts, plan_mode=planned.mode,
                          llm_input_tokens=planned.input_tokens, llm_output_tokens=planned.output_tokens)
+
+
+# ------------------------------------------------------------- one API: /videos
+
+
+class VideosRequest(BaseModel):
+    """One request for every video. Only ``prompt`` is required."""
+    prompt: str = Field(min_length=3, max_length=4000)  # what the video should explain
+    length: Literal["short", "long"] = "short"  # short = one video (~1-3 min); long = chapters (minutes below)
+    layout: Literal["desktop", "mobile", "square"] = "desktop"  # 16:9 1920x1080 | 9:16 1080x1920 | 1:1 1080x1080
+    scenes: int | None = Field(default=None, ge=2, le=20)  # short: rough number of scenes (default 6-10)
+    minutes: float = Field(default=30, ge=3, le=120)  # long: the MOST it may take; the content decides (can be shorter)
+    fixed_length: bool = False  # long: true = make it exactly `minutes` long
+    chapters: int | None = Field(default=None, ge=2, le=24)  # long: default minutes / LONG_CHAPTER_MINUTES
+    narrate: bool = True  # short: Deepgram voice (long videos are always narrated)
+    captions: bool = True
+    captions_mode: Literal["burn", "track", "both"] | None = None  # short: burn = in the picture, track = player switch
+    scale: float = Field(default=1.0, gt=0.1, le=2.0)  # 0.5 = half resolution, quick preview
+    skills: list[str] | None = None  # omitted: chosen automatically; names: use these guides
+    model: str | None = None  # LLM route (default PLANNER_MODEL / DEFAULT_MODEL)
+    planner: Literal["auto", "catalog", "tools"] | None = None  # how the planner reads the scene library (advanced)
+
+
+@app.post("/videos", status_code=202)
+async def create_video(req: VideosRequest) -> dict[str, Any]:
+    """Start a video and return at once. Poll GET /videos/{id} until "status" is "done", then download
+    /videos/{id}/video. Same request and status for short and long videos; only "length" changes."""
+    _check_skills(req.skills)
+    data = req.model_dump()
+    job_id = video_jobs.start_long(data) if req.length == "long" else video_jobs.start_short(data)
+    return video_jobs.view(job_id) or {"id": job_id}
+
+
+@app.get("/videos")
+def list_videos(limit: int = 50) -> list[dict[str, Any]]:
+    """Newest first, short and long together."""
+    return video_jobs.list_jobs(limit)
+
+
+def _video_job(job_id: str) -> dict[str, Any]:
+    if not re.fullmatch(r"[a-f0-9]{10,12}", job_id) or not (v := video_jobs.view(job_id)):
+        raise HTTPException(status_code=404, detail="unknown video id")
+    return v
+
+
+@app.get("/videos/{job_id}")
+def get_video(job_id: str) -> dict[str, Any]:
+    """status: queued | running | done | failed (| paused: a long video that stopped; POST /long/{id}/run resumes).
+    step = what it is doing now, progress = 0..1, error when failed; the file URLs appear when done."""
+    return _video_job(job_id)
+
+
+def _video_file(job_id: str, name: str):
+    v = _video_job(job_id)
+    if v["status"] != "done":
+        raise HTTPException(status_code=409, detail=f"video not ready (status: {v['status']}, step: {v.get('step', '')})")
+    path = video_jobs.file(job_id, name)
+    if not path:
+        raise HTTPException(status_code=404, detail=f"{name} not found (no narration?)")
+    return path
+
+
+@app.get("/videos/{job_id}/video", response_class=FileResponse)
+def get_video_file(job_id: str) -> FileResponse:
+    return FileResponse(_video_file(job_id, "video.mp4"), media_type="video/mp4", filename=f"{job_id}.mp4")
+
+
+@app.get("/videos/{job_id}/transcript", response_class=FileResponse)
+def get_video_transcript(job_id: str, format: Literal["json", "txt"] = "txt") -> FileResponse:
+    return FileResponse(_video_file(job_id, f"transcript.{format}"), media_type=TRANSCRIPT_MEDIA[format],
+                        filename=f"{job_id}-transcript.{format}")
+
+
+@app.get("/videos/{job_id}/captions", response_class=FileResponse)
+def get_video_captions(job_id: str, format: Literal["vtt", "srt"] = "srt") -> FileResponse:
+    media = "text/vtt" if format == "vtt" else "application/x-subrip"
+    return FileResponse(_video_file(job_id, f"captions.{format}"), media_type=media, filename=f"{job_id}.{format}")
 
 
 # ------------------------------------------------------------------ new components
@@ -337,12 +432,14 @@ async def delete_component(name: str) -> dict[str, str]:
 class LongRequest(BaseModel):
     skills: list[str] | None = None
     prompt: str = Field(min_length=3, max_length=4000)  # topic, e.g. "How Node.js works"
-    minutes: float = Field(default=30, ge=3, le=120)  # target length
+    minutes: float = Field(default=30, ge=3, le=120)  # the most it may take; the content decides (can be shorter)
+    fixed_length: bool = False  # true = exactly `minutes`
     chapters: int | None = Field(default=None, ge=2, le=24)  # default: minutes / LONG_CHAPTER_MINUTES
     captions: bool = True
     scale: float = Field(default=1.0, gt=0.1, le=2.0)
     mode: Literal["auto", "catalog", "tools"] | None = None
     model: str | None = None
+    layout: Literal["desktop", "mobile", "square"] = "desktop"
     run: bool = True  # start planning + rendering right away (False = only write the outline to review)
     render: bool = True  # False = stop after planning every chapter (review the scripts first)
 
@@ -366,7 +463,8 @@ async def create_long(req: LongRequest) -> dict[str, Any]:
     _check_skills(req.skills)
     try:
         state = await long_video.create_long_video(req.prompt, req.minutes, chapters=req.chapters, captions=req.captions,
-                                                   scale=req.scale, mode=req.mode, model=req.model, skills=req.skills)
+                                                   scale=req.scale, mode=req.mode, model=req.model, skills=req.skills, layout=req.layout,
+                                                   fixed_length=req.fixed_length)
     except PlanError as exc:
         raise HTTPException(status_code=422, detail={"error": str(exc), "details": exc.details}) from exc
     if req.run:
@@ -446,3 +544,26 @@ def long_video_file(job_id: str) -> FileResponse:
     if state.status != "done" or not Path(state.video).exists():
         raise HTTPException(status_code=404, detail="video not ready")
     return FileResponse(state.video, media_type="video/mp4", filename=f"long-{job_id}.mp4")
+
+
+def _long_text_file(job_id: str, name: str) -> Path:
+    if _long(job_id).status != "done":
+        raise HTTPException(status_code=404, detail="video not ready")
+    path = long_video.transcript_files(job_id)[name]
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="no narration in this video")
+    return path
+
+
+@app.get("/long/{job_id}/captions", response_class=FileResponse)
+def long_captions_file(job_id: str, format: Literal["vtt", "srt"] = "vtt") -> FileResponse:
+    """Subtitles for the whole long video (chapters joined, times shifted)."""
+    media = "text/vtt" if format == "vtt" else "application/x-subrip"
+    return FileResponse(_long_text_file(job_id, f"captions.{format}"), media_type=media, filename=f"long-{job_id}.{format}")
+
+
+@app.get("/long/{job_id}/transcript", response_class=FileResponse)
+def long_transcript_file(job_id: str, format: Literal["json", "txt"] = "json") -> FileResponse:
+    """Transcript of the whole long video: json items carry their chapter; txt has a heading per chapter."""
+    return FileResponse(_long_text_file(job_id, f"transcript.{format}"), media_type=TRANSCRIPT_MEDIA[format],
+                        filename=f"long-{job_id}-transcript.{format}")

@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     TTS_VOICE: str = "aura-2-thalia-en"  # default Deepgram voice
     TTS_SAMPLE_RATE: int = 24000
     TTS_TIMEOUT_SECONDS: float = 60.0
+    DEEPGRAM_CONCURRENCY: int = 4  # voice / caption-timing requests at once (more gets 429 Too Many Requests)
+    DEEPGRAM_RETRIES: int = 6  # tries per request on 429 / 5xx / network error, waiting 2, 4, 8, 16, 30 s
     # Word timings for captions: Deepgram speech-to-text on our own clip (falls back to an estimate).
     DEEPGRAM_STT_API_KEY: str = ""  # empty = use DEEPGRAM_TTS_API_KEY
     DEEPGRAM_STT_URL: str = "https://api.deepgram.com/v1/listen"
@@ -44,6 +46,8 @@ class Settings(BaseSettings):
     PLANNER_MAX_TEXT_SHARE: float = 0.3  # at most 30% of scenes may be text-only
     PLANNER_CODE_EVERY: int = 5  # programming topics: >= 1 CodeScene per 5 scenes (0 = off)
     PLANNER_STYLE_RETRIES: int = 1  # retries for style problems; then the plan with the fewest problems is used
+    SKILL_ROUTER: str = "llm"  # how guides are chosen: llm (one small call reads the descriptions; keyword fallback) | keyword
+    SKILL_ROUTER_MODEL: str = ""  # route for that call; empty = the planner's model
     PLANNER_DEFAULT_STYLE: str = "iso-diagrams"  # visual style skill used when no style matches the topic ("" = none)
     PLANNER_MAX_SAME_LAYOUT: int = 2  # IsoScene: the same objects in the same places in at most 2 scenes in a row
     PLANNER_MAX_TEXT_RUN: int = 3  # max Definition/Explain/BulletList scenes in a row (1 style retry, then accepted)
@@ -61,6 +65,7 @@ class Settings(BaseSettings):
     LONG_MODEL: str = ""  # outline LLM route; empty = PLANNER_MODEL / DEFAULT_MODEL
     LONG_WORDS_PER_MINUTE: int = 150  # narration speed used for word budgets
     LONG_CHAPTER_MINUTES: float = 5.0  # target length of one chapter
+    LONG_MIN_MINUTES: float = 3.0  # shortest long video when the content decides the length
     LONG_WORDS_PER_SCENE: int = 30  # narration words per scene -> scenes per chapter
     LONG_RENDER_WORKERS: int = 2  # chapters rendering at the same time (each render is CPU-heavy)
     LONG_RENDER_CONCURRENCY: int = 0  # Remotion threads per render; 0 = CPU cores / LONG_RENDER_WORKERS

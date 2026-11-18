@@ -239,6 +239,8 @@ async def render_video(
         s.update(video=str(video), size=f"{video.stat().st_size / 1e6:.1f}MB")
 
     srt, mode = await add_subtitles(spec, job_dir, video)
+    if items := subtitles.transcript(spec):  # what is said, with times (even when captions are off)
+        subtitles.write_transcript(items, job_dir)
     seconds = time.perf_counter() - started
     log.info("render.ok job=%s voice_new=%d voice_cached=%d took_s=%.1f", job_id, made, cached, seconds)
     return RenderResult(job_id, job_dir, composition, video, seconds, made, cached, lines, srt, mode)

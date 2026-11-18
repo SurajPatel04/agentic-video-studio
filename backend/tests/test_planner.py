@@ -7,6 +7,9 @@ from unittest.mock import AsyncMock, patch
 from langchain_core.messages import AIMessage
 
 from app.utils import catalog, planner
+from app.config import settings
+
+settings.SKILL_ROUTER = "keyword"  # offline tests: no skill-router LLM call (tested with a mock in test_skills)
 
 
 def spec(components: list[str]) -> dict:
@@ -56,6 +59,18 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(s["scenes"][1]["props"]["footer"], "mine")
         self.assertNotIn("footer", s["scenes"][2]["props"])
 
+    def test_topic_must_show_its_mechanism(self):
+        topic = "INNER JOIN vs LEFT JOIN"
+        plan = spec(["TitleScene", "IsoScene", "FlowchartScene", "QuizScene"])
+        problem = planner._lint(plan, ["teach-data"], topic)
+        self.assertIn('mentions "join"', problem)
+        self.assertIn("JoinScene or PipelineScene", problem)
+        self.assertIn("JoinScene", planner._visual_hint(topic, ["teach-data"]))
+        plan["scenes"][1]["component"] = "JoinScene"
+        self.assertEqual(planner._lint(plan, ["teach-data"], topic), "")
+        self.assertEqual(planner._lint(spec(["IsoScene"]), ["teach-data"], "Python list basics"), "")  # nothing required
+        self.assertEqual(planner._visual_hint(topic, []), "")  # rules come only from the selected guides
+
     def test_text_share_and_code_density(self):
         mostly_text = spec(["TitleScene", "ExplainScene", "FlowchartScene", "DefinitionScene", "ChartScene",
                             "ExplainScene", "FlowchartScene", "DefinitionScene", "SummaryScene", "QuizScene"])
@@ -63,8 +78,8 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         one_code = spec(["TitleScene", "CodeScene", "FlowchartScene", "ExplainScene", "ChartScene",
                          "FlowchartScene", "ComparisonTableScene", "BlankScene", "SummaryScene", "QuizScene"])
         self.assertEqual(planner._lint(one_code), "")  # not a programming topic: fine
-        self.assertIn("at least 2 CodeScene", planner._lint(one_code, ["teach-code"]))
-        one_code["scenes"][5]["component"] = "CodeScene"
+        self.assertIn("at least 2 code scenes", planner._lint(one_code, ["teach-code"]))
+        one_code["scenes"][5]["component"] = "EditorScene"  # paper videos show code in the editor
         self.assertEqual(planner._lint(one_code, ["teach-code"]), "")
         self.assertIn("30%", planner._rules())
 

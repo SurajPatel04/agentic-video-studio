@@ -70,7 +70,8 @@ async def main() -> None:
         sub.add_parser(cmd).add_argument("name")
     lg = sub.add_parser("long", help="long video: outline, plan every chapter, render, join")
     lg.add_argument("prompt")
-    lg.add_argument("--minutes", type=float, default=30)
+    lg.add_argument("--minutes", type=float, default=30, help="the most it may take; the content decides (can be shorter)")
+    lg.add_argument("--fixed-length", action="store_true", help="make it exactly --minutes long")
     lg.add_argument("--chapters", type=int)
     lg.add_argument("--outline-only", action="store_true", help="only write the outline")
     lg.add_argument("--plan-only", action="store_true", help="plan every chapter, don't render")
@@ -178,7 +179,8 @@ async def long_cmd(args) -> None:
     if args.cmd == "long":
         try:
             state = await long_video.create_long_video(args.prompt, args.minutes, chapters=args.chapters,
-                                                       captions=not args.no_captions, scale=args.scale, mode=args.mode, skills=args.skills)
+                                                       captions=not args.no_captions, scale=args.scale, mode=args.mode, skills=args.skills,
+                                                       fixed_length=args.fixed_length)
         except PlanError as exc:
             raise SystemExit(f"{exc}\n{exc.details}")
         print_long(state)

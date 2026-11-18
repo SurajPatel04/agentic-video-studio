@@ -15,12 +15,19 @@ log = logging.getLogger(__name__)
 Role = Literal["planner", "component"]
 
 
+class VisualRule(BaseModel):
+    """When the topic names one of ``when``, the plan must contain at least one of ``scenes``."""
+    when: list[str] = Field(min_length=1)
+    scenes: list[str] = Field(min_length=1)
+
+
 class Metadata(BaseModel):
     category: Literal["foundation", "format", "style", "subject"] = "subject"
     roles: list[Role] = Field(default_factory=lambda: ["planner"])
     tags: list[str] = Field(default_factory=list)
     scenes: list[str] = Field(default_factory=list)
     overlays: list[str] = Field(default_factory=list)
+    visuals: list[VisualRule] = Field(default_factory=list)
     long_video: bool = False
 
 
@@ -72,6 +79,29 @@ def load(name: str, role: Role = "planner") -> str:
     return f"### Teaching guide: {name}\n{body}"
 
 
+def _words(text: str) -> str:
+    return " " + " ".join(re.findall(r"[a-z0-9]+", text.lower())) + " "
+
+
+def _mentions(words: str, phrase: str) -> bool:
+    """``phrase`` appears in the topic as whole words ("sort" matches "sort a list", not "resort")."""
+    key = " ".join(re.findall(r"[a-z0-9]+", phrase.lower()))
+    return bool(key) and re.search(r"(?<!\w)" + re.escape(key) + r"(?!\w)", words) is not None
+
+
+def required_visuals(topic: str, names: list[str], known: set[str] | None = None) -> list[tuple[str, list[str]]]:
+    """Scenes the topic must show, from the selected guides' ``visuals`` rules: [(matched phrase, scenes)].
+    ``known`` drops scenes the library does not have (a rule with none left is skipped)."""
+    available, words, out = discover(), _words(topic), []
+    for name in names:
+        for rule in available[name].metadata.visuals if name in available else []:
+            hit = next((w for w in rule.when if _mentions(words, w)), None)
+            scenes = [s for s in rule.scenes if known is None or s in known]
+            if hit and scenes and all(set(scenes) != set(s) for _, s in out):
+                out.append((hit, scenes))
+    return out
+
+
 def select(topic: str, requested: list[str] | None = None, *, role: Role = "planner", long_video: bool = False) -> list[str]:
     available = discover(role)
     if requested is not None:
@@ -79,14 +109,13 @@ def select(topic: str, requested: list[str] | None = None, *, role: Role = "plan
         if unknown:
             raise ValueError("Unknown or inapplicable skills: " + ", ".join(sorted(unknown)))
         return list(dict.fromkeys(requested))
-    words = " " + " ".join(re.findall(r"[a-z0-9]+", topic.lower())) + " "
+    words = _words(topic)
     ranked = []
     chosen = [name for name, skill in available.items() if skill.metadata.category == "foundation"]
     for name, skill in available.items():
         if skill.metadata.long_video or skill.metadata.category == "foundation":
             continue
-        score = sum(bool(re.search(r"(?<!\w)" + re.escape(" ".join(re.findall(r"[a-z0-9]+", tag.lower()))) + r"(?!\w)", words))
-                    for tag in skill.metadata.tags)
+        score = sum(_mentions(words, tag) for tag in skill.metadata.tags)
         if score:
             ranked.append((score, name))
     ranked.sort(key=lambda item: (-item[0], item[1]))

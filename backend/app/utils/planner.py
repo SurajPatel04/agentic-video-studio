@@ -24,7 +24,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from langchain_core.tools import tool
 
 from app.config import settings
-from app.utils import catalog, skills as teaching_skills
+from app.utils import catalog, skill_router, skills as teaching_skills
 from app.utils.console import step
 from app.utils.iso import expand_continuations, paper_code_scenes
 from app.utils.llm import get_llm, get_tool_llm, text_of, usage_of
@@ -33,6 +33,20 @@ from app.utils.render import RenderError, validate
 log = logging.getLogger(__name__)
 
 Mode = Literal["auto", "catalog", "tools"]
+Layout = Literal["desktop", "mobile", "square"]
+LAYOUTS: dict[str, tuple[int, int]] = {"desktop": (1920, 1080), "mobile": (1080, 1920), "square": (1080, 1080)}
+LAYOUT_HINT = {
+    "mobile": "- Layout: MOBILE, portrait 1080x1920 (phone, Shorts/Reels). Set \"width\": 1080, \"height\": 1920. Keep titles to "
+              "about 5 words, at most 3 objects side by side, stack things top to bottom, short labels and table cells.\n",
+    "square": "- Layout: SQUARE 1080x1080 (feed post). Set \"width\": 1080, \"height\": 1080. Keep titles short and at most "
+              "4 objects side by side.\n",
+}
+
+
+def apply_layout(spec: dict[str, Any], layout: str) -> dict[str, Any]:
+    """Force the frame size of a layout (the LLM may copy 1920x1080 from the examples)."""
+    spec["width"], spec["height"] = LAYOUTS.get(layout, LAYOUTS["desktop"])
+    return spec
 
 
 class PlanError(RuntimeError):
@@ -158,12 +172,31 @@ PANEL_HOSTS = {"BlankScene"}  # scenes with free space for them
 
 
 CODE_SKILLS = {"teach-code"}  # with these guides, the plan must show code regularly
+CODE_SCENES = {"CodeScene", "EditorScene"}  # scenes that show source code (paper videos use EditorScene)
 
 
-def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = ()) -> str:
+def _visuals(topic: str, skills: list[str] | tuple[str, ...]) -> list[tuple[str, list[str]]]:
+    return teaching_skills.required_visuals(topic, list(skills), set(catalog.scene_names())) if topic else []
+
+
+def _visual_hint(topic: str, skills: list[str] | tuple[str, ...]) -> str:
+    """Tell the planner up front which scenes the topic must show (the plan is checked for them)."""
+    need = _visuals(topic, skills)
+    if not need:
+        return ""
+    return ("\nThis topic MUST be shown, not told. Include at least one of each (checked):\n"
+            + "\n".join(f'- "{hit}": {" or ".join(scenes)}' for hit, scenes in need) + "\n")
+
+
+def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic: str = "") -> str:
     """Style problems in a VALID plan (one retry is spent on them; a valid plan is never lost)."""
     problems = []
     scenes = spec.get("scenes", [])
+    used = {s.get("component") for s in scenes}
+    for hit, need in _visuals(topic, skills):
+        if not used & set(need):
+            problems.append(f'the topic mentions "{hit}", so the viewer must SEE it: add a {" or ".join(need)} that animates '
+                            "it (computed steps, not a text card or a generic diagram), with narration that follows it.")
     texts = sum(s.get("component") in TEXT_SCENES for s in scenes)
     cap = max(2, int(len(scenes) * settings.PLANNER_MAX_TEXT_SHARE))
     if scenes and texts > cap:
@@ -172,9 +205,9 @@ def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = ()) -> str
                         "chart, timeline, devices, connection).")
     if settings.PLANNER_CODE_EVERY and CODE_SKILLS & set(skills):
         need = -(-len(scenes) // settings.PLANNER_CODE_EVERY)  # ceil
-        have = sum(s.get("component") == "CodeScene" for s in scenes)
+        have = sum(s.get("component") in CODE_SCENES for s in scenes)
         if have < need:
-            problems.append(f"this is a programming topic: it needs at least {need} CodeScene (one per main concept, about "
+            problems.append(f"this is a programming topic: it needs at least {need} code scenes (EditorScene, or CodeScene; one per main concept, about "
                             f"1 in every {settings.PLANNER_CODE_EVERY} scenes) but has {have}. Show the code that produces "
                             "each behavior you explain, using the same running example.")
     run, worst, at = 0, 0, ""
@@ -305,7 +338,7 @@ async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[s
         reply = text_of(msg)
         spec, problem = await _check(reply)
         if spec:
-            style = _lint(spec, skills)
+            style = _lint(spec, skills, topic)
             if not style:
                 return Plan(spec, attempt, "catalog", calls, tin, tout)
             if best.add(spec, attempt, style):
@@ -357,7 +390,7 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
         attempts += 1
         spec, problem = await _check(text_of(msg))
         if spec:
-            style = _lint(spec, skills)
+            style = _lint(spec, skills, topic)
             if not style:
                 return Plan(spec, attempts, "tools", calls, tin, tout, sorted(loaded))
             if best.add(spec, attempts, style):
@@ -373,10 +406,13 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
 
 
 async def plan_video(topic: str, *, scenes: int | None = None, model: str | None = None, mode: Mode | None = None,
-                     context: str = "", skills: list[str] | None = None) -> Plan:
-    """Ask the LLM for a valid composition about ``topic`` (printed as one step with its result)."""
-    with step("plan", topic=topic, scenes=scenes, mode=mode or settings.PLANNER_MODE) as s:
+                     context: str = "", skills: list[str] | None = None, layout: Layout = "desktop") -> Plan:
+    """Ask the LLM for a valid composition about ``topic`` (printed as one step with its result).
+    ``layout``: desktop 1920x1080 (default) | mobile 1080x1920 | square 1080x1080."""
+    with step("plan", topic=topic, scenes=scenes, mode=mode or settings.PLANNER_MODE, layout=layout) as s:
+        context = LAYOUT_HINT.get(layout, "") + context
         plan = await _plan_video(topic, scenes=scenes, model=model, mode=mode, context=context, skills=skills)
+        apply_layout(plan.spec, layout)
         s.update(mode=plan.mode, skills=",".join(plan.skills), scenes=len(plan.spec.get("scenes", [])),
                  attempts=plan.attempts, llm_calls=plan.llm_calls, tokens_in=plan.input_tokens, tokens_out=plan.output_tokens)
         return plan
@@ -394,7 +430,9 @@ async def _plan_video(topic: str, *, scenes: int | None = None, model: str | Non
     mode = mode or settings.PLANNER_MODE
     if mode == "auto":
         mode = "tools" if len(catalog.scene_names()) > settings.PLANNER_TOOLS_THRESHOLD else "catalog"
-    selected = teaching_skills.select(topic, skills)
+    chosen = await skill_router.route(topic, skills, model=model)
+    selected = chosen.skills
+    hint += _visual_hint(topic, selected)
     allowed = selected if skills is not None else None
     if skills != []:
         hint += "\nAvailable teaching guides:\n" + teaching_skills.index(allowed=allowed)
@@ -412,4 +450,7 @@ async def _plan_video(topic: str, *, scenes: int | None = None, model: str | Non
         hint += "\n" + "\n".join(catalog.overlay_text(n) for n in extra_overlays)
         plan = await _plan_catalog(topic, hint, model, selected)
         plan.skills = selected
+    plan.llm_calls += chosen.calls  # the skill router's call counts towards the plan
+    plan.input_tokens += chosen.input_tokens
+    plan.output_tokens += chosen.output_tokens
     return plan

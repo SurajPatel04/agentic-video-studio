@@ -11,6 +11,8 @@ from langchain_core.messages import AIMessage
 from app.utils import skills, planner, long_video
 from app.config import settings
 
+settings.SKILL_ROUTER = "keyword"  # offline tests: no skill-router LLM call (tested with a mock in test_skills)
+
 
 class SelectionTests(unittest.TestCase):
     def setUp(self):  # these check topic matching; the house style slot is tested in StyleSelectionTests
@@ -200,3 +202,36 @@ class SkillSizeTests(unittest.TestCase):
             for name in skills.discover(role):
                 with self.subTest(skill=name):
                     skills.load(name, role)
+
+
+class RouterTests(unittest.IsolatedAsyncioTestCase):
+    """SKILL_ROUTER=llm: the LLM picks guides by meaning; keyword matches fill free slots; failures fall back."""
+
+    async def route(self, topic, reply):
+        from app.utils import skill_router
+        llm = AsyncMock()
+        llm.ainvoke.side_effect = reply if isinstance(reply, Exception) else [AIMessage(reply)]
+        with patch.object(settings, "SKILL_ROUTER", "llm"), patch("app.utils.skill_router.get_llm", return_value=llm):
+            return await skill_router.route(topic)
+
+    async def test_llm_finds_what_keywords_miss(self):
+        self.assertNotIn("teach-networking", skills.select("How HTTPS keeps data private"))
+        r = await self.route("How HTTPS keeps data private", '{"format": "make-explainer", "style": null, "subjects": ["teach-networking"]}')
+        self.assertEqual(r.source, "llm")
+        self.assertEqual(r.skills, ["video-foundation", "make-explainer", "iso-diagrams", "teach-networking"])
+
+    async def test_bad_names_and_categories_are_dropped_and_keywords_kept(self):
+        # "teach-code" is not a format; "nope" does not exist; keyword subject teach-dsa still fills a slot
+        r = await self.route("Explain bubble sort", '```json\n{"format": "teach-code", "subjects": ["nope", "teach-code"]}\n```')
+        self.assertEqual(r.skills, ["video-foundation", "make-explainer", "iso-diagrams", "teach-code", "teach-dsa"])
+
+    async def test_at_most_two_subjects_llm_first(self):
+        r = await self.route("Learn SQL joins", '{"subjects": ["teach-math", "teach-code", "teach-media"]}')
+        self.assertEqual([s for s in r.skills if s.startswith("teach-")], ["teach-math", "teach-code"])
+
+    async def test_failure_or_requested_skips_the_llm(self):
+        r = await self.route("How HTTPS keeps data private", RuntimeError("gateway down"))
+        self.assertEqual((r.source, r.skills), ("keyword (llm failed)", skills.select("How HTTPS keeps data private")))
+        from app.utils import skill_router
+        r = await skill_router.route("anything", ["teach-code"])
+        self.assertEqual((r.source, r.skills, r.calls), ("requested", ["teach-code"], 0))

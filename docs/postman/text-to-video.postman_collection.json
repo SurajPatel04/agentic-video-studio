@@ -1,0 +1,72 @@
+{
+  "info": {
+    "name": "text-to-video",
+    "description": "One API for every video. Start the server: cd backend && uvicorn app.main:app --port 8000.\n\n1. POST /videos with a prompt (length: short | long, layout: desktop | mobile | square). It returns at once; the id is saved as {{videoId}}.\n2. GET /videos/{{videoId}} until status is done (queued -> running -> done | failed).\n3. GET /videos/{{videoId}}/video with 'Send and Download'.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8000"},
+    {"key": "videoId", "value": ""}
+  ],
+  "event": [{"listen": "test", "script": {"exec": [
+    "try {",
+    "  const r = pm.response.json();",
+    "  if (pm.request.method === 'POST' && r.id) { pm.collectionVariables.set('videoId', r.id); console.log('videoId =', r.id); }",
+    "  if (r.status) console.log(`status=${r.status} step=${r.step} progress=${r.progress} ${r.error || ''}`);",
+    "} catch (e) {}"
+  ]}}],
+  "item": [
+    {"name": "Health", "request": {"method": "GET", "url": "{{baseUrl}}/"}},
+    {
+      "name": "1. Make video - short, desktop (default)",
+      "request": {
+        "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "url": "{{baseUrl}}/videos",
+        "body": {"mode": "raw", "raw": "{\n  \"prompt\": \"How HTTPS keeps data private\"\n}", "options": {"raw": {"language": "json"}}}
+      }
+    },
+    {
+      "name": "1. Make video - short, mobile",
+      "request": {
+        "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "url": "{{baseUrl}}/videos",
+        "body": {"mode": "raw", "raw": "{\n  \"prompt\": \"How a hash map handles collisions\",\n  \"layout\": \"mobile\",\n  \"scenes\": 6\n}", "options": {"raw": {"language": "json"}}}
+      }
+    },
+    {
+      "name": "1. Make video - long (10 min)",
+      "request": {
+        "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "url": "{{baseUrl}}/videos",
+        "body": {"mode": "raw", "raw": "{\n  \"prompt\": \"Full lecture: how the internet works\",\n  \"length\": \"long\",\n  \"minutes\": 10,\n  \"layout\": \"desktop\"\n}", "options": {"raw": {"language": "json"}}}
+      }
+    },
+    {
+      "name": "2. Status - is it done?",
+      "event": [{"listen": "test", "script": {"exec": ["pm.test('done', () => pm.expect(pm.response.json().status).to.eql('done'));"]}}],
+      "request": {"method": "GET", "url": "{{baseUrl}}/videos/{{videoId}}"}
+    },
+    {"name": "3. Download video (Send and Download)", "request": {"method": "GET", "url": "{{baseUrl}}/videos/{{videoId}}/video"}},
+    {
+      "name": "4. Transcript (txt)",
+      "request": {"method": "GET", "url": {"raw": "{{baseUrl}}/videos/{{videoId}}/transcript?format=txt", "host": ["{{baseUrl}}"], "path": ["videos", "{{videoId}}", "transcript"], "query": [{"key": "format", "value": "txt"}]}}
+    },
+    {
+      "name": "5. Captions (srt)",
+      "request": {"method": "GET", "url": {"raw": "{{baseUrl}}/videos/{{videoId}}/captions?format=srt", "host": ["{{baseUrl}}"], "path": ["videos", "{{videoId}}", "captions"], "query": [{"key": "format", "value": "srt"}]}}
+    },
+    {"name": "All videos (newest first)", "request": {"method": "GET", "url": "{{baseUrl}}/videos"}},
+    {
+      "name": "Advanced",
+      "item": [
+        {"name": "Skills (list)", "request": {"method": "GET", "url": "{{baseUrl}}/skills"}},
+        {
+          "name": "Plan only (no render)",
+          "request": {
+            "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "url": "{{baseUrl}}/plan",
+            "body": {"mode": "raw", "raw": "{\n  \"prompt\": \"How HTTPS keeps data private\",\n  \"layout\": \"desktop\"\n}", "options": {"raw": {"language": "json"}}}
+          }
+        },
+        {"name": "Long: resume / retry", "request": {"method": "POST", "url": "{{baseUrl}}/long/{{videoId}}/run"}},
+        {"name": "Long: chapter 1 plan", "request": {"method": "GET", "url": "{{baseUrl}}/long/{{videoId}}/chapters/1/plan"}}
+      ]
+    }
+  ]
+}
