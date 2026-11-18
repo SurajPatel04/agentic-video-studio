@@ -49,7 +49,27 @@ import * as Hash from './scenes/HashScene';
 import * as Tree from './scenes/TreeScene';
 import * as Linked from './scenes/LinkedListScene';
 import * as EventLoop from './scenes/EventLoopScene';
+import * as Plot from './scenes/PlotScene';
+import * as LiveChart from './scenes/LiveChartScene';
 
+import * as NewsCycle from './scenes/NewsCycleScene';
+
+import * as FrontPage from './scenes/FrontPageScene';
+
+import * as PrintDelivery from './scenes/PrintDeliveryScene';
+
+import * as Studio from './scenes/StudioScene';
+
+import * as SignalHomes from './scenes/SignalHomesScene';
+import * as RadioTuning from './scenes/RadioTuningScene';
+import * as SatelliteNews from './scenes/SatelliteNewsScene';
+import * as Feed from './scenes/FeedScene';
+import * as Spread from './scenes/SpreadScene';
+import * as CreatorWorkflow from './scenes/CreatorWorkflowScene';
+import * as MediaTheory from './scenes/MediaTheoryScene';
+import * as Race from './scenes/RaceScene';
+import * as LiveDashboard from './scenes/LiveDashboardScene';
+import * as MapTracking from './scenes/MapTrackingScene';
 // A single contract for scene lookup, validation, and LLM discovery.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type SceneEntry = {component: ComponentType<any>; schema: ZodType; description: string; tags: string[]};
@@ -106,6 +126,22 @@ const baseCatalog: Record<string, SceneEntry> = {
   GraphScene: {component: Tree.GraphScene, schema: Tree.graphSceneSchema, description: Tree.graphDescription, tags: Tree.graphTags},
   LinkedListScene: {...Linked, component: Linked.LinkedListScene, schema: Linked.linkedListSceneSchema},
   EventLoopScene: {...EventLoop, component: EventLoop.EventLoopScene, schema: EventLoop.eventLoopSceneSchema},
+  PlotScene: {...Plot, component: Plot.PlotScene, schema: Plot.plotSceneSchema},
+  LiveChartScene: {...LiveChart, component: LiveChart.LiveChartScene, schema: LiveChart.liveChartSceneSchema},
+  NewsCycleScene: {...NewsCycle, component: NewsCycle.NewsCycleScene, schema: NewsCycle.newsCycleSceneSchema},
+  FrontPageScene: {...FrontPage, component: FrontPage.FrontPageScene, schema: FrontPage.frontPageSceneSchema},
+  PrintDeliveryScene: {...PrintDelivery, component: PrintDelivery.PrintDeliveryScene, schema: PrintDelivery.printDeliverySceneSchema},
+  StudioScene: {...Studio, component: Studio.StudioScene, schema: Studio.studioSceneSchema},
+  SignalHomesScene: {...SignalHomes, component:SignalHomes.SignalHomesScene, schema:SignalHomes.signalHomesSceneSchema},
+  RadioTuningScene: {...RadioTuning, component:RadioTuning.RadioTuningScene, schema:RadioTuning.radioTuningSceneSchema},
+  SatelliteNewsScene: {...SatelliteNews, component:SatelliteNews.SatelliteNewsScene, schema:SatelliteNews.satelliteNewsSceneSchema},
+  FeedScene: {...Feed,component:Feed.FeedScene,schema:Feed.feedSceneSchema},
+  SpreadScene: {...Spread,component:Spread.SpreadScene,schema:Spread.spreadSceneSchema},
+  CreatorWorkflowScene: {...CreatorWorkflow,component:CreatorWorkflow.CreatorWorkflowScene,schema:CreatorWorkflow.creatorWorkflowSceneSchema},
+  MediaTheoryScene: {...MediaTheory,component:MediaTheory.MediaTheoryScene,schema:MediaTheory.mediaTheorySceneSchema},
+  RaceScene: {...Race, component: Race.RaceScene, schema: Race.raceSceneSchema},
+  LiveDashboardScene: {...LiveDashboard, component: LiveDashboard.LiveDashboardScene, schema: LiveDashboard.liveDashboardSceneSchema},
+  MapTrackingScene: {...MapTracking, component: MapTracking.MapTrackingScene, schema: MapTracking.mapTrackingSceneSchema},
   // <promoted-scenes> (the backend adds promoted agent-made scenes above this line)
   ...stagingCatalog,
 };

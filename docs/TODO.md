@@ -5,7 +5,7 @@ Prompt → LLM plans the video → React/Remotion scenes → MP4.
 
 Legend: `[x]` done · `[~]` partly done · `[ ]` not started
 
-_Last updated: 2026-11-15 (scene library expanded to 28 entries)_
+_Last updated: 2026-11-17 (66 scene contracts; DSA, event loop and graph scenes added)_
 
 ---
 
@@ -15,7 +15,7 @@ _Last updated: 2026-11-15 (scene library expanded to 28 entries)_
 - [x] `.gitignore` (env, venv, node_modules, renders, workspace, brief)
 - [x] `.env` / `.env.example` loaded from project root
 - [x] All packages pinned to exact versions (Remotion 4.0.539 everywhere)
-- [ ] First commit of `backend/`, `rendering/`, `docs/`
+- [x] First commit of `backend/`, `rendering/`, `docs/`
 
 ## 2. Backend foundation (Python / FastAPI)
 
@@ -104,11 +104,19 @@ _Last updated: 2026-11-15 (scene library expanded to 28 entries)_
 
 ### Course components (planned, build later)
 Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute their own steps.
-- [ ] 1. Shared: `GraphScene` (nodes/edges, spread), `TreeScene` (BST/heap/org chart), `TableScene` (SQL, truth/DP tables)
-- [ ] 2. DSA: `ArrayScene` (indices, swaps, i/j pointers), `SortingScene` (bubble/selection/insertion/merge/quick from `{algorithm, input}`), linked list, stack/queue, hash table, BFS/DFS/Dijkstra, recursion call stack, Big-O race, code trace with variables
-- [ ] 3. Maths: `PlotScene` (y = f(x), tangent, area), `GeometryScene`, number line, unit circle, vectors, matrix multiply, probability (coin/dice/tree), fractions, algebra steps
+- [~] 1. Shared: `GraphScene` (nodes/edges, spread), `TreeScene` (BST/heap/org chart), `TableScene` (SQL, truth/DP tables)
+  - [x] `GraphScene` (BFS/DFS/Dijkstra), `TreeScene` (BST/AVL/general tree)
+  - [~] Tables: SQL tables via `QueryScene` / `PipelineScene`; truth / DP tables not yet
+- [~] 2. DSA: `ArrayScene` (indices, swaps, i/j pointers), `SortingScene` (bubble/selection/insertion/merge/quick from `{algorithm, input}`), linked list, stack/queue, hash table, BFS/DFS/Dijkstra, recursion call stack, Big-O race, code trace with variables
+  - [x] `ArrayScene` (bubble/selection/insertion, binary/linear search), `LinkedListScene`, `StackScene` (stack/queue), `HashScene`, BFS/DFS/Dijkstra, `EventLoopScene` (call stack + heap + queues)
+  - [ ] merge/quick sort, recursion call stack, Big-O race, code trace with variables
+- [~] 3. Maths: `PlotScene` (y = f(x), tangent, area), `GeometryScene`, number line, unit circle, vectors, matrix multiply, probability (coin/dice/tree), fractions, algebra steps
+  - [x] `PlotScene` (formulas, live params, trace, tangent, area, zoom) + `LiveChartScene` (bar/line/race charts recalculated from data or a formula)
+  - [ ] `GeometryScene`, number line, unit circle, vectors, matrix multiply, probability, fractions, algebra steps
 - [ ] 4. CS: `SequenceScene` (HTTP/DNS/TCP handshake), `LayerStackScene` (OSI, encapsulation), `LogicGateScene` + truth table, binary/hex, CPU fetch-decode-execute, Gantt scheduling, memory/paging
-- [ ] 5. Mass communication: communication models (Shannon–Weaver, SMCR, Lasswell with noise + feedback), generic media mockups (newspaper, breaking-news ticker, social post, video player, podcast), viral spread, camera shots / rule of thirds, agenda-setting funnel
+- [~] 5. Mass communication: communication models (Shannon–Weaver, SMCR, Lasswell with noise + feedback), generic media mockups (newspaper, breaking-news ticker, social post, video player, podcast), viral spread, camera shots / rule of thirds, agenda-setting funnel
+  - [x] `MediaTheoryScene` (Shannon–Weaver with noise + feedback, agenda setting, two-step flow), `FrontPageScene`, `StudioScene`, `FeedScene`, `SpreadScene`, `NewsCycleScene`, iso media objects (video player, podcast booth, social post)
+  - [ ] SMCR / Lasswell models, breaking-news ticker, camera shots / rule of thirds
 - [ ] Common: `MindMapScene`, `PyramidScene` / `FunnelScene`, `CharacterScene` (avatars + speech bubbles), `WhiteboardScene` (hand-drawn)
 
 ### Audio
@@ -130,13 +138,13 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] API `POST /long`, `GET /long[/{id}]`, `POST /long/{id}/run`, `PUT /long/{id}/outline`, `GET|PUT /long/{id}/chapters/{n}/plan`, `POST /long/{id}/chapters/{n}/redo`, `GET /long/{id}/video`; CLI `long`, `long-run`, `long-status`, `long-redo`
 - [x] Resume endpoint runs on the event loop; per-job file locks prevent overlapping runs and edits, including during plan validation
 - [ ] Background runs are in-process tasks: after a server restart call `/long/{id}/run` to resume (no auto-resume / real queue yet)
-- [ ] Parallel chapter rendering (bounded) once sequential is proven on a full-length run
+- [x] Parallel chapter rendering (bounded): `LONG_RENDER_WORKERS`, planning overlaps rendering
 - [x] Planner variety: `teach-code` hard rules (CodeScene per chapter + terminal output), style check `PLANNER_MAX_TEXT_RUN=3` (one retry, valid plan never lost), catalog shows number limits (`width: num 300..1800`)
-- [ ] More CodeScenes per chapter (live run: 1 per chapter; skill asks for ~1 per concept)
+- [x] More CodeScenes per chapter: planner check asks for one per concept (`PLANNER_CODE_EVERY`)
 
 ## 5. Library contract & registry
 
-- [x] Zod props schema + description + tags for every scene (28 entries) in `src/registry.ts` → `sceneCatalog`
+- [x] Zod props schema + description + tags for every scene (66 entries) in `src/registry.ts` → `sceneCatalog`
 - [x] Schemas are strict: unknown props (typos like `"titel"`) are errors, not silently dropped
 - [x] `library/registry.json` generated by `npm run check:scenes` (Zod 4 `z.toJSONSchema()`, defaults as example)
 - [x] Props validated in `VideoComposition` (render fails with the exact message)
@@ -154,7 +162,9 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] Topic filter: only core + matching scenes go in the prompt (LAN/MAN/WAN plan: ~5.3K input tokens, was ~9–10K)
 - [x] Planner modes: `catalog` (filtered prompt, 1 call), `tools` (search_scenes / get_scene / list_device_kinds / get_overlay via the Responses API), `auto` (tools once the library has > 80 scenes)
 - [x] Catalog reloads when `library/registry.json` / `library/overlays.json` change (no backend restart); overlays' fields exported to `library/overlays.json`
-- [ ] Planner quality: few-shot example videos, per-subject guidance, scene variety checks
+- [~] Planner quality: few-shot example videos, per-subject guidance, scene variety checks
+  - [x] Per-subject guidance (`skills/`), scene variety checks (text-run / text-share limits)
+  - [ ] Few-shot example videos
 
 ## 7. API, queue, storage
 
@@ -188,7 +198,7 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 
 - [ ] Docker Compose: api, worker, redis, renderer, minio
 - [ ] Sandbox per job (no secrets, limited network/CPU/time)
-- [ ] Logs / observability
+- [~] Logs / observability: coloured console logs with request ids and LLM call logging done; no metrics / tracing yet
 
 ---
 

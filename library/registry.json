@@ -6361,7 +6361,7 @@
   {
     "name": "IsoScene",
     "version": "1.0.0",
-    "description": "Isometric \"paper\" diagram: 3D-looking servers, databases, caches, clouds, people, medical objects (hospital, doctor, patient bed, ambulance, pill bottle, syringe, heart monitor, microscope, test tubes, DNA), school objects (school, teacher with whiteboard, student desk, bookshelf, graduation cap, backpack, globe on a stand, certificate, pencil and notebook), finance objects (bank, coin stack, wallet, credit card, ATM, safe, piggy bank, cash bundle, stock chart board, calculator, receipt), retail and business objects (shop, shopping cart, delivery parcel on a conveyor, cash register, warehouse, price tag, shopping bag, factory, office desk, handshake, meeting table) and transport objects (car, truck, road, bus, train, airplane, ship, bicycle, traffic light, fuel pump, map pin), all plus everyday objects (house, tree, clock, animated bar and pie charts, chat bubble, sun, weather, trophy, flag, lightbulb, gear, magnifier, warning, checkmark, cross) and role figures (chef, worker, police). Clocks and gears turn, charts grow, ECG traces pulse, ambulance lights flash, and links support car flow. All objects are dropping in and animating on a paper grid. Communication fundamentals include envelope, sender, receiver, encoder, decoder, feedback loop and noise interference.  Steps (timed as a fraction of the narration) change loads (⚙ 59% pills), highlight, add notes and move the camera. Use for systems, architecture, flows, networking, scaling, how-things-work, healthcare, education, finance, retail, logistics, journalism and newsrooms. With no objects it is a paper title card (title, subtitle, points).",
+    "description": "Isometric \"paper\" diagram: 3D-looking servers, databases, caches, clouds, people, medical objects (hospital, doctor, patient bed, ambulance, pill bottle, syringe, heart monitor, microscope, test tubes, DNA), school objects (school, teacher with whiteboard, student desk, bookshelf, graduation cap, backpack, globe on a stand, certificate, pencil and notebook), finance objects (bank, coin stack, wallet, credit card, ATM, safe, piggy bank, cash bundle, stock chart board, calculator, receipt), retail and business objects (shop, shopping cart, delivery parcel on a conveyor, cash register, warehouse, price tag, shopping bag, factory, office desk, handshake, meeting table) and transport objects (car, truck, road, bus, train, airplane, ship, bicycle, traffic light, fuel pump, map pin), all plus everyday objects (house, tree, clock, animated bar and pie charts, chat bubble, sun, weather, trophy, flag, lightbulb, gear, magnifier, warning, checkmark, cross) and role figures (chef, worker, police). AI and emerging media objects include an AI-generated-content label, synthetic voice, altered-image comparison, recommendation Politics and public affairs: parliament, ballotbox, campaignrally, publicmeeting, protestplacard, governmentoffice. Public relations: pressrelease, podium, pressconference, spokesperson, mediakit, crisiscentre. TV and film: studiocamera, teleprompter, studiolights, controlmonitors, obvan, clapperboard, cinemaprojector, cinemascreen, filmreel, storyboard, editingtimeline, theatrestage. Digital: socialpost, scrollingfeed, videoplayer, livestream, comments, repost, notification, hashtag. Advertising: productdisplay, campaignboard, sponsoredpost, adplacement, paywall, adpayment. system and verified-content panel. Radio, audio and podcast objects include headphones, a mixing console, a boom microphone, a studio speaker, a field recorder and a podcast booth. Clocks and gears turn, charts grow, ECG traces pulse, ambulance lights flash, and links support car flow. All objects are dropping in and animating on a paper grid. Communication fundamentals include envelope, sender, receiver, encoder, decoder, feedback loop and noise interference. Steps (timed as a fraction of the narration) change loads (⚙ 59% pills), highlight, add notes and move the camera. Use for systems, architecture, flows, networking, scaling, how-things-work, healthcare, education, finance, retail, logistics, journalism, newsrooms, AI, synthetic media, misinformation and media literacy. With no objects it is a paper title card (title, subtitle, points).",
     "tags": [
       "isometric",
       "iso",
@@ -6437,7 +6437,37 @@
       "interview",
       "press pass",
       "recorder",
-      "documents"
+      "documents",
+      "ai",
+      "artificial intelligence",
+      "generated content",
+      "synthetic media",
+      "deepfake",
+      "synthetic voice",
+      "recommendation",
+      "algorithm",
+      "verification",
+      "verified",
+      "provenance",
+      "ai voice",
+      "misinformation",
+      "media literacy",
+      "radio",
+      "audio",
+      "podcast",
+      "podcasting",
+      "headphones",
+      "mixing console",
+      "mixer",
+      "boom mic",
+      "microphone",
+      "speaker",
+      "loudspeaker",
+      "audio recorder",
+      "field recorder",
+      "recording studio",
+      "booth",
+      "on air"
     ],
     "path": "rendering/src/scenes/IsoScene.tsx",
     "staged": false,
@@ -6478,6 +6508,55 @@
                   "decoder",
                   "feedback",
                   "noise",
+                  "aigeneratedlabel",
+                  "aivoice",
+                  "alteredimage",
+                  "recommendation",
+                  "verified",
+                  "headphones",
+                  "mixingconsole",
+                  "boommic",
+                  "speaker",
+                  "audiorecorder",
+                  "podcastbooth",
+                  "studiocamera",
+                  "teleprompter",
+                  "studiolights",
+                  "controlmonitors",
+                  "obvan",
+                  "clapperboard",
+                  "cinemaprojector",
+                  "cinemascreen",
+                  "filmreel",
+                  "storyboard",
+                  "editingtimeline",
+                  "theatrestage",
+                  "socialpost",
+                  "scrollingfeed",
+                  "videoplayer",
+                  "livestream",
+                  "comments",
+                  "repost",
+                  "notification",
+                  "hashtag",
+                  "productdisplay",
+                  "campaignboard",
+                  "sponsoredpost",
+                  "adplacement",
+                  "paywall",
+                  "adpayment",
+                  "pressrelease",
+                  "podium",
+                  "pressconference",
+                  "spokesperson",
+                  "mediakit",
+                  "crisiscentre",
+                  "parliament",
+                  "ballotbox",
+                  "campaignrally",
+                  "publicmeeting",
+                  "protestplacard",
+                  "governmentoffice",
                   "road",
                   "singlelane",
                   "twolane",
@@ -7510,6 +7589,55 @@
                       "decoder",
                       "feedback",
                       "noise",
+                      "aigeneratedlabel",
+                      "aivoice",
+                      "alteredimage",
+                      "recommendation",
+                      "verified",
+                      "headphones",
+                      "mixingconsole",
+                      "boommic",
+                      "speaker",
+                      "audiorecorder",
+                      "podcastbooth",
+                      "studiocamera",
+                      "teleprompter",
+                      "studiolights",
+                      "controlmonitors",
+                      "obvan",
+                      "clapperboard",
+                      "cinemaprojector",
+                      "cinemascreen",
+                      "filmreel",
+                      "storyboard",
+                      "editingtimeline",
+                      "theatrestage",
+                      "socialpost",
+                      "scrollingfeed",
+                      "videoplayer",
+                      "livestream",
+                      "comments",
+                      "repost",
+                      "notification",
+                      "hashtag",
+                      "productdisplay",
+                      "campaignboard",
+                      "sponsoredpost",
+                      "adplacement",
+                      "paywall",
+                      "adpayment",
+                      "pressrelease",
+                      "podium",
+                      "pressconference",
+                      "spokesperson",
+                      "mediakit",
+                      "crisiscentre",
+                      "parliament",
+                      "ballotbox",
+                      "campaignrally",
+                      "publicmeeting",
+                      "protestplacard",
+                      "governmentoffice",
                       "road",
                       "singlelane",
                       "twolane",
@@ -11914,6 +12042,1619 @@
     "example": {
       "runtime": "node",
       "sound": true
+    }
+  },
+  {
+    "name": "PlotScene",
+    "version": "1.0.0",
+    "description": "A live function graph (paper style): curves from formulas like \"a*x^2 + b\", \"sin(k*x)\", \"m*x + c\" are recalculated every frame, so \"set\" steps morph the curve while sliders and numbers count to the new value. Steps: set {a: 3} | trace {x} (dot moves along the curve, y calculated) | mark {x} (pinned point with its value) | tangent {x} (slope) | area {from, to} (integral) | zoom {x: [min,max], y} | clear | note. Give \"curves\" (1-3, use * ^ and brackets), \"params\" (starting values), \"x\" range. y range fits automatically. For data that changes, use LiveChartScene.",
+    "tags": [
+      "graph",
+      "plot",
+      "function",
+      "curve",
+      "formula",
+      "equation graph",
+      "parabola",
+      "linear",
+      "slope",
+      "tangent",
+      "derivative",
+      "integral",
+      "calculus",
+      "algebra",
+      "sine",
+      "wave",
+      "exponential",
+      "parameter",
+      "math animation"
+    ],
+    "path": "rendering/src/scenes/PlotScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "curves": {
+          "default": [
+            {
+              "expr": "a*x^2 + b"
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "expr": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "color": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "dashed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "expr"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "params": {
+          "default": {
+            "a": 1,
+            "b": 0
+          },
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "x": {
+          "default": [
+            -3,
+            3
+          ],
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "y": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "xLabel": {
+          "default": "x",
+          "type": "string",
+          "maxLength": 24
+        },
+        "yLabel": {
+          "default": "y",
+          "type": "string",
+          "maxLength": 24
+        },
+        "steps": {
+          "default": [
+            {
+              "do": "set",
+              "a": 2,
+              "note": "a = 2: the parabola gets narrower"
+            },
+            {
+              "do": "set",
+              "a": -0.5,
+              "note": "a below 0 flips it upside down"
+            },
+            {
+              "do": "set",
+              "a": 1,
+              "b": -2,
+              "note": "b moves the whole curve down"
+            },
+            {
+              "do": "trace",
+              "x": 2,
+              "note": "follow a point: y is calculated at every x"
+            },
+            {
+              "do": "tangent",
+              "x": 1.5,
+              "note": "the tangent shows the slope at x = 1.5"
+            },
+            {
+              "do": "area",
+              "from": -1,
+              "to": 2,
+              "note": "shaded area = the integral from -1 to 2"
+            }
+          ],
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 90
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "showPanel": {
+          "default": true,
+          "type": "boolean"
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "curves": [
+        {
+          "expr": "a*x^2 + b"
+        }
+      ],
+      "params": {
+        "a": 1,
+        "b": 0
+      },
+      "x": [
+        -3,
+        3
+      ],
+      "xLabel": "x",
+      "yLabel": "y",
+      "steps": [
+        {
+          "do": "set",
+          "a": 2,
+          "note": "a = 2: the parabola gets narrower"
+        },
+        {
+          "do": "set",
+          "a": -0.5,
+          "note": "a below 0 flips it upside down"
+        },
+        {
+          "do": "set",
+          "a": 1,
+          "b": -2,
+          "note": "b moves the whole curve down"
+        },
+        {
+          "do": "trace",
+          "x": 2,
+          "note": "follow a point: y is calculated at every x"
+        },
+        {
+          "do": "tangent",
+          "x": 1.5,
+          "note": "the tangent shows the slope at x = 1.5"
+        },
+        {
+          "do": "area",
+          "from": -1,
+          "to": 2,
+          "note": "shaded area = the integral from -1 to 2"
+        }
+      ],
+      "showPanel": true,
+      "sound": true
+    }
+  },
+  {
+    "name": "LiveChartScene",
+    "version": "1.0.0",
+    "description": "A bar / line / race chart (paper style) whose numbers change on screen. Values come from \"series\" data or a \"formula\" over a range (\"P*(1+r)^t\", var t, from 0 to 10, params {P, r}). Steps: set {r: 0.1} (every value recalculated, bars grow) | set {label, value} | set {values: [...]} | add {label?, by} | scale {by} | append {label, value} | remove {label} | sort {order} | highlight {label} | reveal {count} (bars or the line appear one by one) | note. Numbers count while they move, the axis rescales, race bars swap rank. The panel shows the formula, params and the worked calculation; \"stats\": total, average, max, min, last, change.",
+    "tags": [
+      "chart",
+      "live chart",
+      "animated chart",
+      "bar chart",
+      "line chart",
+      "bar race",
+      "ranking",
+      "data",
+      "numbers",
+      "growth",
+      "compound interest",
+      "interest",
+      "calculation",
+      "formula",
+      "statistics",
+      "trend",
+      "population",
+      "finance",
+      "budget"
+    ],
+    "path": "rendering/src/scenes/LiveChartScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "kind": {
+          "default": "bar",
+          "type": "string",
+          "enum": [
+            "bar",
+            "line",
+            "race"
+          ]
+        },
+        "labels": {
+          "maxItems": 14,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 16
+          }
+        },
+        "series": {
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "default": "",
+                "type": "string",
+                "maxLength": 24
+              },
+              "values": {
+                "maxItems": 14,
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "expr": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "color": {
+                "type": "string",
+                "maxLength": 30
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "formula": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "var": {
+          "type": "string",
+          "maxLength": 12
+        },
+        "from": {
+          "default": 0,
+          "type": "number"
+        },
+        "to": {
+          "type": "number"
+        },
+        "step": {
+          "default": 1,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "params": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "steps": {
+          "default": [],
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 90
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "valuePrefix": {
+          "default": "",
+          "type": "string",
+          "maxLength": 6
+        },
+        "valueSuffix": {
+          "default": "",
+          "type": "string",
+          "maxLength": 10
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "xLabel": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "yLabel": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "stats": {
+          "default": [],
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "total",
+              "average",
+              "max",
+              "min",
+              "last",
+              "change"
+            ]
+          }
+        },
+        "showValues": {
+          "default": true,
+          "type": "boolean"
+        },
+        "showPanel": {
+          "default": true,
+          "type": "boolean"
+        },
+        "sound": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "kind": "bar",
+      "formula": "P*(1 + r)^t",
+      "var": "t",
+      "from": 0,
+      "to": 10,
+      "step": 1,
+      "params": {
+        "P": 1000,
+        "r": 0.05
+      },
+      "steps": [
+        {
+          "do": "reveal",
+          "note": "Each year the balance grows by r"
+        },
+        {
+          "do": "set",
+          "note": "Double the rate to 10%: every year is recalculated",
+          "r": 0.1
+        },
+        {
+          "do": "highlight",
+          "note": "After 10 years: more than double the start",
+          "label": "10"
+        }
+      ],
+      "valuePrefix": "$",
+      "valueSuffix": "",
+      "xLabel": "year",
+      "stats": [
+        "last",
+        "change"
+      ],
+      "showValues": true,
+      "showPanel": true,
+      "sound": true
+    }
+  },
+  {
+    "name": "NewsCycleScene",
+    "version": "1.0.0",
+    "description": "An event reaches a reporter with a microphone, an editor’s desk and gatekeeping funnel. Story cards enter the funnel; selected stories pass to print or broadcast, others are held for checking, then the audience reacts. Props: event, output (print/broadcast), stories [{label, selected}].",
+    "tags": [
+      "news",
+      "journalism",
+      "news cycle",
+      "gatekeeping",
+      "reporter",
+      "editor",
+      "audience"
+    ],
+    "path": "rendering/src/scenes/NewsCycleScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "How an event becomes news",
+          "type": "string",
+          "maxLength": 70
+        },
+        "event": {
+          "default": "A public park opens",
+          "type": "string",
+          "maxLength": 42
+        },
+        "output": {
+          "default": "print",
+          "type": "string",
+          "enum": [
+            "print",
+            "broadcast"
+          ]
+        },
+        "stories": {
+          "default": [
+            {
+              "label": "Park opening",
+              "selected": true
+            },
+            {
+              "label": "Unverified rumour",
+              "selected": false
+            },
+            {
+              "label": "Transport update",
+              "selected": true
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "selected": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "label",
+              "selected"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "How an event becomes news",
+      "event": "A public park opens",
+      "output": "print",
+      "stories": [
+        {
+          "label": "Park opening",
+          "selected": true
+        },
+        {
+          "label": "Unverified rumour",
+          "selected": false
+        },
+        {
+          "label": "Transport update",
+          "selected": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "FrontPageScene",
+    "version": "1.0.0",
+    "description": "An empty newspaper front page builds in stages: headline drops in, an illustrated photo arrives, text columns fill, then an editor enlarges the lead story and shrinks the others. Controls: masthead, headline, photoCaption, stories, leadShare.",
+    "tags": [
+      "news",
+      "journalism",
+      "newspaper",
+      "front page",
+      "editor",
+      "headline",
+      "layout",
+      "agenda setting"
+    ],
+    "path": "rendering/src/scenes/FrontPageScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "default": "NEWS / EDITORIAL DESIGN",
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "default": "How a front page comes together",
+          "type": "string",
+          "maxLength": 70
+        },
+        "masthead": {
+          "default": "THE DAILY REPORT",
+          "type": "string",
+          "maxLength": 28
+        },
+        "headline": {
+          "default": "Community opens a new public park",
+          "type": "string",
+          "maxLength": 75
+        },
+        "photoCaption": {
+          "default": "Neighbours gather for opening day",
+          "type": "string",
+          "maxLength": 65
+        },
+        "stories": {
+          "default": [
+            "Transport plans take shape",
+            "Local teams prepare for the final",
+            "Weekend arts guide"
+          ],
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 45
+          }
+        },
+        "leadShare": {
+          "default": 0.68,
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 0.72
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "eyebrow": "NEWS / EDITORIAL DESIGN",
+      "title": "How a front page comes together",
+      "masthead": "THE DAILY REPORT",
+      "headline": "Community opens a new public park",
+      "photoCaption": "Neighbours gather for opening day",
+      "stories": [
+        "Transport plans take shape",
+        "Local teams prepare for the final",
+        "Weekend arts guide"
+      ],
+      "leadShare": 0.68
+    }
+  },
+  {
+    "name": "PrintDeliveryScene",
+    "version": "1.0.0",
+    "description": "A newspaper press rolls, printed papers move along a conveyor and stack up, a delivery van loads and drives a road route, then papers arc onto each home’s doorstep. Props: title, masthead, homes (2–4 labels).",
+    "tags": [
+      "news",
+      "journalism",
+      "printing",
+      "press",
+      "newspaper",
+      "delivery",
+      "van",
+      "distribution"
+    ],
+    "path": "rendering/src/scenes/PrintDeliveryScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "From the printing press to your doorstep",
+          "type": "string",
+          "maxLength": 70
+        },
+        "masthead": {
+          "default": "DAILY NEWS",
+          "type": "string",
+          "maxLength": 20
+        },
+        "homes": {
+          "default": [
+            "Oak Street",
+            "Park Avenue",
+            "Hill Road"
+          ],
+          "minItems": 2,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 20
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "From the printing press to your doorstep",
+      "masthead": "DAILY NEWS",
+      "homes": [
+        "Oak Street",
+        "Park Avenue",
+        "Hill Road"
+      ]
+    }
+  },
+  {
+    "name": "StudioScene",
+    "version": "1.0.0",
+    "description": "A TV studio goes live: cameras face an anchor at a desk, ON AIR turns red, a control-room switcher cuts from camera 1 to camera 2, and the selected picture appears on televisions at home. Custom channel, headline, anchorName, cameraLabels and fractional liveAt/switchAt/homeAt timing.",
+    "tags": [
+      "news",
+      "journalism",
+      "tv",
+      "studio",
+      "broadcast",
+      "anchor",
+      "camera",
+      "control room",
+      "on air",
+      "television"
+    ],
+    "path": "rendering/src/scenes/StudioScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "default": "NEWS / LIVE BROADCAST",
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "default": "From the studio to your living room",
+          "type": "string",
+          "maxLength": 70
+        },
+        "channel": {
+          "default": "DAILY NEWS",
+          "type": "string",
+          "maxLength": 20
+        },
+        "headline": {
+          "default": "New public park opens today",
+          "type": "string",
+          "maxLength": 65
+        },
+        "anchorName": {
+          "default": "Evening bulletin",
+          "type": "string",
+          "maxLength": 30
+        },
+        "cameraLabels": {
+          "default": [
+            "Wide shot",
+            "Close-up"
+          ],
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "string",
+              "maxLength": 20
+            },
+            {
+              "type": "string",
+              "maxLength": 20
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "liveAt": {
+          "default": 0.25,
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 0.4
+        },
+        "switchAt": {
+          "default": 0.55,
+          "type": "number",
+          "minimum": 0.45,
+          "maximum": 0.7
+        },
+        "homeAt": {
+          "default": 0.76,
+          "type": "number",
+          "minimum": 0.72,
+          "maximum": 0.9
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "eyebrow": "NEWS / LIVE BROADCAST",
+      "title": "From the studio to your living room",
+      "channel": "DAILY NEWS",
+      "headline": "New public park opens today",
+      "anchorName": "Evening bulletin",
+      "cameraLabels": [
+        "Wide shot",
+        "Close-up"
+      ],
+      "liveAt": 0.25,
+      "switchAt": 0.55,
+      "homeAt": 0.76
+    }
+  },
+  {
+    "name": "SignalHomesScene",
+    "version": "1.0.0",
+    "description": "Isometric broadcast tower emits expanding wave rings. Home televisions and radios light up in sequence when the first wave reaches them.",
+    "tags": [
+      "broadcast",
+      "signal",
+      "tower",
+      "waves",
+      "homes",
+      "radio",
+      "television"
+    ],
+    "path": "rendering/src/scenes/SignalHomesScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "One broadcast reaches many homes",
+          "type": "string",
+          "maxLength": 70
+        },
+        "homes": {
+          "default": [
+            "Oak Street",
+            "Park Avenue",
+            "Hill Road"
+          ],
+          "minItems": 2,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 20
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "One broadcast reaches many homes",
+      "homes": [
+        "Oak Street",
+        "Park Avenue",
+        "Hill Road"
+      ]
+    }
+  },
+  {
+    "name": "RadioTuningScene",
+    "version": "1.0.0",
+    "description": "Isometric radio with animated tuning dial and frequency scale. Jagged static waveform settles into a clean wave as the station locks. Visual static representation; no generated audio.",
+    "tags": [
+      "radio",
+      "tuning",
+      "frequency",
+      "static",
+      "broadcast",
+      "waveform"
+    ],
+    "path": "rendering/src/scenes/RadioTuningScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Finding a clear radio station",
+          "type": "string",
+          "maxLength": 70
+        },
+        "station": {
+          "default": "Community Radio",
+          "type": "string",
+          "maxLength": 24
+        },
+        "frequency": {
+          "default": 98.4,
+          "type": "number",
+          "minimum": 88,
+          "maximum": 108
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Finding a clear radio station",
+      "station": "Community Radio",
+      "frequency": 98.4
+    }
+  },
+  {
+    "name": "SatelliteNewsScene",
+    "version": "1.0.0",
+    "description": "Isometric globe and satellite relay news between continent-labelled newsrooms. An animated uplink then downlink follows the signal, with a configurable illustrative one-way delay timer (not a measured latency).",
+    "tags": [
+      "satellite",
+      "news",
+      "globe",
+      "uplink",
+      "downlink",
+      "delay",
+      "broadcast"
+    ],
+    "path": "rendering/src/scenes/SatelliteNewsScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "News travels across continents",
+          "type": "string",
+          "maxLength": 70
+        },
+        "from": {
+          "default": "Asia newsroom",
+          "type": "string",
+          "maxLength": 24
+        },
+        "to": {
+          "default": "Europe newsroom",
+          "type": "string",
+          "maxLength": 24
+        },
+        "delayMs": {
+          "default": 250,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3000
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "News travels across continents",
+      "from": "Asia newsroom",
+      "to": "Europe newsroom",
+      "delayMs": 250
+    }
+  },
+  {
+    "name": "FeedScene",
+    "version": "1.0.0",
+    "description": "Isometric phone feed: scroll mode moves posts with growing like/share counters and a comment; ranking mode displays illustrative scores and visibly reorders the same posts by descending score. Not a model of any specific platform algorithm.",
+    "tags": [
+      "social media",
+      "feed",
+      "phone",
+      "scroll",
+      "likes",
+      "shares",
+      "algorithm",
+      "ranking"
+    ],
+    "path": "rendering/src/scenes/FeedScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Inside a social media feed",
+          "type": "string",
+          "maxLength": 70
+        },
+        "mode": {
+          "default": "scroll",
+          "type": "string",
+          "enum": [
+            "scroll",
+            "ranking"
+          ]
+        },
+        "posts": {
+          "default": [
+            {
+              "author": "City desk",
+              "text": "A new park opens in our neighbourhood",
+              "score": 62,
+              "likes": 320,
+              "shares": 45
+            },
+            {
+              "author": "Weekend guide",
+              "text": "Five things to explore this weekend",
+              "score": 94,
+              "likes": 840,
+              "shares": 120
+            },
+            {
+              "author": "Local voices",
+              "text": "Meet the people behind the community garden",
+              "score": 78,
+              "likes": 540,
+              "shares": 72
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "author": {
+                "type": "string",
+                "maxLength": 22
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 65
+              },
+              "score": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "likes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 999999
+              },
+              "shares": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 99999
+              }
+            },
+            "required": [
+              "author",
+              "text",
+              "score",
+              "likes",
+              "shares"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "comment": {
+          "default": "Love seeing our community come together!",
+          "type": "string",
+          "maxLength": 60
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Inside a social media feed",
+      "mode": "scroll",
+      "posts": [
+        {
+          "author": "City desk",
+          "text": "A new park opens in our neighbourhood",
+          "score": 62,
+          "likes": 320,
+          "shares": 45
+        },
+        {
+          "author": "Weekend guide",
+          "text": "Five things to explore this weekend",
+          "score": 94,
+          "likes": 840,
+          "shares": 120
+        },
+        {
+          "author": "Local voices",
+          "text": "Meet the people behind the community garden",
+          "score": 78,
+          "likes": 540,
+          "shares": 72
+        }
+      ],
+      "comment": "Love seeing our community come together!"
+    }
+  },
+  {
+    "name": "SpreadScene",
+    "version": "1.0.0",
+    "description": "A post spreads from one person to friends to friends of friends, with wave activation and unique reach counts. Race mode overlays fast red misinformation and a delayed green correction on the same network. Counts are illustrative, and people can receive both messages; green receipt does not imply belief changed.",
+    "tags": [
+      "viral",
+      "spread",
+      "social network",
+      "fake news",
+      "fact check",
+      "correction",
+      "reach",
+      "race"
+    ],
+    "path": "rendering/src/scenes/SpreadScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "How a post spreads through a network",
+          "type": "string",
+          "maxLength": 70
+        },
+        "mode": {
+          "default": "viral",
+          "type": "string",
+          "enum": [
+            "viral",
+            "race"
+          ]
+        },
+        "post": {
+          "default": "A post shared with friends",
+          "type": "string",
+          "maxLength": 55
+        },
+        "correctionDelay": {
+          "default": 0.23,
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 0.45
+        },
+        "correctionSpeed": {
+          "default": 0.72,
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "How a post spreads through a network",
+      "mode": "viral",
+      "post": "A post shared with friends",
+      "correctionDelay": 0.23,
+      "correctionSpeed": 0.72
+    }
+  },
+  {
+    "name": "CreatorWorkflowScene",
+    "version": "1.0.0",
+    "description": "Isometric creator workflow: shoot with a camera, arrange clips on an editing timeline with a moving playhead, upload with progress, then grow a view counter.",
+    "tags": [
+      "creator",
+      "video",
+      "editing",
+      "timeline",
+      "upload",
+      "views",
+      "social media"
+    ],
+    "path": "rendering/src/scenes/CreatorWorkflowScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "From an idea to a published video",
+          "type": "string",
+          "maxLength": 70
+        },
+        "views": {
+          "default": 12500,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9999999
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "From an idea to a published video",
+      "views": 12500
+    }
+  },
+  {
+    "name": "MediaTheoryScene",
+    "version": "1.0.0",
+    "description": "Four isometric media theory animations: communication sends text through noise and returns feedback (a feedback extension to Shannon–Weaver); agenda grows a headline across days and audience attention; two-step flow fans media out through opinion leaders; gratifications lets people choose news, entertainment or social media. Illustrative teaching examples.",
+    "tags": [
+      "communication",
+      "Shannon Weaver",
+      "noise",
+      "feedback",
+      "agenda setting",
+      "two step flow",
+      "opinion leaders",
+      "uses and gratifications",
+      "media theory"
+    ],
+    "path": "rendering/src/scenes/MediaTheoryScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "mode": {
+          "default": "communication",
+          "type": "string",
+          "enum": [
+            "communication",
+            "agenda",
+            "two-step",
+            "gratifications"
+          ]
+        },
+        "message": {
+          "default": "STORM",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 16
+        },
+        "headline": {
+          "default": "The city’s new public park",
+          "type": "string",
+          "maxLength": 45
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "mode": "communication",
+      "message": "STORM",
+      "headline": "The city’s new public park"
+    }
+  },
+  {
+    "name": "RaceScene",
+    "version": "1.0.0",
+    "description": "Two simultaneous split-screen lanes with moving progress bars and stopwatches. Supply exactly two lanes {label, seconds, color?}; lower seconds wins and receives a checkmark. Equal times show a tie. Both start together, finish according to their relative durations, and hold results before the scene ends. Useful for cache versus no cache, algorithms, or before/after speed comparisons.",
+    "tags": [
+      "race",
+      "split screen",
+      "comparison",
+      "cache",
+      "stopwatch",
+      "performance",
+      "speed",
+      "benchmark",
+      "before after"
+    ],
+    "path": "rendering/src/scenes/RaceScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "default": "SIDE BY SIDE / SAME TASK",
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "default": "The same request. A faster finish.",
+          "type": "string",
+          "maxLength": 70
+        },
+        "lanes": {
+          "default": [
+            {
+              "label": "No cache",
+              "seconds": 8,
+              "color": "#e48b48"
+            },
+            {
+              "label": "Cache",
+              "seconds": 2,
+              "color": "#47966a"
+            }
+          ],
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 28
+                },
+                "seconds": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 3600
+                },
+                "color": {
+                  "default": "#8a6fd1",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "label",
+                "seconds"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 28
+                },
+                "seconds": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 3600
+                },
+                "color": {
+                  "default": "#8a6fd1",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "label",
+                "seconds"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "eyebrow": "SIDE BY SIDE / SAME TASK",
+      "title": "The same request. A faster finish.",
+      "lanes": [
+        {
+          "label": "No cache",
+          "seconds": 8,
+          "color": "#e48b48"
+        },
+        {
+          "label": "Cache",
+          "seconds": 2,
+          "color": "#47966a"
+        }
+      ]
+    }
+  },
+  {
+    "name": "LiveDashboardScene",
+    "version": "1.0.0",
+    "description": "Animated monitoring dashboard with continuously moving latency and throughput graphs, live KPI values and server status. The server fails at failureAt and recovers at recoveryAt (fractions of scene duration); latency rises and falls while throughput drops and returns. Customize server, baselineMs, peakMs and requestsPerSecond. Illustrative simulated metrics, not a live data connection.",
+    "tags": [
+      "live dashboard",
+      "dashboard",
+      "monitoring",
+      "latency",
+      "server",
+      "failure",
+      "recovery",
+      "observability",
+      "throughput",
+      "real time"
+    ],
+    "path": "rendering/src/scenes/LiveDashboardScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "default": "LIVE / SERVICE HEALTH",
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "default": "A failure you can see in the numbers",
+          "type": "string",
+          "maxLength": 70
+        },
+        "server": {
+          "default": "API server",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 28
+        },
+        "baselineMs": {
+          "default": 80,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 10000
+        },
+        "peakMs": {
+          "default": 650,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 60000
+        },
+        "requestsPerSecond": {
+          "default": 1200,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1000000
+        },
+        "failureAt": {
+          "default": 0.32,
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 0.6
+        },
+        "recoveryAt": {
+          "default": 0.66,
+          "type": "number",
+          "minimum": 0.2,
+          "maximum": 0.8
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "eyebrow": "LIVE / SERVICE HEALTH",
+      "title": "A failure you can see in the numbers",
+      "server": "API server",
+      "baselineMs": 80,
+      "peakMs": 650,
+      "requestsPerSecond": 1200,
+      "failureAt": 0.32,
+      "recoveryAt": 0.66
+    }
+  },
+  {
+    "name": "MapTrackingScene",
+    "version": "1.0.0",
+    "description": "A delivery dot travels along a street-map route, leaving a colored trail as the arrival countdown decreases to zero. Shows origin, destination, courier, progress and delivered confirmation. route is 2–20 normalized [x,y] points (0..1); movement follows segment distance at constant speed. etaSeconds is the illustrative trip time compressed to fit the scene. Schematic map, no external map assets required.",
+    "tags": [
+      "map tracking",
+      "delivery",
+      "tracking",
+      "route",
+      "logistics",
+      "arrival",
+      "countdown",
+      "eta",
+      "courier",
+      "gps"
+    ],
+    "path": "rendering/src/scenes/MapTrackingScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "default": "DELIVERY / TRACKING",
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "default": "Follow the delivery, all the way home",
+          "type": "string",
+          "maxLength": 70
+        },
+        "origin": {
+          "default": "Dispatch hub",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "destination": {
+          "default": "Your doorstep",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "courier": {
+          "default": "Delivery partner",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "etaSeconds": {
+          "default": 180,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 86400
+        },
+        "route": {
+          "default": [
+            [
+              0.08,
+              0.8
+            ],
+            [
+              0.3,
+              0.8
+            ],
+            [
+              0.3,
+              0.5
+            ],
+            [
+              0.64,
+              0.5
+            ],
+            [
+              0.64,
+              0.2
+            ],
+            [
+              0.92,
+              0.2
+            ]
+          ],
+          "minItems": 2,
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "eyebrow": "DELIVERY / TRACKING",
+      "title": "Follow the delivery, all the way home",
+      "origin": "Dispatch hub",
+      "destination": "Your doorstep",
+      "courier": "Delivery partner",
+      "etaSeconds": 180,
+      "route": [
+        [
+          0.08,
+          0.8
+        ],
+        [
+          0.3,
+          0.8
+        ],
+        [
+          0.3,
+          0.5
+        ],
+        [
+          0.64,
+          0.5
+        ],
+        [
+          0.64,
+          0.2
+        ],
+        [
+          0.92,
+          0.2
+        ]
+      ]
     }
   },
   {

@@ -104,7 +104,7 @@ def expand_continuations(spec: dict[str, Any]) -> dict[str, Any]:
 
 PAPER_SCENES = {"IsoScene", "ScreenScene", "PhoneScene", "TerminalScene", "EditorScene", "ChatScene", "FormScene",
                 "QueryScene", "PipelineScene", "PacketScene", "ArrayScene", "StackScene", "HashScene", "TreeScene",
-                "GraphScene", "LinkedListScene", "EventLoopScene"}
+                "GraphScene", "LinkedListScene", "EventLoopScene", "PlotScene", "LiveChartScene"}
 EXT = {"python": "py", "javascript": "js", "typescript": "ts", "java": "java", "go": "go", "ruby": "rb", "bash": "sh",
        "shell": "sh", "sql": "sql", "html": "html", "css": "css", "c": "c", "cpp": "cpp", "c++": "cpp", "rust": "rs", "php": "php"}
 

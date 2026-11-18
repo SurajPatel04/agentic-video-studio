@@ -1,0 +1,54 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "brand": false,
+  "defaultTransition": {
+    "type": "fade",
+    "durationInFrames": 12
+  },
+  "scenes": [
+    {
+      "id": "newscycle",
+      "component": "NewsCycleScene",
+      "durationInFrames": 300,
+      "props": {}
+    },
+    {
+      "id": "frontpage",
+      "component": "FrontPageScene",
+      "durationInFrames": 300,
+      "props": {}
+    },
+    {
+      "id": "printdelivery",
+      "component": "PrintDeliveryScene",
+      "durationInFrames": 300,
+      "props": {}
+    },
+    {
+      "id": "studio",
+      "component": "StudioScene",
+      "durationInFrames": 300,
+      "props": {}
+    },
+    {
+      "id": "signalhomes",
+      "component": "SignalHomesScene",
+      "durationInFrames": 300,
+      "props": {}
+    },
+    {
+      "id": "radiotuning",
+      "component": "RadioTuningScene",
+      "durationInFrames": 300,
+      "props": {}
+    },
+    {
+      "id": "satellitenews",
+      "component": "SatelliteNewsScene",
+      "durationInFrames": 300,
+      "props": {}
+    }
+  ]
+}

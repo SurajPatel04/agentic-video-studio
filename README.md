@@ -19,8 +19,11 @@ npx remotion render NetworkingDemo out/networking-complete.mp4
 npx remotion render LibraryShowcase out/library-showcase.mp4
 ```
 
+Select **ActivityAnimationsDemo** for the split-screen race, live service dashboard, and delivery tracking animations.
+
 Scene controls and examples:
 
+- [Race, dashboard, and map tracking](docs/Activity-animations.md)
 - [Expanded scene library](docs/Library-scenes.md)
 - [Networking and teaching scenes](docs/Networking-scenes.md)
 - [Buildings and devices](docs/Infrastructure-scenes.md)

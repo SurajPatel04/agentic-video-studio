@@ -54,6 +54,8 @@ class SelectionTests(unittest.TestCase):
         self.assertIn('teach-code', skills.select('How the Node.js event loop works'))
         self.assertIn('teach-dsa', skills.select('How hash tables work'))
         self.assertNotIn('teach-dsa', skills.select('Becoming a full stack developer'))  # "stack" is not the data structure
+        self.assertIn('teach-math', skills.select('How compound interest grows'))  # graph scenes live in teach-math
+        self.assertIn('teach-math', skills.select('Graphing a parabola'))
         for brief in ['A poem about autumn', 'प्रकाश संश्लेषण', 'A pottery demonstration']:
             self.assertIn('video-foundation', skills.select(brief))
         self.assertEqual(skills.select('A bakery ad', []), [])

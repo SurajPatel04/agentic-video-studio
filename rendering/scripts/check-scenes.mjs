@@ -85,6 +85,33 @@ assert.deepEqual(ll.steps.map((s) => s.do + ':' + s.value), ['append:3', 'delete
 const ev = sceneCatalog.EventLoopScene.schema.parse({env: 'browser', events: [{action: 'call', label: 'main'}, {action: 'setTimeout', fn: 'cb', delay: '10ms'}, {action: 'then', name: 'p'}, 'tick', {action: 'console.log', output: 'hi'}]});
 assert.deepEqual([ev.runtime, ...ev.steps.map((s) => s.do)], ['browser', 'call', 'api', 'queue', 'tick', 'log']);
 assert.equal(ev.steps[2].to, 'micro');
+// Graph scenes: forgiving formulas/steps, bad formulas rejected with a reason.
+const plot = sceneCatalog.PlotScene.schema.parse({equation: 'y = m*x + c', parameters: [{name: 'm', value: 2}], xRange: '-5..5', animation: ['set m=3', {action: 'slope', at: 1}, {action: 'integral', start: 0, end: 2}]});
+assert.deepEqual([plot.curves[0].expr, plot.params.m, plot.x[0], plot.steps.map((s) => s.do).join()], ['y = m*x + c', 2, -5, 'set,tangent,area']);
+const badPlot = sceneCatalog.PlotScene.schema.safeParse({curves: ['2x +* 3']});
+assert(!badPlot.success && /cannot read the formula/.test(badPlot.error.issues[0].message));
+const lc = sceneCatalog.LiveChartScene.schema.parse({type: 'bar race', data: {India: 140, China: 141, USA: 33}, actions: [{action: 'increase', bar: 'India', amount: 5}, 'sort']});
+assert.deepEqual([lc.kind, lc.labels.join(), lc.series[0].values[0], lc.steps[0].do, lc.steps[0].label, lc.steps[0].by], ['race', 'India,China,USA', 140, 'add', 'India', 5]);
+assert(!sceneCatalog.LiveChartScene.schema.safeParse({labels: ['a', 'b'], values: [1]}).success); // count mismatch
+assert(!sceneCatalog.LiveChartScene.schema.safeParse({formula: 'P*(1+r)^t', from: 0, to: 100}).success); // too many points
+assert.equal(sceneCatalog.LiveChartScene.schema.parse({}).formula, 'P*(1 + r)^t');
+// Journalism controls: reject invalid layouts and keep broadcast events in order.
+assert(!sceneCatalog.FrontPageScene.schema.safeParse({leadShare: 0.9}).success);
+assert(!sceneCatalog.PrintDeliveryScene.schema.safeParse({homes: ['Only one']}).success);
+assert(!sceneCatalog.NewsCycleScene.schema.safeParse({stories: [{label: 'A', selected: true}]}).success);
+const studio = sceneCatalog.StudioScene.schema.parse({liveAt: 0.4, switchAt: 0.45, homeAt: 0.72});
+assert(studio.liveAt < studio.switchAt && studio.switchAt < studio.homeAt);
+assert(!sceneCatalog.StudioScene.schema.safeParse({switchAt: 0.2}).success);
+assert.equal(sceneCatalog.NewsCycleScene.schema.parse({output: 'broadcast'}).output, 'broadcast');
+// Activity animations: timing, comparisons, and route geometry must stay meaningful.
+assert(!sceneCatalog.RaceScene.schema.safeParse({lanes: [{label: 'A', seconds: 0}, {label: 'B', seconds: 2}]}).success);
+assert(!sceneCatalog.RaceScene.schema.safeParse({lanes: [{label: 'A', seconds: 1}]}).success);
+assert(sceneCatalog.RaceScene.schema.safeParse({lanes: [{label: 'A', seconds: 2}, {label: 'B', seconds: 2}]}).success); // tied finish
+assert(!sceneCatalog.LiveDashboardScene.schema.safeParse({failureAt: 0.5, recoveryAt: 0.4}).success);
+assert(!sceneCatalog.LiveDashboardScene.schema.safeParse({baselineMs: 500, peakMs: 100}).success);
+assert(!sceneCatalog.MapTrackingScene.schema.safeParse({route: [[0.5, 0.5], [0.5, 0.5]]}).success);
+assert(!sceneCatalog.MapTrackingScene.schema.safeParse({route: [[0, 0], [2, 1]]}).success);
+assert(sceneCatalog.MapTrackingScene.schema.safeParse({route: [[0, 0], [0, 0], [1, 1]]}).success); // zero-length segment is safe
 const entries=Object.entries(sceneCatalog).map(([name,e])=>({name,version:'1.0.0',description:e.description,tags:e.tags,path:existsSync(path.join(root,`src/staging/${name}.tsx`))?`rendering/src/staging/${name}.tsx`:`rendering/src/scenes/${({BuildingScene:'InfrastructureScene',TechnologyScene:'InfrastructureScene',CircuitScene:'ConnectionScene',WirelessScene:'ConnectionScene',GraphScene:'TreeScene'})[name]??name}.tsx`,staged:existsSync(path.join(root,`src/staging/${name}.tsx`)),propsSchema:z.toJSONSchema(e.schema,{io:'input'}),example:e.schema.parse({})}));
 await mkdir(path.join(root,'../library'), {recursive:true});
 await writeFile(path.join(root,'../library/registry.json'),JSON.stringify(entries,null,2)+'\n');

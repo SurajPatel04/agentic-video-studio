@@ -1,0 +1,84 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "brand": false,
+  "scenes": [
+    {
+      "id": "feed-scroll",
+      "component": "FeedScene",
+      "durationInFrames": 300,
+      "props": {
+        "mode": "scroll"
+      }
+    },
+    {
+      "id": "feed-ranking",
+      "component": "FeedScene",
+      "durationInFrames": 300,
+      "props": {
+        "mode": "ranking"
+      }
+    },
+    {
+      "id": "spread-viral",
+      "component": "SpreadScene",
+      "durationInFrames": 300,
+      "props": {
+        "mode": "viral"
+      }
+    },
+    {
+      "id": "spread-race",
+      "component": "SpreadScene",
+      "durationInFrames": 300,
+      "props": {
+        "mode": "race"
+      }
+    },
+    {
+      "id": "creatorworkflow-None",
+      "component": "CreatorWorkflowScene",
+      "durationInFrames": 300,
+      "props": {}
+    },
+    {
+      "id": "mediatheory-communication",
+      "component": "MediaTheoryScene",
+      "durationInFrames": 300,
+      "props": {
+        "mode": "communication"
+      }
+    },
+    {
+      "id": "mediatheory-agenda",
+      "component": "MediaTheoryScene",
+      "durationInFrames": 300,
+      "props": {
+        "mode": "agenda"
+      }
+    },
+    {
+      "id": "mediatheory-two-step",
+      "component": "MediaTheoryScene",
+      "durationInFrames": 300,
+      "props": {
+        "mode": "two-step"
+      }
+    },
+    {
+      "id": "mediatheory-gratifications",
+      "component": "MediaTheoryScene",
+      "durationInFrames": 300,
+      "props": {
+        "mode": "gratifications"
+      }
+    },
+    {
+      "id": "newscycle-None",
+      "component": "NewsCycleScene",
+      "durationInFrames": 300,
+      "props": {}
+    }
+  ]
+}

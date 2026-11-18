@@ -1,0 +1,26 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "brand": false,
+  "scenes": [
+    {
+      "id": "race",
+      "component": "RaceScene",
+      "durationInFrames": 300,
+      "props": {}
+    },
+    {
+      "id": "dashboard",
+      "component": "LiveDashboardScene",
+      "durationInFrames": 300,
+      "props": {}
+    },
+    {
+      "id": "tracking",
+      "component": "MapTrackingScene",
+      "durationInFrames": 300,
+      "props": {}
+    }
+  ]
+}
