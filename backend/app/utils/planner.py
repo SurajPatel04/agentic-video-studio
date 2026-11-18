@@ -81,7 +81,11 @@ RULES = """You are the planner for a narrated video generator (React/Remotion), 
 You turn a topic into ONE composition JSON.
 For transaction demonstrations, supply expectedPendingRows: every row as the explanation predicts
 immediately before commit or rollback. Show the exact crash point and durable state before replay.
-For a lecture, invite the learner to predict the next result, then reveal it. Each subsequent scene
+For lectures and study lessons in any subject, introduce each new main idea before its worked
+example. Use ExplainScene with a plain-language heading and one short body sentence saying what
+to notice. Use textAnimation:"none", startAt:0, no animated points or decoration. Hold the words
+while the instructor explains them. Begin with this card, or put it immediately after the title.
+Then demonstrate the idea and invite the learner to predict the next result, then reveal it. Each subsequent scene
 should advance the example or apply the idea to a new decision. Cue terminal output at or before
 the first spoken reference to its contents, and hold it while explaining the result.
 Match each visual to the point being narrated at that moment. During a comparison, make both sides
@@ -114,7 +118,7 @@ Rules:
   narration>" instead of guessing "at"; an object or link that appears later gets "appearCue". The change then
   happens exactly when the narrator says that word ("cue": "duplicates" -> the badge pops on "duplicates").
   Cue the word that NAMES the change, in the order spoken.
-- The narration is shown as subtitles at the bottom, so keep scene "caption"/"footer" props short (or leave them out) and never repeat the narration on screen.
+- The narration is shown as subtitles at the bottom, so keep scene "caption"/"footer" props short (or leave them out) and reserve the caption area. In lectures, keep the main teaching sentence visible above it.
 - On-screen text supports markup: **bold**, ==highlight==, __underline__, ((circle)). Keep it short.
 - Scene ids: unique, lowercase, kebab-case. durationInFrames: 90-300 (it is stretched to fit the narration).
 - Follow the user's audience, language, purpose and format. A lecture develops understanding; an explainer answers a question; an ad communicates a benefit and next action. Do not force quizzes or a lecture structure into other formats.
@@ -125,7 +129,7 @@ Rules:
   worked value (maths). Mix scene types: never more than 5 of the same scene in a row (checked).
 - Optional "overlays" are drawn on top of any scene; positions {"x": 0-100, "y": 0-100} or "top-left" ... "bottom-right".
   Overlay types: OVERLAYS. Use them sparingly and only with fields you are sure of.
-- Show, don't just tell: at most TEXTSHARE of the scenes may be text-only (DefinitionScene / ExplainScene /
+- Except for lecture concept cards, at most TEXTSHARE of the scenes may be text-only (DefinitionScene / ExplainScene /
   BulletListScene), and never more than TEXTRUN in a row. Prefer diagrams, code, comparisons, charts, devices.
 - PANEL overlays (PANELS) are big windows: put them only on a BlankScene (its title stays at the top), never on a
   scene that already shows text, code or a diagram, where they would cover it. Small overlays (callout, badge,
@@ -169,7 +173,13 @@ def _normalize(spec: dict[str, Any]) -> dict[str, Any]:
     return spec
 
 
-async def _check(reply: str, code_demo: str | None = None) -> tuple[dict[str, Any] | None, str]:
+def _concept_card(scene: dict[str, Any]) -> bool:
+    props = scene.get("props") or {}
+    return (scene.get("component") == "ExplainScene"
+            and all(isinstance(props.get(k), str) and props[k].strip() for k in ("heading", "body")))
+
+
+async def _check(reply: str, code_demo: str | None = None, *, lecture: bool = False) -> tuple[dict[str, Any] | None, str]:
     """Parse + validate a reply. Returns (spec, "") or (None, problem to send back)."""
     try:
         spec = _normalize(_extract_json(reply))
@@ -184,6 +194,22 @@ async def _check(reply: str, code_demo: str | None = None) -> tuple[dict[str, An
         await validate(path)
     except RenderError as exc:
         return None, f"The JSON has these errors:\n{exc.details}\nFix them and reply with ONLY the full corrected JSON."
+    if lecture:
+        scenes = spec["scenes"]
+        opening = scenes[0]
+        props = opening.get("props") or {}
+        title = opening["component"] == "TitleScene" or (
+            opening["component"] == "IsoScene" and props.get("objects") == [] and not props.get("steps"))
+        first_lesson = scenes[1:2] if title else scenes[:1]
+        if not first_lesson or not _concept_card(first_lesson[0]):
+            return None, "Open the lesson with ExplainScene (or place it immediately after the title). Supply heading and body explaining the idea before showing its example."
+        for scene in filter(_concept_card, scenes):
+            props = scene["props"]
+            props.update(textAnimation="none", startAt=0)
+            # Allow a quiet reading beat even when the recorded sentence is short.
+            words = len((props["heading"] + " " + props["body"]).split())
+            reading_frames = round(spec["fps"] * max(4, words / 3))
+            scene["durationInFrames"] = max(scene["durationInFrames"], reading_frames)
     if any(s.get("component") == "TransactionScene" and "expectedPendingRows" not in s.get("props", {}) for s in spec.get("scenes", [])):
         return None, "Supply expectedPendingRows for each TransactionScene so its steps can be checked against the intended lesson."
     if code_demo and not any(scene.get("component") in CODE_SCENES for scene in spec.get("scenes", [])):
@@ -231,7 +257,7 @@ def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic:
         if not used & set(need):
             problems.append(f'the topic mentions "{hit}", so the viewer must SEE it: add a {" or ".join(need)} that animates '
                             "it (computed steps, not a text card or a generic diagram), with narration that follows it.")
-    texts = sum(s.get("component") in TEXT_SCENES for s in scenes)
+    texts = sum(s.get("component") in TEXT_SCENES and not ("teach-lecture" in skills and _concept_card(s)) for s in scenes)
     cap = max(2, int(len(scenes) * settings.PLANNER_MAX_TEXT_SHARE))
     if scenes and texts > cap:
         problems.append(f"{texts} of {len(scenes)} scenes are text-only (Definition/Explain/BulletList); the most allowed is "
@@ -498,12 +524,58 @@ LOOKUP_TOOLS = {t.name: t for t in (search_scenes, get_scene, list_device_kinds,
 # --------------------------------------------------------------------------- modes
 
 
-def _repair_for(reply: str, spec: dict | None, problem: str) -> Repair | None:
+def _repair_for(reply: str, spec: dict | None, problem: str, previous: Repair | None = None) -> Repair | None:
+    """A scoped repair for the flagged fields. A scene that is still broken after a scoped repair is
+    repaired whole (full props + its field list), so the model can add a missing object or reshape
+    a table instead of guessing the same field again."""
     if spec is None:
         if not problem.startswith("The JSON has these errors:"):
             return None
         spec = _normalize(_extract_json(reply))
-    return scoped_repair(spec, problem)
+    repair = scoped_repair(spec, problem)
+    again = repair.scenes() & previous.scenes() if repair and previous else set()
+    if again:
+        log.info("planner.repair whole scenes=%s (still broken after a field repair)", sorted(again))
+        repair = scoped_repair(spec, problem, whole=again, contract=catalog.scene_text) or repair
+    return repair
+
+
+FALLBACK_SHARE = 0.25  # at most this share of scenes (and at least 1) may be replaced by a card
+
+
+async def _salvage(reply: str | None, problem: str, code_demo: str | None, *, lecture: bool = False) -> dict | None:
+    """Last resort when attempts run out: replace the few scenes that are still invalid with a plain
+    title card that keeps their narration, so one stubborn scene does not fail the whole video."""
+    if not reply or not problem.startswith("The JSON has these errors:"):
+        return None
+    try:
+        spec = _normalize(_extract_json(reply))
+    except (ValueError, json.JSONDecodeError):
+        return None
+    scenes = spec.get("scenes", [])
+    ids = {s.get("id"): i for i, s in enumerate(scenes)}
+    bad = {int(m.group(1)) for m in FIELD_ERROR.finditer(problem) if int(m.group(1)) < len(scenes)}
+    bad |= {ids[m.group(1)] for m in SCENE_ERROR.finditer(problem) if m.group(1) in ids}
+    if not bad or len(bad) > max(1, int(len(scenes) * FALLBACK_SHARE)):
+        return None
+    for card in ("IsoScene", "BlankScene"):
+        for i in bad:
+            old = scenes[i]
+            title = str((old.get("props") or {}).get("title") or old.get("id", "")).replace("-", " ").strip()[:60]
+            props = ({"title": title, "objects": [], "links": [], "steps": []} if card == "IsoScene"
+                     else {"title": title, "titleAt": "top"})
+            scenes[i] = {k: v for k, v in old.items() if k in ("id", "durationInFrames", "narration", "transition")}
+            scenes[i].update(component=card, props=props)
+        fixed, _ = await _check(json.dumps(spec), code_demo, lecture=lecture)
+        if fixed:
+            log.warning("planner.salvage replaced %d invalid scene(s) with a %s card: %s", len(bad), card,
+                        ", ".join(str(scenes[i].get("id")) for i in sorted(bad)))
+            return fixed
+    return None
+
+
+FIELD_ERROR = re.compile(r"scenes\[(\d+)\] \(")
+SCENE_ERROR = re.compile(r"- scene '([^']+)':")
 
 
 async def _edit(repair: Repair, llm, *, use_tool: bool = False):
@@ -534,6 +606,7 @@ async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[s
     problem = ""
     best = _Best()  # valid plans with style problems: the one with the fewest is kept
     repair = None
+    last: str | None = None  # the latest full reply, for a last-resort salvage
     for attempt in range(1, settings.PLANNER_MAX_ATTEMPTS + 1):
         if repair:
             reply, (i, o) = await _edit(repair, llm)
@@ -545,7 +618,7 @@ async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[s
         if reply is None:
             repair = None
             continue
-        spec, problem = await _check(reply, code_demo)
+        spec, problem = await _check(reply, code_demo, lecture="teach-lecture" in skills)
         if spec:
             style = _lint(spec, skills, topic, code_demo=code_demo)
             if not style:
@@ -554,10 +627,14 @@ async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[s
                 return Plan(best.spec, best.attempt, "catalog", calls, tin, tout)
             problem = style
         log.warning("planner.retry mode=catalog attempt=%d problem=%s", attempt, problem[:300])
-        repair = _repair_for(reply, spec, problem)
+        last = reply
+        repair = _repair_for(reply, spec, problem, repair)
         messages = [*messages[:2], AIMessage(reply), HumanMessage(problem)]
     if best.spec:
         return Plan(best.spec, best.attempt, "catalog", calls, tin, tout)
+    salvaged = await _salvage(last, problem, code_demo, lecture="teach-lecture" in skills)
+    if salvaged:
+        return Plan(salvaged, settings.PLANNER_MAX_ATTEMPTS, "catalog", calls, tin, tout)
     raise PlanError(f"planner gave invalid JSON {settings.PLANNER_MAX_ATTEMPTS} times", problem)
 
 
@@ -582,6 +659,7 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
     problem = ""
     best = _Best()
     repair = None
+    last: str | None = None
     for _ in range(settings.PLANNER_MAX_STEPS):
         if repair:
             reply, (i, o) = await _edit(repair, get_tool_llm(model or settings.PLANNER_MODEL or None), use_tool=True)
@@ -612,7 +690,8 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
             messages.append(HumanMessage("Before planning, call load_skill for: " + ", ".join(sorted(missing))))
             continue
         attempts += 1
-        spec, problem = await _check(text_of(msg), code_demo)
+        last = text_of(msg)
+        spec, problem = await _check(last, code_demo, lecture="teach-lecture" in skills)
         if spec:
             style = _lint(spec, skills, topic, code_demo=code_demo)
             if not style:
@@ -623,10 +702,13 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
         log.warning("planner.retry mode=tools attempt=%d problem=%s", attempts, problem[:300])
         if attempts >= settings.PLANNER_MAX_ATTEMPTS:
             break
-        repair = _repair_for(text_of(msg), spec, problem)
+        repair = _repair_for(text_of(msg), spec, problem, repair)
         messages.append(HumanMessage(problem + " Use get_scene to check fields if unsure."))
     if best.spec:
         return Plan(best.spec, best.attempt, "tools", calls, tin, tout, sorted(loaded))
+    salvaged = await _salvage(last, problem, code_demo, lecture="teach-lecture" in skills)
+    if salvaged:
+        return Plan(salvaged, attempts, "tools", calls, tin, tout, sorted(loaded))
     raise PlanError(f"planner did not produce valid JSON (mode=tools, {attempts} attempts, {calls} calls)", problem)
 
 

@@ -40,6 +40,14 @@ def tts_dir() -> Path:
     return settings.RENDERING_DIR / "public" / TTS_DIR_IN_PUBLIC
 
 
+# Expand path separators only on standalone route tokens. Leave URLs, dates and ratios alone.
+_ROUTE = re.compile(r"(?<![^\s(`\"'])/(?:[\w{}~-]+(?:/[\w{}~-]+)*/?)?(?=$|[\s.,;:!?)`\"'])")
+
+
+def spoken_text(text: str) -> str:
+    return _ROUTE.sub(lambda match: match.group().replace("/", " slash ").strip(), text)
+
+
 def clip_name(text: str, voice: str) -> str:
     return hashlib.sha1(f"{voice}\n{text}".encode()).hexdigest()[:16] + ".wav"
 
@@ -112,17 +120,18 @@ async def synthesize(text: str, voice: str | None = None) -> SpeechClip:
     text = " ".join(text.split())
     if not text:
         raise ValueError("text is empty")
-    if len(text) > MAX_CHARS:
-        raise ValueError(f"text is {len(text)} characters; Deepgram allows {MAX_CHARS} per clip")
+    spoken = spoken_text(text)
+    if len(spoken) > MAX_CHARS:
+        raise ValueError(f"text is {len(spoken)} characters; Deepgram allows {MAX_CHARS} per clip")
     voice = voice or settings.TTS_VOICE
-    name = clip_name(text, voice)
+    name = clip_name(text if spoken == text else text + "\n" + spoken, voice)
     path = tts_dir() / name
     src = f"{TTS_DIR_IN_PUBLIC}/{name}"
     if path.exists():
         return SpeechClip(path, src, wav_seconds(path.read_bytes()), cached=True)
 
     started = time.perf_counter()
-    data = await _request(text, voice)
+    data = await _request(spoken, voice)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
     seconds = wav_seconds(data)
@@ -225,7 +234,14 @@ async def word_timings(clip: SpeechClip, text: str) -> list[Word]:
         log.info("stt  %s  words=%d (for captions)", fmt_seconds(time.perf_counter() - started), len(heard))
         if not heard:
             raise RuntimeError("empty transcript")
-        words = align(text.split(), heard)
+        tokens = text.split()
+        groups = [spoken_text(token).split() for token in tokens]
+        aligned = align([part for group in groups for part in group], heard)
+        words = []
+        offset = 0
+        for token, group in zip(tokens, groups):
+            words.append(Word(token, aligned[offset].start, aligned[offset + len(group) - 1].end))
+            offset += len(group)
     except Exception as exc:  # captions must never break a render
         log.warning("tts.words.estimate reason=%s", exc)
         words = _estimate(text, clip.seconds)

@@ -21,6 +21,27 @@ GOOD = spec(["TitleScene", "ExplainScene", "CodeScene", "DefinitionScene", "Flow
 
 
 class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
+    async def test_lectures_open_with_a_readable_concept(self):
+        for heading, body in [
+            ("What is a collection?", "A collection groups resources a client can request together."),
+            ("What is a primary source?", "A diary records a participant’s view of an event."),
+        ]:
+            with self.subTest(heading=heading), patch.object(planner, "validate", AsyncMock()):
+                plan = spec(["TitleScene", "ExplainScene", "StepsScene"])
+                card = plan["scenes"][1]
+                card.update(durationInFrames=90, props={"heading": heading, "body": body})
+                checked, error = await planner._check(json.dumps(plan), lecture=True)
+                self.assertFalse(error)
+                card = checked["scenes"][1]
+                self.assertEqual(card["props"]["textAnimation"], "none")
+                self.assertGreaterEqual(card["durationInFrames"], 120)
+                del plan["scenes"][1]
+                checked, error = await planner._check(json.dumps(plan), lecture=True)
+                self.assertIsNone(checked)
+                self.assertIn("before showing its example", error)
+                checked, error = await planner._check(json.dumps(plan))
+                self.assertFalse(error)
+
     async def test_scoped_tool_repair(self):
         original = spec(["IsoScene", "TitleScene"])
         original["scenes"][0]["props"]["links"] = [{"from": "a", "to": "b", "label": "too long"}]
@@ -280,3 +301,78 @@ class ShowTheRealThingTests(unittest.TestCase):
             need = skills.required_visuals(topic, guides, names)
             self.assertTrue(any(scene in s for _, s in need), (topic, need))
         self.assertEqual(skills.required_visuals("Hash map lookups", ["video-foundation"], names), [])
+
+
+def _card(i):
+    return {"id": f"card-{i}", "component": "IsoScene", "durationInFrames": 120,
+            "props": {"title": f"Card {i}", "objects": [], "links": [], "steps": []},
+            "narration": {"text": f"Card number {i} explains one idea."}}
+
+
+def _broken_plan():
+    """The two errors that failed a real REST chapter three times: a 2-column table with 3-cell rows,
+    and a link from an object the scene never drew."""
+    table = {"id": "paths-vs-ad-hoc", "component": "ComparisonTableScene", "durationInFrames": 150,
+             "props": {"title": "Paths", "columns": ["Resource-oriented", "Ad hoc"],
+                       "rows": [["One watch", "GET /watches/w-104", "GET /getWatch?id=w-104"]]},
+             "narration": {"text": "Compare a resource path with an ad hoc route."}}
+    flow = {"id": "collection-flow", "component": "IsoScene", "durationInFrames": 150,
+            "props": {"title": "Next page", "objects": [{"id": "page", "kind": "file", "label": "Page", "at": [0, 0]}],
+                      "links": [{"from": "watches", "to": "page"}], "steps": []},
+            "narration": {"text": "The cursor asks for the next page."}}
+    return {"fps": 30, "width": 1920, "height": 1080, "scenes": [_card(0), table, _card(1), flow, _card(2), _card(3),
+                                                                 _card(4), _card(5)]}
+
+
+class RepairContextTests(unittest.IsolatedAsyncioTestCase):
+    async def test_repair_sees_what_the_field_must_match_then_escalates_to_the_whole_scene(self):
+        spec = _broken_plan()
+        _, problem = await planner._check(json.dumps(spec))
+        self.assertIn("Each row must match the number of columns", problem)
+        repair = planner._repair_for("", spec, problem)
+        details = {k: d for k, (_, d) in repair.targets.items()}
+        row = details["scenes[1].props.rows[0]"]["context"]
+        self.assertEqual(row["columns"], ["Resource-oriented", "Ad hoc"])
+        self.assertIn("exactly 2 cells", row["rule"])
+        link = next(d for k, d in details.items() if k.startswith("scenes[3]"))["context"]
+        self.assertEqual(link["object_ids"], ["page"])
+        # the same scenes are still broken after that repair: now the whole scene, with its field list
+        again = planner._repair_for("", spec, problem, repair)
+        self.assertEqual(set(again.targets), {"scenes[1].props", "scenes[3].props"})
+        whole = dict(again.targets["scenes[3].props"][1])
+        self.assertIn("no object with id", whole["issue"])
+        self.assertIn("objects", whole["context"]["fields"])
+        self.assertEqual(whole["context"]["narration"], "The cursor asks for the next page.")
+
+    async def test_salvage_replaces_only_the_stubborn_scene(self):
+        spec = _broken_plan()
+        spec["scenes"][3] = _card(9)  # one broken scene left
+        _, problem = await planner._check(json.dumps(spec))
+        fixed = await planner._salvage(json.dumps(spec), problem, None)
+        self.assertEqual([s["component"] for s in fixed["scenes"]][:2], ["IsoScene", "IsoScene"])
+        self.assertEqual(fixed["scenes"][1]["id"], "paths-vs-ad-hoc")
+        self.assertEqual(fixed["scenes"][1]["narration"]["text"], "Compare a resource path with an ad hoc route.")
+        self.assertEqual(fixed["scenes"][1]["props"]["title"], "Paths")
+
+    async def test_salvage_refuses_when_much_of_the_plan_is_broken(self):
+        spec = _broken_plan()
+        spec["scenes"] = spec["scenes"][:4]  # 2 broken out of 4
+        _, problem = await planner._check(json.dumps(spec))
+        self.assertIsNone(await planner._salvage(json.dumps(spec), problem, None))
+
+    async def test_whole_scene_answer_drops_the_echoed_request_labels(self):
+        spec = _broken_plan()
+        _, problem = await planner._check(json.dumps(spec))
+        first = planner._repair_for("", spec, problem)
+        whole = planner._repair_for("", spec, problem, first)
+        flow = dict(spec["scenes"][3]["props"], links=[{"from": "page", "to": "page"}])
+        flow["objects"] = flow["objects"] + [{"id": "watches", "kind": "database", "label": "Watches", "at": [3.5, -3.5]}]
+        flow["links"] = [{"from": "watches", "to": "page"}]
+        table = dict(spec["scenes"][1]["props"], rows=[["GET /watches/w-104", "GET /getWatch?id=w-104"]])
+        fixed = json.loads(whole.apply({
+            "scenes[1].props": {"scene": "paths-vs-ad-hoc", "component": "ComparisonTableScene", **table},
+            "scenes[3].props": {"scene": "collection-flow", "component": "IsoScene", **flow}}))
+        self.assertNotIn("scene", fixed["scenes"][3]["props"])
+        self.assertNotIn("component", fixed["scenes"][1]["props"])
+        spec_ok, problem = await planner._check(json.dumps(fixed))
+        self.assertTrue(spec_ok, problem)

@@ -217,7 +217,7 @@ Reply with ONLY one JSON object, no prose, no code fences:
 }}
 Rules:
 {length_rule}
-- Order chapters to serve the requested purpose. For lectures, build from prerequisites to explanation,
+- Order chapters to serve the requested purpose. For lectures, specify the short readable takeaway for each main idea before its worked case. Build from prerequisites to explanation,
   examples and application. For explainers, develop the central answer. For promotional videos, connect
   needs, benefits, supported evidence and a next action. Do not force teaching exercises into other formats.
 - Open with relevant context and end by delivering the promised outcome. Use a quiz only when it helps learning.

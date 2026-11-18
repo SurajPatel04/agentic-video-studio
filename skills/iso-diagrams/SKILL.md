@@ -30,7 +30,7 @@ metadata:
 
 Hard rules (they override softer advice):
 - IsoScene is the paper look for every DIAGRAM (tech, media, business, science, history). Between diagrams, show the real thing with the scenes other guides name (editor, terminal, front page, feed, chart, timeline, map, equation). Never more than 5 IsoScenes in a row.
-- Show THINGS, not tables or text cards: every idea becomes objects on the paper. A comparison is two labelled groups side by side; a definition is a title + subtitle over a small scene that shows it.
+- Use diagrams after the lecture concept card. A comparison is two labelled groups side by side; a definition is a title + subtitle over a small scene that shows it.
 - Title and chapter cards are IsoScene too, with "objects": [], "links": [], "steps": [] (ALWAYS write the three empty lists: when left out, an example diagram appears) plus eyebrow, title, subtitle and up to 4 short "points". Use at most one such card per chapter.
 - Diagram scenes: a short eyebrow and title at the top; 3-5 objects (fewer objects are drawn bigger); links for what goes where; steps that follow the narration.
 

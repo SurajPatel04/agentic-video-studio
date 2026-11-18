@@ -97,12 +97,18 @@ export const terminalTimeline = (acts: Action[], len: number, fps: number, speed
   let t = 0;
   const ordered = [...acts].sort((a, b) => a.at - b.at);
   return ordered.map((a, i) => {
-    const start = Math.max(Math.round(a.at * len), t);
+    const next = ordered[i + 1];
+    const preparedRequest = a.do === 'run' && next?.do === 'output' && /^HTTP\/\d/.test(next.text ?? '');
+    const start = preparedRequest && i === 0 ? 0 : Math.max(Math.round(a.at * len), t);
     let end = start, typeEnd = start;
     if (a.do === 'run') {
       typeEnd = start + 4 + Math.ceil(((a.text ?? '').length / (CPS * speed)) * fps);
       end = typeEnd + 5;
-      if (ordered[i + 1]?.do === 'output') {
+      if (preparedRequest) {
+        // A worked HTTP example opens with the complete request ready to inspect.
+        typeEnd = start;
+        end = start;
+      } else if (next?.do === 'output') {
         const deadline = Math.max(start, Math.round(ordered[i + 1].at * len) - 1);
         end = Math.min(end, deadline);
         typeEnd = Math.min(typeEnd, end);
@@ -185,7 +191,7 @@ export const TerminalScene: FC<z.input<typeof terminalSceneSchema>> = (input) =>
   const enter = p.instant ? 1 : spring({frame: f, fps, config: {damping: 16, stiffness: 110}});
   const cues: Cue[] = [];
   if (p.sound) evs.forEach((e) => {
-    if (e.do === 'run') {
+    if (e.do === 'run' && e.typeEnd > e.start) {
       cues.push({sound: 'typing', at: e.start + 4, volume: 0.45, duration: Math.max(4, e.typeEnd - e.start - 4), loop: true});
       cues.push({sound: 'tick', at: e.typeEnd, volume: 0.4});
     }

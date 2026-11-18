@@ -39,7 +39,7 @@ Sound like a good teacher on YouTube, in any subject: open with a hook the viewe
 
 Show the real thing at least once per idea, readable on screen: the code, request and JSON (tech); the headline, post, quote or ad (media); the date and place (history); the number on a chart (business, science); the equation with a worked value (maths). A diagram explains how parts relate; the real thing proves it.
 
-Show, don't tell: most scenes must SHOW the idea happening, not describe it in text. If the library has a scene that animates the mechanism (an algorithm, a calculation, a query, a packet, the event loop, a broadcast), use it instead of a text card or a generic diagram, and let it compute the steps. Text cards are for a definition, a quote or the closing summary only.
+Show, don't tell: most scenes must SHOW the idea happening, not describe it in text. If the library has a scene that animates the mechanism (an algorithm, a calculation, a query, a packet, the event loop, a broadcast), use it instead of a text card or a generic diagram, and let it compute the steps. In lectures, introduce each main concept on a steady, readable card before its demonstration.
 
 Choose visuals by what the viewer must see: steps for a procedure, a timeline for chronology, a comparison for alternatives, a diagram for relationships, a worked example for a method, a concrete scene or supplied image for a situation. Use only available component contracts and supplied assets. Do not assume missing footage, generated images, or custom animations exist. A truthful simple visual is better than an unrelated chart or decorative device icon. Keep labels and visual identities stable, show the relevant part while it is discussed, and avoid competing walls of text plus captions.
 

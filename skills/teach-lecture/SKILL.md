@@ -17,6 +17,7 @@ metadata:
   - course
   - tutorial
   scenes:
+  - ExplainScene
   - StepsScene
   - ExampleCardScene
   - QuizScene
@@ -26,6 +27,8 @@ metadata:
 Apply when the requested VIDEO is a lesson, lecture, study session, or instructional tutorial, regardless of subject. A course advertisement is not a lecture; follow the actual purpose in the brief.
 
 Start from an achievable learning outcome: after this lesson, what can the learner explain, distinguish, solve, interpret, or perform? Establish necessary prerequisites briefly. Motivate the question with a concrete problem or situation, not a long generic introduction. Order concepts by dependency, from known ideas to the new idea.
+
+Open each lesson or chapter with a readable concept card, optionally after its title. Use ExplainScene with a short heading and one complete sentence in body. Set textAnimation to none and startAt to zero. Hold both lines together while the teacher explains. Return to this format when a new main idea needs introducing. Keep subsequent steps of the same example together. For an API lesson, explain what a collection is before opening the terminal. For history, explain what makes a source primary before examining a diary passage. Let the viewer apply the idea to the evidence and explain the result.
 
 Teach the reasoning. For a mechanism, connect cause to effect. For a calculation, justify each important transformation. For history or literature, connect evidence to interpretation and distinguish competing explanations where relevant. For language, show meaning and use in context. For a practical task, explain the purpose of each step and how to recognize success. Do not apply a mathematics template to every subject.
 
