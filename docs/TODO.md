@@ -5,7 +5,7 @@ Prompt → LLM plans the video → React/Remotion scenes → MP4.
 
 Legend: `[x]` done · `[~]` partly done · `[ ]` not started
 
-_Last updated: 2026-11-17 (66 scene contracts; DSA, event loop and graph scenes added)_
+_Last updated: 2026-11-18 (73 scene contracts; database table scenes, iso status cues, paper lesson scenes, transcripts)_
 
 ---
 
@@ -74,7 +74,10 @@ _Last updated: 2026-11-17 (66 scene contracts; DSA, event loop and graph scenes 
 - [x] Realistic 3D devices — `components/three/` (procedural, all 63 kinds), `<Device3D>` / `<DeviceModel>`, `Device3DScene`
 - [x] States for both: off / on / active / error, plus `changes` at frames
 - [x] Realistic mouse pointer — `components/Pointer.tsx` (arrow / hand / text, path + clicks with ripple)
-- [x] Old scenes use the realistic models: `InfrastructureObject` now draws `DeviceModel` (Network, PacketJourney, Infrastructure/Building/Technology, City, ZoomOut, ExampleCard) and accepts any device kind
+- [x] Old scenes use the realistic models: `InfrastructureObject` now draws `DeviceModel` (Network, PacketJourney, Infrastructure/Building/Technology, City, ZoomOut) and accepts any device kind
+- [x] `ExampleCardScene` draws its object as paper iso art (all 65 device kinds mapped to iso objects / icon tiles), no 3D canvas
+- [x] Lesson scenes on paper: Title, Explain, BulletList, Quote, Definition, ExampleCard, Steps, Summary, Quiz, ComparisonTable, Timeline, Flowchart, Stat, Equation (`VideoComposition` paper stage)
+- [x] IsoScene status cues: object badges (checking / found / miss / offline / online …), lookup badge, media cues and flows — see `examples/iso-badges.json`, `iso-cues.json`, `iso-media-cues.json`, `iso-media-flows.json`
 - [x] Shared motion effects, 2D (`src/effects/`): `FlowPath` packet / current / light / bits, `SignalWaves`; 3D (`three/effects.tsx`): `Flow3D`, `Movers`, `Waves3D`
 - [x] Shared annotations: `Callout`, `Mark` (check / cross), `Badge`
 - [x] `overlays` on any scene in JSON (flow, waves, callout, check, cross, badge, arrow, pointer) — validated by `npm run validate`
@@ -106,7 +109,8 @@ _Last updated: 2026-11-17 (66 scene contracts; DSA, event loop and graph scenes 
 Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute their own steps.
 - [~] 1. Shared: `GraphScene` (nodes/edges, spread), `TreeScene` (BST/heap/org chart), `TableScene` (SQL, truth/DP tables)
   - [x] `GraphScene` (BFS/DFS/Dijkstra), `TreeScene` (BST/AVL/general tree)
-  - [~] Tables: SQL tables via `QueryScene` / `PipelineScene`; truth / DP tables not yet
+  - [x] Database tables: `QueryScene`, `PipelineScene`, `TableScene` (insert / update / delete), `JoinScene`, `SchemaScene` (ER), `TransactionScene` (commit / rollback)
+  - [ ] Truth tables, DP tables
 - [~] 2. DSA: `ArrayScene` (indices, swaps, i/j pointers), `SortingScene` (bubble/selection/insertion/merge/quick from `{algorithm, input}`), linked list, stack/queue, hash table, BFS/DFS/Dijkstra, recursion call stack, Big-O race, code trace with variables
   - [x] `ArrayScene` (bubble/selection/insertion, binary/linear search), `LinkedListScene`, `StackScene` (stack/queue), `HashScene`, BFS/DFS/Dijkstra, `EventLoopScene` (call stack + heap + queues)
   - [ ] merge/quick sort, recursion call stack, Big-O race, code trace with variables
@@ -127,6 +131,7 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] JSON: composition `audio` (effects on/off + volume, transitions, voice, voiceVolume, `music` with ducking under narration); scene `voice` (own recording works too) and `sfx` cues
 - [x] Captions from the narration: word timings via Deepgram speech-to-text on our own clip (estimate fallback), word-by-word highlight; on/off + style from JSON `captions`, API (`captions: true/false` on `/render` and `/video`), CLI (`--captions` / `--no-captions`)
 - [x] Planner (`app/utils/planner.py`): LLM writes the composition with narration per scene from a compact scene catalog; validated, errors fed back (3 tries). API `POST /plan`, `POST /video` (prompt → plan → voice → captions → MP4); CLI `plan`, `video`
+- [x] Transcripts: every render writes `transcript.json` (per scene, sentences with start/end seconds) + `transcript.txt` (`[mm:ss]` lines); `GET /render/{id}/transcript`; older jobs get them on first request
 - [ ] Long renders: move `/render` onto the job queue (now it waits for the MP4)
 
 ### Long videos (20-40 min) — `app/utils/long_video.py`
@@ -136,6 +141,7 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] Edit: replace the outline, replace a chapter's plan (validated), redo one chapter (plan or render, optional cascade)
 - [x] Render each chapter (sequential), join with ffmpeg (stream copy, re-encode fallback) + chapter markers + YouTube timestamps
 - [x] API `POST /long`, `GET /long[/{id}]`, `POST /long/{id}/run`, `PUT /long/{id}/outline`, `GET|PUT /long/{id}/chapters/{n}/plan`, `POST /long/{id}/chapters/{n}/redo`, `GET /long/{id}/video`; CLI `long`, `long-run`, `long-status`, `long-redo`
+- [x] Whole-video captions (`captions.srt` / `.vtt`) and transcript with chapter headings; `GET /long/{id}/captions`, `GET /long/{id}/transcript`
 - [x] Resume endpoint runs on the event loop; per-job file locks prevent overlapping runs and edits, including during plan validation
 - [ ] Background runs are in-process tasks: after a server restart call `/long/{id}/run` to resume (no auto-resume / real queue yet)
 - [x] Parallel chapter rendering (bounded): `LONG_RENDER_WORKERS`, planning overlaps rendering
@@ -144,7 +150,7 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 
 ## 5. Library contract & registry
 
-- [x] Zod props schema + description + tags for every scene (66 entries) in `src/registry.ts` → `sceneCatalog`
+- [x] Zod props schema + description + tags for every scene (73 entries) in `src/registry.ts` → `sceneCatalog`
 - [x] Schemas are strict: unknown props (typos like `"titel"`) are errors, not silently dropped
 - [x] `library/registry.json` generated by `npm run check:scenes` (Zod 4 `z.toJSONSchema()`, defaults as example)
 - [x] Props validated in `VideoComposition` (render fails with the exact message)
@@ -214,6 +220,7 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 
 ## Known issues
 
+- `skills/iso-diagrams` and `skills/teach-media` bodies are over the 7000-character limit: default plans and 14 backend tests fail until they are trimmed.
 - MLflow route `summary` is shared with another service's usage tracking.
 - Scene durations are typed by hand in JSON; a too-short scene cuts animations off.
 - Survey of India outline is for visualization, not a certified survey map.

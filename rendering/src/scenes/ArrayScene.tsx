@@ -1,6 +1,6 @@
 /**
  * ArrayScene: an array as bars or boxes, in the paper style. Give "values" and an "algorithm"
- * (bubble, selection, insertion, binary-search, linear-search) and every comparison and swap is
+ * (bubble, selection, insertion, merge, quick, binary-search, linear-search) and every comparison and swap is
  * generated and traced, with i/j pointers, counters and the pseudocode line lighting up. Or give
  * your own "steps" (compare, swap, set, sorted, pointer, range, found, note).
  */
@@ -13,7 +13,7 @@ import {useSceneLength, useUnit} from '../theme';
 import {MONO, PaperStage, flexValue, type Cue} from './paperStage';
 import {CodeCard, Counters, FILL, NoteBar, PointerTag, argsOf, flexSteps, flexValues, intOf, lerp, playhead, schedule, show, stepSchema, valOf, type Step} from './dsaKit';
 
-const ALGOS = ['none', 'bubble', 'selection', 'insertion', 'binary-search', 'linear-search'] as const;
+const ALGOS = ['none', 'bubble', 'selection', 'insertion', 'merge', 'quick', 'binary-search', 'linear-search'] as const;
 const VERBS: Record<string, string> = {
   compare: 'compare', cmp: 'compare', check: 'compare', test: 'compare', look: 'compare', visit: 'compare', highlight: 'compare',
   swap: 'swap', exchange: 'swap', switch: 'swap', set: 'set', write: 'set', assign: 'set', update: 'set', put: 'set', change: 'set', shift: 'set',
@@ -21,7 +21,7 @@ const VERBS: Record<string, string> = {
   pointer: 'pointer', point: 'pointer', move: 'pointer', pointers: 'pointer', range: 'range', window: 'range', narrow: 'range', bounds: 'range',
   found: 'found', match: 'found', hit: 'found', return: 'found', notfound: 'missing', missing: 'missing', miss: 'missing', note: 'note', say: 'note', pause: 'note', wait: 'note',
 };
-const ALGO_ALIASES: Record<string, string> = {bubble: 'bubble', 'bubble sort': 'bubble', bubblesort: 'bubble', selection: 'selection', 'selection sort': 'selection', insertion: 'insertion', 'insertion sort': 'insertion',
+const ALGO_ALIASES: Record<string, string> = {merge:'merge', 'merge sort':'merge', mergesort:'merge', quick:'quick', 'quick sort':'quick', quicksort:'quick', bubble: 'bubble', 'bubble sort': 'bubble', bubblesort: 'bubble', selection: 'selection', 'selection sort': 'selection', insertion: 'insertion', 'insertion sort': 'insertion',
   binary: 'binary-search', 'binary search': 'binary-search', binarysearch: 'binary-search', bsearch: 'binary-search', linear: 'linear-search', 'linear search': 'linear-search', 'sequential search': 'linear-search', search: 'linear-search', none: 'none', manual: 'none', custom: 'none'};
 
 const EXAMPLE = [5, 2, 8, 1, 9, 3];
@@ -70,11 +70,11 @@ export const arraySceneSchema = z.preprocess(flexArray, z.object({
 type Props = z.output<typeof arraySceneSchema>;
 
 export const description =
-  'An array as bars or boxes (paper style). Give "values" (up to 12) and "algorithm": bubble | selection | insertion | ' +
+  'An array as bars or boxes (paper style). Give "values" (up to 12) and "algorithm": bubble | selection | insertion | merge | quick | ' +
   'binary-search | linear-search (+ "target") and every comparison and swap is traced automatically with i/j pointers, ' +
   'comparison/swap counters and the pseudocode line lighting up. Or give your own "steps": compare {i,j}, swap {i,j}, ' +
   'set {i,value}, sorted {i}, pointer {name,i}, range {lo,hi}, found {i}, note; every step may have a "note".';
-export const tags = ['array', 'sorting', 'sort', 'bubble sort', 'selection sort', 'insertion sort', 'binary search', 'linear search', 'algorithm', 'dsa', 'swap', 'big o', 'complexity', 'search'];
+export const tags = ['array', 'sorting', 'sort', 'bubble sort', 'selection sort', 'insertion sort', 'merge sort', 'quick sort', 'binary search', 'linear search', 'algorithm', 'dsa', 'swap', 'big o', 'complexity', 'search'];
 
 /* ------------------------------------------------------------------ state + generators */
 type Item = {id: number; v: number | string};
@@ -82,6 +82,8 @@ type St = {items: Item[]; sorted: Set<number>; found?: number; missing?: boolean
 type Micro = {kind: string; i?: number; j?: number; value?: number | string; note?: string; line?: number; ptr?: Record<string, number | null>; lo?: number; hi?: number; all?: boolean};
 
 const CODE: Record<string, string[]> = {
+  merge: ['split the range into two halves', 'sort each half recursively', 'compare the heads of the two runs', 'copy the smaller head to the buffer', 'write the merged run back'],
+  quick: ['choose the last value as pivot', 'scan the range before the pivot', 'move values ≤ pivot to the left', 'place pivot between partitions', 'sort the partitions recursively'],
   bubble: ['for i in 0 .. n-1:', '  for j in 0 .. n-2-i:', '    if a[j] > a[j+1]:', '      swap(a[j], a[j+1])'],
   selection: ['for i in 0 .. n-1:', '  min = i', '  for j in i+1 .. n-1:', '    if a[j] < a[min]: min = j', '  swap(a[i], a[min])'],
   insertion: ['for i in 1 .. n-1:', '  j = i', '  while j > 0 and a[j-1] > a[j]:', '    swap(a[j-1], a[j])', '    j = j - 1'],
@@ -134,6 +136,49 @@ const generate = (algo: string, values: (number | string)[], target: number | st
       m.push({kind: 'sorted', i, line: 1});
     }
     m.push({kind: 'sorted', all: true, ptr: {i: null, j: null}, note: 'sorted!'});
+  } else if (algo === 'merge') {
+    function sort(lo:number, hi:number) {
+      if (lo >= hi) return;
+      const mid = Math.floor((lo+hi)/2);
+      m.push({kind:'range',lo,hi,line:1,note:`Split indices ${lo}–${hi} after ${mid}`});
+      sort(lo,mid);
+      sort(mid+1,hi);
+      const buffer = [];
+      let left = lo, right = mid+1;
+      m.push({kind:'range',lo,hi,line:2,note:'Merge the two sorted runs'});
+      while (left<=mid || right<=hi) {
+        if (left<=mid && right<=hi) m.push({kind:'compare',i:left,j:right,line:3});
+        const takeLeft = right>hi || (left<=mid && Number(a[left])<=Number(a[right]));
+        buffer.push(a[takeLeft ? left++ : right++]);
+        m.push({kind:'note',line:4,note:'Buffer: '+buffer.join(', ')});
+      }
+      buffer.forEach((value,index) => {
+        a[lo+index]=value;
+        m.push({kind:'set',i:lo+index,value,line:5});
+      });
+    }
+    sort(0,n-1);
+    m.push({kind:'sorted',all:true,lo:0,hi:n-1,note:'Sorted'});
+  } else if (algo === 'quick') {
+    function partition(lo:number, hi:number) {
+      if (lo>=hi) return;
+      const pivot=Number(a[hi]);
+      m.push({kind:'range',lo,hi,line:1,ptr:{pivot:hi},note:`Partition around ${pivot}`});
+      let boundary=lo;
+      for (let j=lo;j<hi;j++) {
+        m.push({kind:'compare',i:j,j:hi,line:2});
+        if (Number(a[j])<=pivot) {
+          if (boundary!==j) {sw(boundary,j); m.push({kind:'swap',i:boundary,j,line:3});}
+          boundary++;
+        }
+      }
+      if (boundary!==hi) {sw(boundary,hi); m.push({kind:'swap',i:boundary,j:hi,line:4});}
+      m.push({kind:'sorted',i:boundary,line:4,ptr:{pivot:null},note:`Pivot ${pivot} is in its final place`});
+      partition(lo,boundary-1);
+      partition(boundary+1,hi);
+    }
+    partition(0,n-1);
+    m.push({kind:'sorted',all:true,lo:0,hi:n-1,note:'Sorted'});
   } else if (algo === 'binary-search') {
     const sorted = [...a].sort((x, y) => (x as number) - (y as number));
     let lo = 0, hi = n - 1;
@@ -178,7 +223,7 @@ const apply = (st: St, m: Micro): St => {
   if (m.kind === 'swap' && m.i !== undefined && m.j !== undefined) { [n.items[m.i], n.items[m.j]] = [n.items[m.j], n.items[m.i]]; n.swaps++; }
   if (m.kind === 'set' && m.i !== undefined && m.value !== undefined) { n.items[m.i] = {...n.items[m.i], v: m.value}; n.writes++; }
   if (m.kind === 'sorted') { if (m.all) n.items.forEach((it) => n.sorted.add(it.id)); else if (m.i !== undefined) n.sorted.add(n.items[m.i].id); }
-  if (m.kind === 'range' && m.lo !== undefined && m.hi !== undefined) n.range = [m.lo, m.hi];
+  if ((m.kind === 'range' || (m.kind === 'sorted' && m.all)) && m.lo !== undefined && m.hi !== undefined) n.range = [m.lo, m.hi];
   if (m.kind === 'found' && m.i !== undefined) n.found = n.items[m.i].id;
   if (m.kind === 'missing') n.missing = true;
   return n;

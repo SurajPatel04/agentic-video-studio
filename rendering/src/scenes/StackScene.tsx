@@ -104,23 +104,27 @@ export const StackScene: FC<z.input<typeof stackSceneSchema>> = (input) => {
   const st = k >= 0.5 ? next : prev;
 
   // layout
-  const top = 210 * u, bottom = H - 180 * u;
-  const maxItems = Math.max(4, p.capacity ?? 0, ...states.map((s) => s.items.length));
   const portrait = H > W;
+  const top = 210 * u, bottom = H - (portrait ? 455 : 180) * u;
+  const maxItems = Math.max(4, p.capacity ?? 0, ...states.map((s) => s.items.length));
   const outCount = Math.max(1, ...states.map((s) => s.out.length));
   let panel: {x: number; y: number; w: number; h: number}, slot: (i: number) => Pt, spawn: Pt, outSlot: (i: number) => Pt, outRow: {x: number; y: number; w: number; h: number};
-  const iw = stack ? Math.min(380 * u, W * 0.3) : Math.min(170 * u, (W - 400 * u) / maxItems - 16 * u), ih = stack ? Math.min(84 * u, (bottom - top - 160 * u) / maxItems - 10 * u) : 96 * u;
+  const queueSlot = (W - 400 * u) / maxItems;
+  const queueGap = Math.min(16 * u, queueSlot * 0.2);
+  const iw = stack ? Math.min(380 * u, W * 0.3) : Math.min(170 * u, queueSlot - queueGap);
+  const stackSpace = bottom - top - (portrait ? 430 : 160) * u;
+  const ih = stack ? Math.min(84 * u, stackSpace / maxItems - 10 * u) : 96 * u;
   const ow = Math.min(150 * u, (portrait ? W - 200 * u : W * 0.42) / Math.max(4, outCount) - 12 * u), oh = 70 * u;
   if (stack) {
     const ph = maxItems * (ih + 10 * u) + 80 * u;
     panel = {x: portrait ? (W - iw - 60 * u) / 2 : W * 0.32 - (iw + 60 * u) / 2, y: bottom - ph, w: iw + 60 * u, h: ph};
     slot = (i) => ({x: panel.x + 30 * u, y: panel.y + panel.h - 20 * u - (i + 1) * (ih + 10 * u) + 10 * u, w: iw, h: ih});
     spawn = {x: panel.x + 30 * u, y: Math.max(top - 40 * u, panel.y - ih - 50 * u), w: iw, h: ih};
-    outRow = portrait ? {x: 100 * u, y: top + 20 * u, w: W - 200 * u, h: oh + 70 * u} : {x: W * 0.56, y: (top + bottom) / 2 - oh, w: W * 0.44 - 90 * u, h: oh + 70 * u};
+    outRow = portrait ? {x: 100 * u, y: Math.max(top + 20 * u, panel.y - 350 * u), w: W - 200 * u, h: oh + 70 * u} : {x: W * 0.56, y: (top + bottom) / 2 - oh, w: W * 0.44 - 90 * u, h: oh + 70 * u};
   } else {
-    const pw = maxItems * (iw + 16 * u) + 60 * u;
+    const pw = maxItems * (iw + queueGap) + 60 * u;
     panel = {x: (W - pw) / 2, y: top + 40 * u, w: pw, h: ih + 90 * u};
-    slot = (i) => ({x: panel.x + 30 * u + i * (iw + 16 * u), y: panel.y + 64 * u, w: iw, h: ih});
+    slot = (i) => ({x: panel.x + 30 * u + i * (iw + queueGap), y: panel.y + 64 * u, w: iw, h: ih});
     spawn = {x: W + 40 * u, y: panel.y + 64 * u, w: iw, h: ih};
     outRow = {x: (W - Math.min(W - 200 * u, outCount * (ow + 12 * u) + 40 * u)) / 2, y: panel.y + panel.h + 120 * u, w: Math.min(W - 200 * u, outCount * (ow + 12 * u) + 40 * u), h: oh + 70 * u};
   }

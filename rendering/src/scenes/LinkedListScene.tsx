@@ -158,12 +158,13 @@ export const LinkedListScene: FC<z.input<typeof linkedListSceneSchema>> = (input
 
   // layout
   const maxN = Math.max(3, ...states.map((x) => x.order.length));
-  const nodeW = Math.min(220 * u, (W - 260 * u) / maxN - 70 * u), nodeH = Math.min(96 * u, nodeW * 0.5);
-  const gap = Math.min(110 * u, (W - 260 * u - maxN * nodeW) / maxN);
+  const slot = (W - 260 * u) / maxN;
+  const nodeW = Math.min(220 * u, slot - Math.min(70 * u, slot * 0.26)), nodeH = Math.min(96 * u, nodeW * 0.5);
+  const gap = Math.min(110 * u, slot - nodeW);
   const rowY = H * 0.47 - nodeH / 2;
   const posIn = (x: St, id: number) => {
     const n = x.order.length;
-    const total = n * nodeW + (n - 1) * gap + 140 * u; // + null
+    const total = n * (nodeW + gap) + 120 * u; // + null
     const x0 = (W - total) / 2;
     const off = x.off[id] !== undefined;
     const i = off ? x.off[id] - 0.5 : x.order.indexOf(id);
@@ -246,7 +247,7 @@ export const LinkedListScene: FC<z.input<typeof linkedListSceneSchema>> = (input
             <div key={id} style={{position: 'absolute', left: q.x, top: q.y, width: nodeW, height: nodeH, display: 'flex', borderRadius: 14 * u, border: `${3 * u}px solid ${PAPER.ink}`, boxSizing: 'border-box', overflow: 'hidden', background: fill,
               opacity: isNew ? clamp01(k * 2.5) : dropping ? 1 - k : 1, transform: isNew ? `scale(${0.6 + 0.4 * clamp01(k * 2)})` : undefined, boxShadow: st.found === id ? `0 0 0 ${6 * u}px rgba(63,154,87,0.4)` : `0 ${6 * u}px ${12 * u}px rgba(70,50,30,0.13)`}}>
               <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontWeight: 800, fontSize: Math.min(34 * u, nodeH * 0.42)}}>{show(n.v)}</div>
-              <div style={{width: nodeW * 0.36, borderLeft: `${2.5 * u}px solid ${PAPER.ink}`, background: 'rgba(255,250,241,0.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 4 * u, fontSize: 14 * u, color: PAPER.inkSoft, fontWeight: 700}}>next</div>
+              <div style={{width: nodeW * 0.36, borderLeft: `${2.5 * u}px solid ${PAPER.ink}`, background: 'rgba(255,250,241,0.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 4 * u, fontSize: Math.min(14 * u, nodeW * 0.13), color: PAPER.inkSoft, fontWeight: 700}}>next</div>
             </div>
           );
         })}

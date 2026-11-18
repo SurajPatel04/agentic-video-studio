@@ -1,3 +1,4 @@
+import {PAPER} from '../iso/iso';
 import {useCurrentFrame} from 'remotion';
 import type {ReactNode} from 'react';
 import {z} from 'zod';
@@ -41,12 +42,12 @@ const KEYWORDS = new Set([
 const TOKEN = /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`|\b\d+(?:\.\d+)?\b|\b[A-Za-z_$][\w$]*\b)/g;
 
 const tokenColor = (token: string, rest: string, theme: ReturnType<typeof useTheme>): string | null => {
-  if (token.startsWith('//') || token.startsWith('#') || token.startsWith('/*')) return '#7f93a3';
-  if (token.startsWith("'") || token.startsWith('"') || token.startsWith('`')) return '#a5e075';
-  if (/^\d/.test(token)) return '#f78c6c';
-  if (KEYWORDS.has(token)) return '#c792ea';
-  if (/^[A-Z]/.test(token)) return '#ffcb6b';
-  if (rest.trimStart().startsWith('(')) return '#82aaff';
+  if (token.startsWith('//') || token.startsWith('#') || token.startsWith('/*')) return PAPER.inkSoft;
+  if (token.startsWith("'") || token.startsWith('"') || token.startsWith('`')) return '#376a46';
+  if (/^\d/.test(token)) return '#a24a35';
+  if (KEYWORDS.has(token)) return '#72539c';
+  if (/^[A-Z]/.test(token)) return '#81591c';
+  if (rest.trimStart().startsWith('(')) return '#315d8b';
   return theme.text;
 };
 
@@ -81,13 +82,13 @@ export const CodeScene: React.FC<z.input<typeof codeSceneSchema>> = (input) => {
 
   return (
     <StudyFrame title={p.title} eyebrow={p.eyebrow} footer={p.footer || undefined}>
-      <div style={{height: '100%', display: 'flex', flexDirection: 'column', border: '1px solid #2e4b61', borderRadius: 18, overflow: 'hidden', background: '#0b1a28'}}>
-        <div style={{height: 56, flex: '0 0 56px', display: 'flex', alignItems: 'center', gap: 14, padding: '0 20px', background: '#122639', borderBottom: '1px solid #2b465a'}}>
+      <div style={{height: '100%', display: 'flex', flexDirection: 'column', border: `1px solid ${PAPER.track}`, borderRadius: 18, overflow: 'hidden', background: PAPER.card}}>
+        <div style={{height: 56, flex: '0 0 56px', display: 'flex', alignItems: 'center', gap: 14, padding: '0 20px', background: PAPER.track, borderBottom: `1px solid ${PAPER.track}`}}>
           <span style={{width: 12, height: 12, borderRadius: '50%', background: '#ff6b6b'}} />
           <span style={{width: 12, height: 12, borderRadius: '50%', background: '#fbbf24'}} />
           <span style={{width: 12, height: 12, borderRadius: '50%', background: '#34d399'}} />
           <span style={{marginLeft: 8, fontSize: 19, color: theme.muted}}>{p.filename}</span>
-          <span style={{marginLeft: 'auto', padding: '5px 12px', borderRadius: 999, border: '1px solid #37576e', fontSize: 15, letterSpacing: 1.4, textTransform: 'uppercase', color: theme.accent}}>{p.language}</span>
+          <span style={{marginLeft: 'auto', padding: '5px 12px', borderRadius: 999, border: `1px solid ${PAPER.inkSoft}`, fontSize: 15, letterSpacing: 1.4, textTransform: 'uppercase', color: theme.accent}}>{p.language}</span>
         </div>
 
         <div style={{flex: 1, padding: '14px 0', fontFamily: "'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace", overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
@@ -109,7 +110,7 @@ export const CodeScene: React.FC<z.input<typeof codeSceneSchema>> = (input) => {
                 }}
               >
                 {p.showLineNumbers ? (
-                  <span style={{width: 54, flex: '0 0 54px', textAlign: 'right', paddingRight: 16, fontSize: fontSize * 0.72, lineHeight: 1.45, color: isHighlighted ? theme.accent : '#5d7b90', userSelect: 'none'}}>
+                  <span style={{width: 54, flex: '0 0 54px', textAlign: 'right', paddingRight: 16, fontSize: fontSize * 0.72, lineHeight: 1.45, color: isHighlighted ? theme.accent : PAPER.inkSoft, userSelect: 'none'}}>
                     {i + 1}
                   </span>
                 ) : null}

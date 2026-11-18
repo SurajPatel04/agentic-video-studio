@@ -6,6 +6,7 @@
  *   <ProgressBar at="bottom" to={100} label="Uploading" />
  *   <Lock at="center" text="hello world" />         padlock closes, text scrambles into ciphertext
  */
+import {PAPER} from '../iso/iso';
 import type {CSSProperties, FC} from 'react';
 import {interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {z} from 'zod';
@@ -273,7 +274,7 @@ export const Lock: FC<LockProps> = (input) => {
         <rect x={11.1} y={17.8} width={1.8} height={4} rx={0.9} fill="#0b1220" />
       </svg>
       {p.text ? (
-        <span style={{padding: `${12 * u}px ${24 * u}px`, borderRadius: 14 * u, background: 'rgba(2,6,23,0.75)', border: `${2 * u}px solid ${isCipher ? color : 'rgba(148,163,184,0.35)'}`,
+        <span style={{padding: `${12 * u}px ${24 * u}px`, borderRadius: 14 * u, background: PAPER.card, border: `${2 * u}px solid ${isCipher ? color : 'rgba(148,163,184,0.35)'}`,
           fontFamily: isCipher || scrambled ? 'ui-monospace, monospace' : undefined, fontSize: 36 * u, fontWeight: 600, color: isCipher ? color : theme.text, whiteSpace: 'nowrap'}}>
           {shown}
         </span>

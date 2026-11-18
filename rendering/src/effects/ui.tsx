@@ -7,6 +7,7 @@
  *   <Toggle at="center" label="Wi-Fi" onAt={40} />            (style "switch" or "checkbox")
  *   <Chat at="center" messages={[{from: 'them', text: 'Hi!'}, {from: 'me', text: 'Hello'}]} />
  */
+import {PAPER} from '../iso/iso';
 import type {FC} from 'react';
 import {interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {z} from 'zod';
@@ -55,7 +56,6 @@ export const Terminal: FC<TerminalProps> = (input) => {
   const p = terminalSchema.parse(input);
   const f = useCurrentFrame();
   const {fps, width: W, height: H} = useVideoConfig();
-  const theme = useTheme();
   const u = useUnit();
   if (f < p.startAt) return null;
   let t = p.startAt + 10;
@@ -75,11 +75,11 @@ export const Terminal: FC<TerminalProps> = (input) => {
   const pop = spring({frame: f - p.startAt, fps, config: {damping: 16}});
   return (
     <div style={{...placeAt(p.at, W, H), width: p.width * u, opacity: pop}}>
-      <AppWindow title={p.title} style={{background: 'rgba(3,7,18,0.95)'}}>
+      <AppWindow title={p.title} terminal>
         <div style={{fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: p.fontSize * u, lineHeight: 1.5, color: '#e2e8f0', display: 'flex', flexDirection: 'column'}}>
           {rows.map(({l, n}, i) => (n < 0 ? null : (
             <span key={i} style={{color: l.color ?? (l.prompt ? '#e2e8f0' : '#94a3b8'), whiteSpace: 'pre-wrap'}}>
-              {l.prompt ? <span style={{color: theme.accent}}>$ </span> : null}
+              {l.prompt ? <span style={{color: '#c9a8f5'}}>$ </span> : null}
               {l.text.slice(0, n)}
               {(active === i || (active < 0 && i === lastShown)) && blink ? <span style={{background: '#e2e8f0', color: 'transparent'}}>_</span> : null}
             </span>
@@ -123,7 +123,7 @@ export const Notification: FC<NotificationProps> = (input) => {
   const base = placeAt(p.at, W, H);
   return (
     <div style={{...base, transform: `${base.transform} translateX(${side * (1 - k) * 120}%)`, opacity: k, width: p.width * u, display: 'flex', gap: 22 * u,
-      alignItems: 'center', padding: `${22 * u}px ${26 * u}px`, borderRadius: 22 * u, background: 'rgba(15,23,42,0.95)', border: `${2 * u}px solid rgba(148,163,184,0.25)`,
+      alignItems: 'center', padding: `${22 * u}px ${26 * u}px`, borderRadius: 22 * u, background: PAPER.card, border: `${2 * u}px solid ${PAPER.track}`,
       borderLeft: `${8 * u}px solid ${color}`, boxShadow: `0 ${16 * u}px ${50 * u}px rgba(0,0,0,0.45)`}}>
       {p.icon ? <Device kind={p.icon} size={84} color={color} /> : null}
       <div style={{display: 'flex', flexDirection: 'column', gap: 6 * u, minWidth: 0}}>
@@ -236,7 +236,7 @@ export const Chat: FC<ChatProps> = (input) => {
             {name && !showTyping ? <span style={{fontSize: 22 * u, color: theme.muted, padding: `0 ${10 * u}px`}}>{name}</span> : null}
             <div style={{maxWidth: '78%', padding: `${18 * u}px ${26 * u}px`, borderRadius: 30 * u, fontSize: 32 * u, lineHeight: 1.35,
               borderBottomRightRadius: mine ? 8 * u : 30 * u, borderBottomLeftRadius: mine ? 30 * u : 8 * u,
-              background: mine ? color : 'rgba(51,65,85,0.95)', color: mine ? '#04121f' : theme.text, fontWeight: mine ? 600 : 500,
+              background: mine ? `color-mix(in srgb, ${color} 20%, ${PAPER.card})` : PAPER.track, color: PAPER.ink, fontWeight: mine ? 600 : 500,
               transform: `scale(${pop})`, transformOrigin: mine ? 'bottom right' : 'bottom left', opacity: pop}}>
               {showTyping ? (
                 <span style={{display: 'flex', gap: 8 * u, padding: `${6 * u}px 0`}}>

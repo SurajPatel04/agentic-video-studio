@@ -56,7 +56,7 @@ export const TimelineScene: React.FC<z.input<typeof timelineSceneSchema>> = (inp
                 <div key={`${event.date}-${i}`} style={{position: 'relative', display: 'flex', alignItems: 'center', gap: 24, paddingLeft: 54, opacity: reveal, transform: `translateX(${(1 - reveal) * 18}px)`}}>
                   <div style={{position: 'absolute', left: 10, top: '50%', width: 18, height: 18, marginTop: -9, borderRadius: '50%', background: theme.accent, border: `4px solid ${theme.background}`, boxShadow: `0 0 0 2px ${theme.accent}`}} />
                   <div style={{width: 130, flex: '0 0 130px', fontSize: 22, fontWeight: 750, color: theme.accent}}>{event.date}</div>
-                  <div style={{flex: 1, padding: '9px 18px', background: '#132b3f', borderRadius: 10, border: '1px solid #2b485e'}}>
+                  <div style={{flex: 1, padding: '9px 18px', background: '#fffaf1', borderRadius: 10, border: '1px solid #2b485e'}}>
                     <div style={{fontSize: 24, fontWeight: 650}}>{event.title}</div>
                     {event.detail ? <div style={{fontSize: 17, lineHeight: 1.3, color: theme.muted, marginTop: 2}}>{event.detail}</div> : null}
                   </div>
@@ -100,7 +100,7 @@ export const TimelineScene: React.FC<z.input<typeof timelineSceneSchema>> = (inp
                   height: cardHeight,
                   boxSizing: 'border-box',
                   padding: '17px 18px',
-                  background: '#122a3d',
+                  background: '#fffaf1',
                   border: '1px solid #2e4a61',
                   borderRadius: 14,
                   opacity: reveal,

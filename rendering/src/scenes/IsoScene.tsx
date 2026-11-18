@@ -5,7 +5,11 @@ import {Sfx, sfxNames} from '../audio';
 import {useSceneLength, useUnit} from '../theme';
 import {ISO_COLORS, isoColorNames, mix, PAPER, project, type IsoColor, type Pt, C30, S30} from '../iso/iso';
 import {IsoBox, IsoPerson, IsoShadow, Note, noteSize, StatusPill, Tag} from '../iso/shapes';
+import {cueFields, newsCycleRemaining, ObjectCues} from '../iso/ObjectCues';
+import {TableCard, tableSchema, users} from '../database/table';
+import {LookupBadge, lookupState, badgeSchema} from '../iso/LookupBadge';
 import {IsoLink} from '../iso/link';
+import {BroadcastWaves, shareHops, unitInterval, type LinkMedia} from '../iso/MediaFlow';
 import {along, bendPoint, curve, sample} from '../iso/curve';
 import {IsoArt, Road, iconByName, type ArtKind} from '../iso/objects';
 import {GENERAL_KINDS} from '../iso/general';
@@ -31,6 +35,7 @@ export const KINDS = {
   ...ROAD_PRESETS,
   ...GENERAL_PRESETS,
   server: {shape: 'art', size: [1.5, 1.5, 2.3], color: 'lavender'},
+  table: {shape: 'art', size: [3.6, 0.5, 2.0], color: 'cream'},
   database: {shape: 'art', size: [1.9, 1.9, 1.7], color: 'mint'},
   storage: {shape: 'art', size: [1.7, 1.7, 1.1], color: 'slate'},
   cache: {shape: 'art', size: [1.6, 1.6, 0.8], color: 'butter'},
@@ -137,6 +142,9 @@ const PERSON_COLORS = ['#9fc4ec', '#f4c178', '#c9b6ec', '#9ed3a8', '#f2a37d', '#
 
 const fraction = z.number().min(0).max(1); // of the scene's length (scenes stretch to fit the narration)
 const objectSchema = z.object({
+  table: tableSchema.optional(),
+  lookup: lookupState.optional(),
+  badge: badgeSchema.optional(),
   id: z.string().min(1),
   kind: z.enum(isoKinds).default('box'),
   label: z.string().max(24).optional(),
@@ -158,11 +166,26 @@ const linkSchema = z.object({
   from: z.string(),
   to: z.string(),
   label: z.string().max(22).optional(),
-  flow: z.enum(['dots', 'people', 'car', 'none']).default('dots'), // what travels along the arrow
+  flow: z.enum(['dots', 'people', 'car', 'key', 'coin', 'wave', 'none']).default('dots'), // what travels along the arrow
+  via: z.string().min(1).optional(),
+  noise: z.boolean().optional(),
+  transform: z.literal('clean').optional(),
+  drop: z.boolean().optional(),
+  replyAfter: z.number().gt(0).lt(1).optional(), // fraction of visible link time spent on the request
+  returnLabel: z.string().max(22).optional(),
+  bidirectional: z.boolean().optional(), // a return lane from the target to the source
   dashed: z.boolean().default(false),
   appearAt: fraction.optional(), // default: when both ends have landed
   enter: z.enum(['draw', 'none']).default('draw'), // none: already drawn (carried over)
 }).strict();
+
+type DiagramLink = z.output<typeof linkSchema>;
+function linkLegs(links: DiagramLink[]): DiagramLink[] {
+  return links.flatMap(link => link.via ? [
+    {...link, to:link.via, via:undefined, bidirectional:false, returnLabel:undefined, replyAfter:undefined},
+    {...link, from:link.via, via:undefined},
+  ] : [link]);
+}
 
 // Planners often write a synonym or an icon name as the kind ("users", "microphone", "printer"):
 // map synonyms to the real kind, and any other Lucide icon name to a tile showing that icon.
@@ -303,6 +326,10 @@ const fixKind = (raw: unknown) => {
 };
 
 const stepSchema = z.object({
+  ...cueFields,
+  reply: z.string().regex(/^[^→]+→[^→]+$/).optional(),
+  lookup: lookupState.optional(),
+  badge: badgeSchema.optional(),
   at: fraction, // when, as a fraction of the scene (0.5 = halfway through the narration)
   target: z.string(), // object id
   status: z.number().min(0).max(100).optional(), // animate the pill to this value
@@ -352,10 +379,22 @@ export const isoSceneSchema = z.object({
     if (ids.has(o.id)) ctx.addIssue({code: 'custom', path: ['objects', i, 'id'], message: `duplicate id "${o.id}"`});
     ids.add(o.id);
   });
-  p.links.forEach((l, i) => (['from', 'to'] as const).forEach((k) => {
-    if (!ids.has(l[k])) ctx.addIssue({code: 'custom', path: ['links', i, k], message: `no object with id "${l[k]}"`});
-  }));
+  p.links.forEach((l, i) => {
+    for (const k of ['from', 'to', 'via'] as const) {
+      const id = l[k];
+      if (id !== undefined && !ids.has(id)) ctx.addIssue({code: 'custom', path: ['links', i, k], message: `no object with id "${id}"`});
+    }
+    if (l.via && (l.via === l.from || l.via === l.to || l.from === l.to)) {
+      ctx.addIssue({code:'custom',path:['links',i,'via'],message:'Use three distinct objects for a two-step link.'});
+    }
+  });
+  const legs = linkLegs(p.links);
   p.steps.forEach((s, i) => {
+    if (s.reply) {
+      const [sender, recipient] = s.reply.split('→').map(id => id.trim());
+      if (sender !== s.target || !legs.some(link => link.from === recipient && link.to === sender))
+        ctx.addIssue({code:'custom', path:['steps',i,'reply'], message:'Reply must start at the step target and reverse an existing request link.'});
+    }
     if (!ids.has(s.target)) ctx.addIssue({code: 'custom', path: ['steps', i, 'target'], message: `no object with id "${s.target}"`});
   });
   // objects must not cover each other on screen (status pills need room above, too)
@@ -372,6 +411,15 @@ export const isoSceneSchema = z.object({
 });
 
 export const description =
+  'Place kind table with table:{name,columns,rows,indexed?,locked?,duplicateKey?} next to a database to show the actual records. ' +
+  'Timed steps support timer, count, meter, progress, ttl, retry, queue, think, react, say and mood. A reply step such as cache→app returns on an existing request link. Links can clean or drop packets and carry keys or coins. ' +
+  'Use badge on objects or timed steps for animated lookup, worker, access or health states. Use none to clear, or {icon,text,tone} for a custom Lucide badge. ' +
+  'Media badges cover broadcast, editorial review, verification, attribution, embargo and signal loss. Change embargo to released in a timed step to open the lock. ' +
+  'Media steps can animate reach, engage, compare (saw it vs understood it), rating, revenue, trust, cycle, sentiment and survey. Sentiment is [positive,neutral,negative] and must total 100. ' +
+  'Media links support flow:"wave", via:"leader", noise:true and dashed feedback. Timed spread uses outgoing links up to depth; gate uses a link into and out of the editor. ' +
+  'Use frame:[before,after], agenda ordered by coverage priority, bubble, race with rumour and correction speeds, attention, opinion:{from,to}, split:[a,b], or headline updates. Target people for crowd changes. ' +
+  'Show both sides of race and compare together, distinguish attention or sharing from belief, and identify illustrative statistics as example numbers in narration. ' +
+  'Use links[].bidirectional=true for two-way traffic. Label the outbound arrow with label and the reverse arrow with returnLabel. Set replyAfter (e.g. 0.5) to play them in sequence. ' +
   'Isometric "paper" diagram: 3D-looking servers, databases, caches, clouds, people, medical objects (hospital, ' +
   'doctor, patient bed, ambulance, pill bottle, syringe, heart monitor, microscope, test tubes, DNA), school objects ' +
   '(school, teacher with whiteboard, student desk, bookshelf, graduation cap, backpack, globe on a stand, certificate, ' +
@@ -435,6 +483,13 @@ const crowd = (g: Box3, n: number) => {
 const outline = (g: Box3, T: number, o: Pt, zz = g.z): Pt[] => {
   const P = (a: number, b: number, c: number) => project(a, b, c, T, o);
   const {x, y, w, d, h} = g;
+  if (g.kind === KINDS.table) {
+    const center = P(x + w / 2, y + d / 2, zz + h / 2);
+    const halfWidth = (w + d) * C30 * T / 2;
+    const halfHeight = h * T / 2;
+    return [{x:center.x-halfWidth,y:center.y-halfHeight},{x:center.x+halfWidth,y:center.y-halfHeight},
+      {x:center.x+halfWidth,y:center.y+halfHeight},{x:center.x-halfWidth,y:center.y+halfHeight}];
+  }
   if (false) {
     const r = Math.min(w, d) / 2, c0 = P(x + w / 2, y + d / 2, zz), c1 = P(x + w / 2, y + d / 2, zz + h);
     const rx = Math.SQRT2 * r * C30 * T, ry = Math.SQRT2 * r * S30 * T;
@@ -521,6 +576,7 @@ export const IsoRegion = createContext<{left: number; right: number; top: number
 export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const region = useContext(IsoRegion);
   const p = isoSceneSchema.parse(input);
+  const links = linkLegs(p.links);
   const f = useCurrentFrame();
   const {fps, width: W, height: H} = useVideoConfig();
   const len = useSceneLength();
@@ -575,7 +631,21 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     const label = [...s].reverse().find((x) => x.label !== undefined && f >= x.f)?.label ?? ob.label;
     const hot = status !== undefined && status >= 88 ? 0.5 + 0.5 * Math.sin(f / 4) : 0;
     const pill = spring({frame: f - startOf[i] - 14, fps, config: {damping: 12}});
-    return {shown, drop, hide, hl, status, color, label, hot, pill};
+    const activeSteps = s.filter(step => step.f <= f).reverse();
+    const [lookupStep, previousLookupStep] = activeSteps.filter(step => step.badge !== undefined || step.lookup !== undefined);
+    const cycleStep = activeSteps.find(step => step.cycle);
+    const attention = activeSteps.find(step => step.attention !== undefined);
+    const opinion = activeSteps.find(step => step.opinion);
+    const split = activeSteps.find(step => step.split);
+    const bubble = activeSteps.find(step => step.bubble !== undefined);
+    return {shown, drop, hide, hl, status, color, label, hot, pill,
+      attention, opinion, split, bubble,
+      gate:activeSteps.find(step => step.gate),
+      race:activeSteps.find(step => step.race),
+      lookup: lookupStep?.badge ?? lookupStep?.lookup ?? ob.badge ?? ob.lookup,
+      previousLookup: previousLookupStep?.badge ?? previousLookupStep?.lookup ?? ob.badge ?? ob.lookup,
+      lookupFrame: lookupStep?.f ?? Math.max(0, startOf[i]),
+      cycleOpacity: cycleStep ? 0.2 + 0.8 * Math.min(1, newsCycleRemaining(cycleStep, f, fps) * 4) : 1};
   });
   const landed = (i: number) => startOf[i] + 12;
 
@@ -597,6 +667,12 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const zoom = push * (1 + 0.22 * focusAmt);
   const F = {x: centre.x + (fp.x - centre.x) * focusAmt, y: centre.y + (fp.y - centre.y) * focusAmt};
   const camera = `translate(${centre.x} ${centre.y}) scale(${zoom}) translate(${-F.x} ${-F.y})`;
+  const stageTop = hasTitle && !onlyCard ? top - 55 * u : 0;
+  const cueBounds = {
+    left: F.x + ((region?.left ?? 0) + 18 * u - centre.x) / zoom,
+    right: F.x + ((region?.right ?? W) - 18 * u - centre.x) / zoom,
+    top: F.y + (Math.max(stageTop, region?.top ?? 0) + 12 * u - centre.y) / zoom,
+  };
 
   // ---------- draw order: platforms first, then links, then everything else back-to-front
   const order = p.objects.map((_, i) => i).sort((a, b) => {
@@ -628,6 +704,10 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
           : <IsoBox id={`${ob.id}-${i}`} x={g.x} y={g.y} z={zz} w={g.w} d={g.d} h={g.h} color={color} T={T} o={o} sw={sw} radius={T * 0.45} />
         : <IsoArt kind={ob.kind as ArtKind} id={`${ob.id}-${i}`} g={g} zz={zz} color={color} T={T} o={o} sw={sw} icon={ob.icon} time={Math.max(0, f - Math.max(0, startOf[i])) / fps} highlight={s.hl} />;
       const r = rectOf(outline({...g, z: zz}, T, o));
+      if (ob.kind === 'table') {
+        const data = ob.table ?? users;
+        body = <TableCard table={data} x={r.l} y={r.t} w={r.r-r.l} h={r.b-r.t}/>;
+      }
       topAt = {x: (r.l + r.r) / 2, y: r.t};
     } else if (g.shape === 'person') {
       const at = P(g.x + g.w / 2, g.y + g.d / 2, zz);
@@ -636,11 +716,28 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     } else {
       // people: each one pops in a frame after the other
       const people = crowd(g, ob.count ?? 12);
+      const byPosition = [...people].sort((a,b) => (a.gx-a.gy)-(b.gx-b.gy));
+      const sourceIndex = links.find(link => link.to === ob.id);
+      const facing = sourceIndex && anchor(byId[sourceIndex.from]).x > anchor(i).x ? 1 : -1;
+      const positions = new Map(byPosition.map((person,rank) => [person.i,rank]));
+      const splitProgress = s.split ? unitInterval((f-s.split.f)/fps) : 0;
+      const opinion = s.opinion?.opinion;
+      const opinionShare = opinion ? num(opinion.from,opinion.to,unitInterval((f-s.opinion!.f)/(1.2*fps))) : undefined;
       body = people.map(({gx, gy, i: k}) => {
         const t = spring({frame: f - startOf[i] - k * 1.3, fps, config: {damping: 11, stiffness: 160}});
         if (f < startOf[i] + k * 1.3) return null;
         const at = P(gx, gy, g.z + Math.max(0, (1 - t) * 1.2) + lift);
-        return <IsoPerson key={k} at={at} size={T * 0.3} color={PERSON_COLORS[k % PERSON_COLORS.length]} sw={sw * 0.9} scale={Math.min(1.05, t)} opacity={1 - s.hide} />;
+        const rank = positions.get(k)!;
+        const groupA = rank < Math.round(people.length*(s.split?.split?.[0] ?? 0)/100);
+        const direction = groupA ? -1 : 1;
+        const baseColor = PERSON_COLORS[k % PERSON_COLORS.length];
+        const crowdColor = opinionShare === undefined ? baseColor
+          : mix('#c4b1df','#84c8a1',unitInterval(people.length*opinionShare/100-rank));
+        const turn = s.attention?.attention === undefined ? undefined :
+          facing*(k < Math.round(people.length*s.attention.attention/100) ? 1 : -1)*unitInterval((f-s.attention.f)/(0.45*fps));
+        return <IsoPerson key={k} at={{x:at.x+direction*splitProgress*T*0.2,y:at.y}} size={T * 0.3}
+          color={mix(crowdColor,groupA ? '#9ec4ee' : '#e9ac8d',splitProgress)} facing={turn}
+          sw={sw * 0.9} scale={Math.min(1.05, t)} opacity={1 - s.hide} />;
       });
       topAt = P(g.x + g.w / 2, g.y + g.d / 2, g.z + 1.1);
     }
@@ -650,12 +747,23 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     const labelIn = Math.min(1, Math.max(0, (f - startOf[i] - 8) / 8));
     return (
       <g key={ob.id} opacity={g.shape === 'people' ? 1 : opacity} style={glow ? {filter: glow} : undefined}>
-        {g.shape === 'art' || slab ? sh : null}
-        {body}
+        {s.bubble?.bubble && <ellipse cx={(box.l+box.r)/2} cy={(box.t+box.b)/2} rx={(box.r-box.l)/2+24*u}
+          ry={(box.b-box.t)/2+16*u} fill="#cfdef6" fillOpacity={0.44} stroke="#7889ba"
+          strokeWidth={3*u} strokeDasharray={`${8*u} ${4*u}`} opacity={unitInterval((f-s.bubble.f)/(0.5*fps))*(1-s.hide)}/>}
+        <g opacity={s.cycleOpacity}>
+          {ob.kind !== 'table' && (g.shape === 'art' || slab) ? sh : null}
+          {body}
+        </g>
         {s.label && !slab ? (
           <text x={labelAt.x} y={labelAt.y} textAnchor="middle" fontFamily={PAPER.font} fontWeight={700} fontSize={fs} fill={PAPER.ink}
             stroke={PAPER.bg} strokeWidth={fs * 0.32} paintOrder="stroke" strokeLinejoin="round" opacity={labelIn}>{s.label}</text>
         ) : null}
+        <ObjectCues steps={stepsFor(ob.id)} frame={f} fps={fps} x={topAt.x}
+          y={topAt.y - (s.status !== undefined ? 64*u : 0) - (s.lookup && s.lookup !== 'none' ? 64*u : 0) - 48*u}
+          u={u} cx={(box.l+box.r)/2} cy={(box.t+box.b)/2} rx={(box.r-box.l)/2+16*u} ry={(box.b-box.t)/2+12*u}
+          bounds={cueBounds}/>
+        {s.lookup && s.lookup !== 'none' ? <LookupBadge state={s.lookup} previous={s.previousLookup} x={topAt.x}
+          y={topAt.y - (s.status !== undefined ? 100 : 48) * u} u={u} seconds={(f - s.lookupFrame) / fps} bounds={cueBounds} /> : null}
         {s.status !== undefined ? <StatusPill at={{x: topAt.x, y: topAt.y - 12 * u}} value={s.status} u={u} scale={s.pill * (1 - s.hide)} /> : null}
       </g>
     );
@@ -680,18 +788,51 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     const after = Math.max(landed(ia), landed(ib)) + 4;
     return after < 0 ? Math.round(0.08 * len) : after;
   };
+  const viaDelays = new Map<number,number>();
+  const viaLegs = new Set<number>();
+  let legIndex = 0;
+  for (const link of p.links) {
+    if (link.via) {
+      if (link.enter !== 'none') {
+        viaDelays.set(legIndex+1,Math.max(0,linkStart(links[legIndex]))+18+Math.round(fps*0.85));
+        viaLegs.add(legIndex);
+        viaLegs.add(legIndex+1);
+      }
+      legIndex++;
+    }
+    legIndex++;
+  }
+  const legStart = (link:DiagramLink,index:number) => Math.max(linkStart(link),viaDelays.get(index) ?? -Infinity);
+  const shareTiming = new Map<number,number>();
+  for (const step of p.steps) {
+    if (!step.spread) continue;
+    const route = shareHops(links,step.target,step.spread.depth);
+    const ready = Math.max(Math.round(step.at*len), ...[...route.keys()].map(index => legStart(links[index],index)+18));
+    for (const [index,hop] of route) {
+      const start = ready+Math.round(hop*fps*0.9);
+      const previous = shareTiming.get(index);
+      if (previous === undefined || (start<=f && (previous>f || start>previous))) shareTiming.set(index,start);
+    }
+  }
+  const waveSources = new Map<number,{radius:number;start:number}>();
+  links.forEach((link,index) => {
+    const from = byId[link.from], to = byId[link.to], start = Math.max(0,legStart(link,index));
+    if (link.flow !== 'wave' || f<start || !state[from].shown || !state[to].shown || state[from].hide>=0.99 || state[to].hide>=0.99) return;
+    const a = anchor(from), b = anchor(to);
+    const prior = waveSources.get(from);
+    waveSources.set(from,{radius:Math.max(prior?.radius ?? 0,Math.hypot(a.x-b.x,a.y-b.y)+40*u),start:Math.min(prior?.start ?? start,start)});
+  });
   const renderLink = (l: Props['links'][number], k: number, labelOnly = false) => {
     const ia = byId[l.from], ib = byId[l.to];
     if (ia === undefined || ib === undefined) return null;
-    const start = linkStart(l);
+    const start = legStart(l,k);
     if (f < start || !state[ia].shown || !state[ib].shown) return null;
     const ca = anchor(ia, geos[ia].shape === 'people' ? 0.9 : 0.5), cb = anchor(ib, 0.45);
     // bend: a gentle curve by default; more when that steers around other objects; a link that
     // comes back the other way (response) bends to the other side
     // every object of the picture counts, ghosts too: scenes of one chain then bend each arrow the same way
     const blockers = geos.map((gg, j) => (j === ia || j === ib || gg.shape === 'slab' ? null : rectOf(outline(gg, T, o)))).filter(Boolean) as Rect[];
-    const reverse = p.links.findIndex((x) => x.from === l.to && x.to === l.from);
-    const side = reverse >= 0 && reverse < k ? 1 : -1; // -1 bulges up for a left-to-right link
+    const side = -1; // -1 bulges up for a left-to-right link
     const options = [0.13, 0.28, 0.42].flatMap((m) => [side * m, -side * m]);
     const hits = (c: Pt) => sample(curve(ca, c, cb), 24).filter((q) => blockers.some((r) => q.x > r.l && q.x < r.r && q.y > r.t && q.y < r.b)).length;
     const bend = options.reduce((best, m) => (hits(bendPoint(ca, cb, m)) < hits(bendPoint(ca, cb, best)) ? m : best), options[0]);
@@ -700,21 +841,65 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     const towards = (q: Pt, to: Pt, d: number) => {const L = Math.hypot(to.x - q.x, to.y - q.y) || 1; return {x: q.x + ((to.x - q.x) / L) * d, y: q.y + ((to.y - q.y) / L) * d};};
     const a = towards(ea, c0, 10 * u), b = towards(eb, c0, 14 * u);
     const k2 = curve(a, bendPoint(a, b, bend), b);
-    const prog = interpolate(f - start, [0, 18], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: (t) => 1 - Math.pow(1 - t, 3)});
+    const visibleStart = Math.max(start, 0);
+    const reply = stepsFor(l.to).find(step => step.reply?.split('→').map(id => id.trim()).join('→') === l.to+'→'+l.from);
+    const twoWay = l.bidirectional || !!reply;
+    const switchFrame = reply ? reply.f : l.bidirectional && l.replyAfter !== undefined
+      ? visibleStart + Math.max(1, Math.round((len - visibleStart) * l.replyAfter))
+      : undefined;
+    const activeLane = switchFrame === undefined ? undefined : f < switchFrame ? 'request' : 'reply';
+    const phaseStart = activeLane === 'reply' ? switchFrame! : start;
+    const phaseEnd = activeLane === 'request' ? switchFrame! : len;
+    const drawFrames = activeLane ? Math.max(1, Math.min(18, Math.floor((phaseEnd - Math.max(0, phaseStart)) / 3))) : 18;
+    const prog = interpolate(f - phaseStart, [0, drawFrames], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: (t) => 1 - Math.pow(1 - t, 3)});
     const fade = 1 - Math.max(state[ia].hide, state[ib].hide);
-    if (labelOnly) return l.label ? <g key={`label-${k}`} opacity={fade}>{(() => {
-          const tw = l.label.length * 20 * u * 0.62 + 26 * u, th = 36 * u;
-          const objs = [...geos.map((gg, j) => (gg.shape === 'slab' || !state[j].shown ? null : rectOf(outline(gg, T, o)))).filter(Boolean) as Rect[],
-            ...labelRects, ...placedTags];
-          const spots = [0.5, 0.38, 0.62, 0.28, 0.72].flatMap((t) => [-26, 26].map((dy) => {const q = along(k2, t).p; return {x: q.x, y: q.y + dy * u};}));
-          const cost = (q: Pt) => objs.reduce((acc, r) => acc + overlapArea(r, {l: q.x - tw / 2, r: q.x + tw / 2, t: q.y - th / 2, b: q.y + th / 2}), 0);
-          const at = spots.reduce((best, q) => (cost(q) < cost(best) - 1 ? q : best), spots[0]);
-          placedTags.push({l: at.x - tw / 2, r: at.x + tw / 2, t: at.y - th / 2, b: at.y + th / 2});
-          return <Tag at={at} text={l.label} u={u} opacity={prog} />;
-        })()}</g> : null;
+    if (labelOnly) {
+      // Older plans may use a single “request / reply” caption for both lanes.
+      const legacyPair = twoWay && !l.returnLabel ? l.label?.match(/^(request)\s*\/\s*(reply|response)$/i) : null;
+      const outbound = legacyPair?.[1] ?? l.label ?? (reply ? 'Request' : undefined);
+      const inbound = twoWay ? l.returnLabel ?? legacyPair?.[2] ?? (reply ? 'Reply' : undefined) : undefined;
+      return <g key={`label-${k}`} opacity={fade}>{[outbound, inbound].map((text, lane) => {
+        if (!text || (activeLane === 'request' && lane === 1)) return null;
+        const labelUnit = twoWay ? u * 1.4 : u;
+        const tw = (text.length * 20 * 0.62 + 26) * labelUnit, th = 36 * labelUnit;
+        const obstacles = [...geos.flatMap((gg, j) => gg.shape === 'slab' || !state[j].shown ? [] : [rectOf(outline(gg, T, o))]),
+          ...labelRects, ...placedTags];
+        const requestSide = activeLane ? (b.x >= a.x ? -1 : 1) : 1;
+        const sides = twoWay ? [lane === 0 ? requestSide : -requestSide] : [-1, 1];
+        const spots = [0.5, 0.38, 0.62, 0.28, 0.72].flatMap(t => sides.map(side => {
+          const {p, angle} = along(k2, t);
+          const gap = (twoWay ? 34 : 10) * u + Math.abs(Math.sin(angle)) * tw / 2 + Math.abs(Math.cos(angle)) * th / 2;
+          return {x: p.x - side * Math.sin(angle) * gap, y: p.y + side * Math.cos(angle) * gap};
+        }));
+        const box = (p: Pt) => ({l: p.x - tw / 2, r: p.x + tw / 2, t: p.y - th / 2, b: p.y + th / 2});
+        const cost = (p: Pt) => obstacles.reduce((sum, rect) => sum + overlapArea(rect, box(p)), 0);
+        const at = spots.reduce((best, p) => cost(p) < cost(best) - 1 ? p : best);
+        placedTags.push(box(at));
+        return <Tag key={lane} opacity={lane === 0 && activeLane === 'reply' ? 1 : prog} at={at} text={text} u={labelUnit} fill={twoWay ? (lane === 0 ? '#ded4f0' : '#c9e8d9') : undefined} />;
+      })}</g>;
+    }
+    const receiver = state[ib], sender = state[ia];
+    const timing = shareTiming.get(k);
+    const incoming = (id:string) => links.findIndex(link => link.to === id && link.flow !== 'none' && !link.dashed);
+    const outgoing = (id:string) => links.findIndex(link => link.from === id && link.flow !== 'none' && !link.dashed);
+    const gateOut = sender.gate && outgoing(l.from) === k ? sender.gate : undefined;
+    const gateIn = receiver.gate && incoming(l.to) === k ? receiver.gate : undefined;
+    const gate = gateIn ?? gateOut;
+    const seconds = (startFrame:number) => Math.max(0,(f-Math.max(startFrame,phaseStart+drawFrames))/fps);
+    let media: LinkMedia | undefined;
+    if (receiver.bubble?.bubble && l.flow !== 'none' && !l.dashed) media = {bounce:seconds(receiver.bubble.f)};
+    else if (sender.race?.race && l.flow !== 'none' && !l.dashed) media = {race:{rates:sender.race.race,seconds:seconds(sender.race.f)}};
+    else if (gate?.gate) {
+      const other = gateIn ? outgoing(l.to) : incoming(l.from);
+      const starts = other<0 ? gate.f : Math.max(gate.f,legStart(links[other],other)+18);
+      media = {gate:{counts:gate.gate,seconds:seconds(starts),entering:!!gateIn}};
+    }
+    else if (timing !== undefined) media = {share:(f-Math.max(timing,phaseStart+drawFrames))/fps};
+    else if (viaLegs.has(k) && l.flow !== 'wave' && l.flow !== 'none') media = {share:seconds(phaseStart+drawFrames)};
     return (
       <g key={`link-${k}`} opacity={fade}>
-        <IsoLink k={k2} progress={prog} phase={f - start - 18} u={u} sw={sw} T={T} flow={l.flow} dashed={l.dashed} seed={k * 2} />
+        <IsoLink k={k2} progress={prog} phase={f - phaseStart - drawFrames} activeLane={activeLane} u={u} sw={sw} T={T} flow={l.flow} clean={!!l.transform} drop={l.drop} bidirectional={twoWay} dashed={l.dashed} seed={k * 2}
+          media={media} noise={l.noise} fps={fps}/>
       </g>
     );
   };
@@ -740,17 +925,25 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     if (shape === 'slab') return;
     sounds.push({sound: shape === 'people' || shape === 'person' ? 'pop' : 'drop', at: startOf[i] + 9, volume: 0.28});
   });
-  p.links.forEach((l) => {
-    const at = linkStart(l);
-    if (at > 0 && (l.appearAt !== undefined || p.continued)) sounds.push({sound: 'connect', at, volume: 0.2});
+  links.forEach((l,index) => {
+    const at = legStart(l,index);
+    if (l.noise && !p.objects[byId[l.from]].ghost && !p.objects[byId[l.to]].ghost) {
+      sounds.push({sound:'radio-static', at:Math.max(0,at+18), volume:0.26});
+    } else if (at > 0 && (l.appearAt !== undefined || p.continued)) sounds.push({sound: 'connect', at, volume: 0.2});
   });
   const statusNow: Record<string, number | undefined> = Object.fromEntries(p.objects.map((o) => [o.id, o.status]));
   [...p.steps].sort((a, b) => a.at - b.at).forEach((st) => {
     const before = statusNow[st.target];
     if (st.status !== undefined) statusNow[st.target] = st.status;
     const overload = st.status !== undefined && st.status >= 88 && (before ?? 0) < 88;
-    const auto = st.hide ? 'remove' : overload ? 'alert' : st.highlight ? 'chime' : st.focus ? 'rise' : st.note ? 'blip' : undefined;
-    const sound = st.sound ?? auto;
+    const auto = st.hide ? 'remove' : overload ? 'alert' : (st.highlight || (st.badge ?? st.lookup) === 'found') ? 'chime' : st.focus ? 'rise' : st.note ? 'blip' : undefined;
+    const badge = st.badge;
+    let mediaSound: string | undefined;
+    if (badge === 'approved' || badge === 'rejected' || badge === 'false') mediaSound = 'desk-stamp';
+    else if (badge === 'onair' || badge === 'offrecord' || badge === 'live') mediaSound = 'mic-switch';
+    else if (badge === 'nosignal') mediaSound = 'radio-static';
+    else if (badge === 'published' || badge === 'correction' || st.headline || st.agenda) mediaSound = 'page-turn';
+    const sound = st.sound ?? mediaSound ?? auto;
     if (!sound || sound === 'none') return;
     const volume = sound === 'alert' ? 0.22 : sound === 'rise' ? 0.25 : sound === 'blip' ? 0.2 : sound === 'chime' ? 0.22 : 0.3;
     sounds.push({sound, at: Math.round(st.at * len), volume});
@@ -760,12 +953,13 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     <AbsoluteFill style={{background: region ? 'transparent' : `radial-gradient(ellipse at 50% 45%, ${PAPER.bgCenter} 0%, ${PAPER.bg} 70%)`, fontFamily: PAPER.sans}}>
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', inset: 0}}>
         {region ? null : <path d={gridLines.join('')} stroke={PAPER.grid} strokeWidth={1.2 * u} fill="none" opacity={gridIn} />}
-        <defs><clipPath id="iso-stage"><rect x={0} y={hasTitle && !onlyCard ? top - 55 * u : 0} width={W} height={H} /></clipPath></defs>
+        <defs><clipPath id="iso-stage"><rect x={0} y={stageTop} width={W} height={H} /></clipPath></defs>
         <g clipPath="url(#iso-stage)"><g transform={camera}>
           {slabs.map(renderObject)}
-          {p.links.map((l, k) => renderLink(l, k))}
+          {[...waveSources].map(([index,{start,radius}]) => <BroadcastWaves key={index} origin={anchor(index)} radius={radius} seconds={(f-start)/fps} u={u}/>)}
+          {links.map((l, k) => renderLink(l, k))}
           {rest.map(renderObject)}
-          {p.links.map((l, k) => renderLink(l, k, true))}
+          {links.map((l, k) => renderLink(l, k, true))}
           {note && byId[note.target] !== undefined && state[byId[note.target]].shown ? (() => {
             const i = byId[note.target], g = geos[i];
             const box = rectOf(outline(g, T, o));
@@ -774,8 +968,11 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
             const others = geos.map((gg, j) => (j === i || gg.shape === 'slab' || !state[j].shown ? null : rectOf(outline(gg, T, o)))).filter(Boolean) as Rect[];
             const cx = (box.l + box.r) / 2, cy = (box.t + box.b) / 2;
             const others2 = [...others, ...geos.map((gg, j) => (j !== i && state[j].shown && state[j].status !== undefined ? (() => {const r = rectOf(outline(gg, T, o)); return {l: r.l, r: r.r, t: r.t - 70 * u, b: r.t};})() : null)).filter(Boolean) as Rect[]];
+            // above, slid inward so it stays on screen near the frame edge (the pointer still lands on the object)
+            const ax = Math.min(Math.max(cx, 30 * u + nw / 2, box.l + 14 * u), W - 30 * u - nw / 2, box.r - 14 * u);
             const options = [
               {side: 'above' as const, at: {x: cx, y: box.t - pillRoom}, r: {l: cx - nw / 2, r: cx + nw / 2, t: box.t - pillRoom - nh - 16 * u, b: box.t - pillRoom}},
+              {side: 'above' as const, at: {x: ax, y: box.t - pillRoom}, r: {l: ax - nw / 2, r: ax + nw / 2, t: box.t - pillRoom - nh - 16 * u, b: box.t - pillRoom}},
               {side: 'right' as const, at: {x: box.r, y: cy}, r: {l: box.r + 16 * u, r: box.r + 16 * u + nw, t: cy - nh / 2, b: cy + nh / 2}},
               {side: 'left' as const, at: {x: box.l, y: cy}, r: {l: box.l - 16 * u - nw, r: box.l - 16 * u, t: cy - nh / 2, b: cy + nh / 2}},
               {side: 'right' as const, at: {x: box.r - 10 * u, y: box.t + 20 * u}, r: {l: box.r + 6 * u, r: box.r + 6 * u + nw, t: box.t + 20 * u - nh / 2, b: box.t + 20 * u + nh / 2}},
@@ -783,7 +980,10 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
             ];
             const titleLine = hasTitle ? 170 * u : 20 * u;
             const outside = (r: Rect) => Math.max(0, 30 * u - r.l) + Math.max(0, r.r - (W - 30 * u)) + Math.max(0, titleLine - r.t) + Math.max(0, r.b - (H - 170 * u));
-            const cost = (r: Rect) => others2.reduce((acc, x) => acc + overlapArea(x, r), 0) + outside(r) * nh * 40; // off-screen is worse than touching
+            // text over text is the worst overlap: link labels ("data", "resource") and object names count double
+            const texts = [...placedTags, ...labelRects];
+            const cost = (r: Rect) => others2.reduce((acc, x) => acc + overlapArea(x, r), 0) + 2 * texts.reduce((acc, x) => acc + overlapArea(x, r), 0)
+              + outside(r) * nh * 40; // off-screen is worse than touching
             const pick = options.reduce((best, c) => (cost(c.r) < cost(best.r) - 1 ? c : best), options[0]);
             return <Note at={pick.at} side={pick.side} text={note.note ?? ''} u={u} scale={Math.min(1, noteScale)} />;
           })() : null}

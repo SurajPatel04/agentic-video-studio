@@ -48,10 +48,13 @@ export const tags = ['devices', 'hardware', 'icons', 'computer', 'network', 'ele
 export const DeviceGridScene: React.FC<z.input<typeof deviceGridSceneSchema>> = (input) => {
   const p = deviceGridSceneSchema.parse(input);
   const f = useCurrentFrame();
-  const {fps} = useVideoConfig();
+  const {fps, width, height} = useVideoConfig();
   const theme = useTheme();
   const u = useUnit();
-  const columns = p.columns ?? Math.min(4, p.devices.length);
+  const portrait = height > width;
+  const columns = Math.min(p.devices.length, p.columns ?? (portrait ? 3 : 4));
+  const gap = portrait ? 36 : 90;
+  const size = portrait ? Math.min(p.size, (width / u - 180 - (columns - 1) * gap) / columns) : p.size;
 
   const stateAt = (i: number) => {
     let s = p.devices[i].state;
@@ -70,7 +73,7 @@ export const DeviceGridScene: React.FC<z.input<typeof deviceGridSceneSchema>> = 
         style={{
           display: 'grid',
           gridTemplateColumns: `repeat(${columns}, auto)`,
-          columnGap: 90 * u,
+          columnGap: gap * u,
           rowGap: 60 * u,
           justifyContent: 'center',
         }}
@@ -83,7 +86,7 @@ export const DeviceGridScene: React.FC<z.input<typeof deviceGridSceneSchema>> = 
             state={stateAt(i)}
             color={d.color}
             glow={d.glow}
-            size={p.size}
+            size={size}
             appearAt={d.appearAt ?? p.startAt + i * p.stagger}
           />
         ))}

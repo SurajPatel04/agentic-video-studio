@@ -1,0 +1,121 @@
+{
+  "width": 1280,
+  "height": 720,
+  "fps": 24,
+  "brand": false,
+  "defaultTransition": {
+    "type": "none"
+  },
+  "scenes": [
+    {
+      "id": "merge",
+      "component": "ArrayScene",
+      "props": {
+        "title": "Merge sort",
+        "values": [
+          4,
+          1,
+          3,
+          2
+        ],
+        "algorithm": "merge",
+        "sound": false
+      },
+      "durationInFrames": 108
+    },
+    {
+      "id": "quick",
+      "component": "ArrayScene",
+      "props": {
+        "title": "Quick sort",
+        "values": [
+          4,
+          1,
+          3,
+          2
+        ],
+        "algorithm": "quick",
+        "sound": false
+      },
+      "durationInFrames": 108
+    },
+    {
+      "id": "RecursionScene",
+      "component": "RecursionScene",
+      "props": {},
+      "durationInFrames": 72
+    },
+    {
+      "id": "BigORaceScene",
+      "component": "BigORaceScene",
+      "props": {},
+      "durationInFrames": 72
+    },
+    {
+      "id": "CodeTraceScene",
+      "component": "CodeTraceScene",
+      "props": {},
+      "durationInFrames": 72
+    },
+    {
+      "id": "TruthTableScene",
+      "component": "TruthTableScene",
+      "props": {},
+      "durationInFrames": 72
+    },
+    {
+      "id": "DPTableScene",
+      "component": "DPTableScene",
+      "props": {},
+      "durationInFrames": 72
+    },
+    {
+      "id": "GeometryScene",
+      "component": "GeometryScene",
+      "props": {},
+      "durationInFrames": 72
+    },
+    {
+      "id": "NumberLineScene",
+      "component": "NumberLineScene",
+      "props": {},
+      "durationInFrames": 72
+    },
+    {
+      "id": "UnitCircleScene",
+      "component": "UnitCircleScene",
+      "props": {},
+      "durationInFrames": 72
+    },
+    {
+      "id": "VectorScene",
+      "component": "VectorScene",
+      "props": {},
+      "durationInFrames": 72
+    },
+    {
+      "id": "MatrixMultiplyScene",
+      "component": "MatrixMultiplyScene",
+      "props": {},
+      "durationInFrames": 72
+    },
+    {
+      "id": "ProbabilityScene",
+      "component": "ProbabilityScene",
+      "props": {},
+      "durationInFrames": 72
+    },
+    {
+      "id": "FractionScene",
+      "component": "FractionScene",
+      "props": {},
+      "durationInFrames": 72
+    },
+    {
+      "id": "AlgebraStepsScene",
+      "component": "AlgebraStepsScene",
+      "props": {},
+      "durationInFrames": 72
+    }
+  ]
+}

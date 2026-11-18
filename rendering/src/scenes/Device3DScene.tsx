@@ -11,7 +11,6 @@ const frame = z.number().int().nonnegative();
 export const device3DSceneSchema = z.object({
   title: z.string().optional(),
   caption: z.string().optional(),
-  // Up to 8: each 3D device uses its own WebGL view.
   devices: z
     .array(
       z.object({
@@ -43,18 +42,21 @@ export const device3DSceneSchema = z.object({
 });
 
 export const description =
-  'Realistic 3D devices (mouse, keyboard, TV, router, phone, server, bulb, car, ... any of 65 kinds) on a turntable with labels; states off/on/active/error, state changes at frames, and an optional mouse pointer that moves and clicks.';
+  'Paper isometric devices (mouse, keyboard, TV, router, phone, server, bulb, car, ... any of 65 kinds) with labels and animated motion; states off/on/active/error, state changes at frames, and an optional mouse pointer that moves and clicks.';
 export const tags = ['3d', 'devices', 'hardware', 'computer', 'network', 'electronics', 'pointer', 'mouse'];
 
 export const Device3DScene: React.FC<z.input<typeof device3DSceneSchema>> = (input) => {
   const p = device3DSceneSchema.parse(input);
   const f = useCurrentFrame();
-  const {fps} = useVideoConfig();
+  const {fps, width, height} = useVideoConfig();
   const theme = useTheme();
   const u = useUnit();
   const n = p.devices.length;
-  const columns = p.columns ?? Math.min(4, n);
-  const size = p.size ?? (n === 1 ? 640 : n === 2 ? 520 : n <= 4 ? 380 : 330);
+  const portrait = height > width;
+  const columns = Math.min(n, p.columns ?? (portrait ? 2 : 4));
+  const preferredSize = p.size ?? (n === 1 ? 640 : n === 2 ? 520 : n <= 4 ? 380 : 330);
+  const rows = Math.ceil(n / columns);
+  const size = portrait ? Math.min(preferredSize, (width / u - 140 - (columns - 1) * 30) / columns, height * 0.72 / (u * rows) - 45) : preferredSize;
 
   const stateAt = (i: number) => {
     let s = p.devices[i].state;

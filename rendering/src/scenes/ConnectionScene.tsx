@@ -6,10 +6,10 @@ import * as THREE from 'three';
 import {z} from 'zod';
 import {entrance} from '../animation';
 import {Device, deviceKindSchema, deviceStateSchema, type DeviceState} from '../components/Device';
-import {CameraAim, ContactShadow, Environment} from '../components/Device3D';
+import {PaperDeviceArt} from '../components/PaperDeviceArt';
+import {PAPER} from '../iso/iso';
 import {Pointer, pointerSchema} from '../components/Pointer';
 import {Flow3D, Waves3D} from '../components/three/effects';
-import {DeviceModel} from '../components/three/DeviceModel';
 import {makeLook, type V3} from '../components/three/parts';
 import {FlowPath, SignalWaves} from '../effects/flow';
 import {useTheme, useUnit} from '../theme';
@@ -70,7 +70,7 @@ export const connectionSceneSchema = z.object({
 });
 
 export const description =
-  'Devices (any of 65 kinds, 2D icons or realistic 3D) joined by animated links: packets, electric current, fibre light, binary bits or wireless waves. Link labels, device state changes at frames. Good for "how data/current travels from A to B".';
+  'Devices (any of 65 kinds, 2D icons or isometric paper art) joined by animated links: packets, electric current, fibre light, binary bits or wireless waves. Link labels, device state changes at frames. Good for "how data/current travels from A to B".';
 export const tags = ['network', 'connection', 'packet', 'current', 'fibre', 'wireless', 'wifi', 'circuit', '3d', '2d', 'devices'];
 
 type Parsed = z.output<typeof connectionSceneSchema>;
@@ -159,7 +159,7 @@ const LinkLabel: FC<{x: number; y: number; at: number; text: string}> = ({x, y, 
   const o = interpolate(f, [at, at + 10], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   return (
     <div style={{position: 'absolute', left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)', opacity: o, padding: `${5 * u}px ${14 * u}px`,
-      borderRadius: 10 * u, background: 'rgba(2,6,23,0.75)', color: '#fff', fontSize: 26 * u, fontWeight: 600, whiteSpace: 'nowrap'}}>
+      borderRadius: 10 * u, background: PAPER.card, border: `1px solid ${PAPER.track}`, color: PAPER.ink, fontSize: 26 * u, fontWeight: 600, whiteSpace: 'nowrap'}}>
       {text}
     </div>
   );
@@ -184,17 +184,14 @@ const Connection3D: FC<{p: Parsed}> = ({p}) => {
   const camY = 1.2 + p.tilt * 3;
   const aimY = 0.55;
 
-  // Same camera in plain three.js, to place HTML labels under each 3D device.
-  const project = useMemo(() => {
-    const cam = new THREE.PerspectiveCamera(fov, W / H, 0.1, 100);
-    cam.position.set(0, camY, camZ);
-    cam.lookAt(0, aimY, 0);
-    cam.updateMatrixWorld();
-    return (v: V3) => {
-      const q = new THREE.Vector3(...v).project(cam);
-      return {x: ((q.x + 1) / 2) * 100, y: ((1 - q.y) / 2) * 100};
-    };
-  }, [W, H, camY, camZ]);
+  const camera = new THREE.PerspectiveCamera(fov, W / H, 0.1, 100);
+  camera.position.set(0, camY, camZ);
+  camera.lookAt(0, aimY, 0);
+  camera.updateMatrixWorld();
+  const project = (v: V3) => {
+    const q = new THREE.Vector3(...v).project(camera);
+    return {x: ((q.x + 1) / 2) * 100, y: ((1 - q.y) / 2) * 100};
+  };
 
   const cablePath = (a: number, b: number, k: number): V3[] => {
     const dir = Math.sign(xs[b] - xs[a]) || 1;
@@ -207,26 +204,8 @@ const Connection3D: FC<{p: Parsed}> = ({p}) => {
 
   return (
     <AbsoluteFill>
-      <ThreeCanvas width={W} height={H} camera={{position: [0, camY, camZ], fov}} gl={{antialias: true}}>
-        <CameraAim y={aimY} />
-        <Environment />
-        <hemisphereLight args={['#dfe9ff', '#1a1f29', 0.6]} />
-        <directionalLight position={[2.5, 4, 3]} intensity={1.6} />
-        <directionalLight position={[-3, 2, -2]} intensity={0.8} color={theme.accent} />
-        {p.devices.map((d, i) => {
-          const local = f - appearOf(p, i);
-          const pop = spring({frame: local, fps, config: {damping: 14}});
-          const look = makeLook(states[i], Math.max(0, local) / fps, d.glow ?? theme.accent, d.color);
-          const shake = states[i] === 'error' ? Math.sin(local * 1.6) * 0.03 * Math.max(0, 1 - (local % fps) / 12) : 0;
-          return (
-            <group key={i} position={[xs[i] + shake, 0, 0]} scale={pop}>
-              <ContactShadow opacity={0.9} />
-              <group rotation={[0, -0.25 + (xs[i] / span) * -0.5, 0]}>
-                <DeviceModel kind={d.kind} look={look} />
-              </group>
-            </group>
-          );
-        })}
+      <ThreeCanvas width={W} height={H} camera={camera} gl={{antialias: true}}>
+        <ambientLight intensity={1.7} />
         {p.links.map((l, i) => {
           const path = paths[i];
           if (!path) return null;
@@ -250,12 +229,22 @@ const Connection3D: FC<{p: Parsed}> = ({p}) => {
         })}
       </ThreeCanvas>
       {p.devices.map((d, i) => {
-        if (!d.label) return null;
-        const at = project([xs[i], -0.12, 0.4]);
-        const o = interpolate(f - appearOf(p, i), [6, 16], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+        const local = f - appearOf(p, i);
+        const pop = spring({frame: local, fps, config: {damping: 14}});
+        const shake = states[i] === 'error' ? Math.sin(local * 1.6) * 4 * u * Math.max(0, 1 - (local % fps) / 12) : 0;
+        const at = project([xs[i], 0, 0]);
+        const top = project([xs[i], 1.78, 0]);
+        const h = (at.y - top.y) * H / 100;
+        const cx = at.x * W / 100 + shake;
+        const by = at.y * H / 100;
         return (
-          <span key={i} style={{position: 'absolute', left: `${at.x}%`, top: `${at.y}%`, transform: 'translate(-50%, 0)', opacity: o,
-            fontSize: 32 * u, fontWeight: 600, color: states[i] === 'off' ? theme.muted : theme.text, whiteSpace: 'nowrap'}}>{d.label}</span>
+          <div key={i} style={{position: 'absolute', inset: 0, opacity: Math.min(1, pop), pointerEvents: 'none'}}>
+            <PaperDeviceArt kind={d.kind} cx={cx} by={by} w={h * 1.26 * Math.max(0.01, pop)} h={h * Math.max(0.01, pop)}
+              u={u} state={states[i]} color={d.color} glow={d.glow} time={Math.max(0, local) / fps}/>
+            {d.label ? <span style={{position: 'absolute', left: cx, top: by + 14 * u,
+              transform: 'translateX(-50%)', maxWidth: W / n, textAlign: 'center', overflowWrap: 'anywhere',
+              fontSize: Math.min(30 * u, W / n / 5), fontWeight: 600, color: states[i] === 'off' ? theme.muted : theme.text}}>{d.label}</span> : null}
+          </div>
         );
       })}
       {p.links.map((l, i) => {

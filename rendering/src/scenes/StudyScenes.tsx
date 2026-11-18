@@ -1,10 +1,10 @@
-import {useCurrentFrame, useVideoConfig} from 'remotion';
+import {spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {z} from 'zod';
-import {ThreeCanvas} from '@remotion/three';
 import {entrance} from '../animation';
-import {InfrastructureObject} from '../components/InfrastructureObject';
 import {deviceKindSchema} from '../components/Device';
-import {StudioLights} from '../components/NetworkWorld';
+import {C30, ISO_COLORS, PAPER} from '../iso/iso';
+import {IsoArt, type ArtKind} from '../iso/objects';
+import {KINDS} from './IsoScene';
 import {StudyFrame} from '../components/StudyFrame';
 import {AnimatedText, Pulse, stripMarkup, textAnimationSchema} from '../motion';
 
@@ -33,12 +33,12 @@ export const DefinitionScene: React.FC<z.input<typeof definitionSceneSchema>> = 
   return <StudyFrame title={p.term} eyebrow="DEFINITION / THE CORE IDEA" footer={p.detail} footerAt={footerAt} textAnimation={p.textAnimation}>
     <div style={{display: 'flex', gap: 36, alignItems: 'stretch', marginTop: 65, minHeight: 290, maxHeight: 440}}>
       {p.abbreviation.trim() ? <div style={{flex: '0 0 250px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: Math.min(78, 300 / Math.max(4, p.abbreviation.length)), fontWeight: 750, color: '#76d3ed',
-        padding: 24, overflowWrap: 'anywhere', textAlign: 'center', background: '#16334a', borderRadius: 24,
+        fontSize: Math.min(78, 300 / Math.max(4, p.abbreviation.length)), fontWeight: 750, color: '#71569f',
+        padding: 24, overflowWrap: 'anywhere', textAlign: 'center', background: '#fffaf1', borderRadius: 24,
         boxSizing: 'border-box', ...entrance('pop', f - 8, fps, U)}}>{p.abbreviation}</div> : null}
-      <div style={{flex: 1, minWidth: 0, padding: '36px 44px', border: '1px solid #35576f', borderLeft: '5px solid #38bdf8',
-        borderRadius: 22, background: 'linear-gradient(125deg, #152d42, #122236)', display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
-        <div style={{fontSize: 15, letterSpacing: 3, fontWeight: 700, color: '#76d3ed', marginBottom: 22}}>IN PLAIN WORDS</div>
+      <div style={{flex: 1, minWidth: 0, padding: '36px 44px', border: '1px solid #35576f', borderLeft: '5px solid #71569f',
+        borderRadius: 22, background: '#fffaf1', display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
+        <div style={{fontSize: 15, letterSpacing: 3, fontWeight: 700, color: '#71569f', marginBottom: 22}}>IN PLAIN WORDS</div>
         <AnimatedText text={p.meaning} mode={p.textAnimation} startAt={p.revealAt} stagger={3}
           style={{fontSize: p.meaning.length > 220 ? 30 : p.meaning.length > 140 ? 36 : 43, lineHeight: 1.4, overflowWrap: 'anywhere'}} />
       </div>
@@ -47,6 +47,44 @@ export const DefinitionScene: React.FC<z.input<typeof definitionSceneSchema>> = 
 };
 
 /* ---------------------------------------------------------------- Example card */
+
+/** Device kind -> the paper iso object that shows it (a kind not listed is an iso kind of the same name,
+ *  a "tile:<icon>" is an upright card with that Lucide icon). Matches IsoScene, so the video keeps one look. */
+const ISO_FOR_DEVICE: Record<string, string> = {
+  computer: 'client', monitor: 'client', tablet: 'phone', smartwatch: 'tile:watch', mouse: 'tile:mouse', keyboard: 'tile:keyboard',
+  printer: 'tile:printer', webcam: 'camera', microphone: 'mic', gamepad: 'tile:gamepad-2',
+  modem: 'router', hub: 'router', switch: 'router', 'access-point': 'router', wifi: 'router',
+  firewall: 'tile:shield', security: 'lock', 'load-balancer': 'loadbalancer', 'cell-tower': 'tower', internet: 'globe',
+  'data-center': 'server', ethernet: 'tile:cable', cable: 'tile:cable', usb: 'tile:usb', coaxial: 'tile:cable',
+  fibre: 'tile:cable', 'undersea-cable': 'tile:waves-horizontal', ram: 'memory', battery: 'tile:battery', charging: 'tile:battery-charging',
+  bulb: 'lightbulb', plug: 'tile:plug', power: 'tile:zap', resistor: 'tile:cpu', capacitor: 'tile:cpu', motherboard: 'cpu',
+  office: 'building', isp: 'building', users: 'tile:users', robot: 'tile:bot', drone: 'tile:plane', hacker: 'tile:user-x', magnet: 'tile:magnet',
+};
+const isoFor = (kind: string): {kind: string; icon?: string} => {
+  const m = ISO_FOR_DEVICE[kind] ?? kind;
+  if (m.startsWith('tile:')) return {kind: 'tile', icon: m.slice(5)};
+  const preset = (KINDS as Record<string, {shape: string}>)[m];
+  return preset?.shape === 'art' ? {kind: m} : {kind: 'tile', icon: kind};
+};
+
+/** The example's object drawn as a paper iso object that floats in, then gently bobs. */
+const ExampleObject: React.FC<{kind: string}> = ({kind}) => {
+  const f = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  const {kind: k, icon} = isoFor(kind);
+  const preset = (KINDS as Record<string, {size: number[]; color: keyof typeof ISO_COLORS}>)[k];
+  const [gw, gd, gh] = preset.size;
+  const S = 500, inT = spring({frame: f - 6, fps, config: {damping: 14}});
+  const T = Math.min(300 / ((gw + gd) * C30), 300 / ((gw + gd) * 0.5 + gh));
+  const lift = (1 - inT) * 60 + Math.sin(f / 22) * 5;
+  const base = S * 0.78;
+  const o = {x: S / 2 - (gw - gd) * C30 * T / 2, y: base - (gw + gd) * 0.5 * T - lift};
+  return <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{flex: `0 0 ${S}px`, overflow: 'visible', opacity: inT}}>
+    <ellipse cx={S / 2} cy={base} rx={(gw + gd) * C30 * T * 0.42} ry={(gw + gd) * C30 * T * 0.1} fill={PAPER.shadow} />
+    <IsoArt kind={k as ArtKind} id="example" icon={icon} g={{x: 0, y: 0, z: 0, w: gw, d: gd, h: gh}} zz={0} T={T} o={o} sw={2.6}
+      color={ISO_COLORS[preset.color]} time={f / fps} />
+  </svg>;
+};
 
 export const exampleCardSceneSchema = z.object({
   title: z.string().default('Home Wi-Fi is a **LAN**'),
@@ -61,8 +99,9 @@ export const ExampleCardScene: React.FC<z.input<typeof exampleCardSceneSchema>> 
   const {fps} = useVideoConfig();
   const textAt = 18;
   return <StudyFrame title={p.title} eyebrow="REAL-LIFE EXAMPLE" footer={p.takeaway} footerAt={textAt + wordCount(p.example) * 3 + 15} textAnimation={p.textAnimation}>
-    <div style={{display: 'flex', alignItems: 'center', gap: 60, border: '1px solid #34536b', background: '#11273a', borderRadius: 24, ...entrance('fade-up', f, fps, U)}}>
-      <ThreeCanvas width={500} height={500} camera={{position: [0, 2, 5], fov: 45}}><StudioLights/><group position={[0, -0.8, 0]} rotation={[0, -0.3, 0]}><InfrastructureObject kind={p.kind}/></group></ThreeCanvas>
+    <div style={{display: 'flex', alignItems: 'center', gap: 60, border: '1px solid #34536b', background: '#fffaf1', borderRadius: 24, ...entrance('fade-up', f, fps, U)}}>
+      <ExampleObject kind={p.kind} />
+
       <AnimatedText text={p.example} mode={p.textAnimation} startAt={textAt} stagger={3}
         style={{fontSize: 42, lineHeight: 1.4, maxWidth: 730, paddingRight: 35}} />
     </div>
@@ -87,11 +126,11 @@ export const StepsScene: React.FC<z.input<typeof stepsSceneSchema>> = (input) =>
       const at = p.startAt + i * p.stagger;
       const last = i === p.steps.length - 1;
       return <div key={i} style={{display: 'flex', alignItems: 'center', gap: 28, ...entrance('slide-left', f - at, fps, U)}}>
-        <div style={{width: 65, textAlign: 'center', fontSize: 29, color: '#78d6ee', ...entrance('pop', f - at - 4, fps, U)}}>{i + 1}</div>
-        <div style={{flex: 1, padding: '18px 28px', background: '#173148', borderRadius: 12, fontSize: 29}}>
+        <div style={{width: 65, textAlign: 'center', fontSize: 29, color: '#71569f', ...entrance('pop', f - at - 4, fps, U)}}>{i + 1}</div>
+        <div style={{flex: 1, padding: '18px 28px', background: '#fffaf1', borderRadius: 12, fontSize: 29}}>
           <AnimatedText as="span" text={s} mode={p.textAnimation} startAt={at + 6} stagger={3} />
         </div>
-        <span style={{width: 50, color: last ? '#71e3af' : '#88b8cc', fontSize: 27, ...entrance(last ? 'pop' : 'slide-down', f - at - 12, fps, U)}}>{last ? '✓' : '↓'}</span>
+        <span style={{width: 50, color: last ? '#35784e' : '#71569f', fontSize: 27, ...entrance(last ? 'pop' : 'slide-down', f - at - 12, fps, U)}}>{last ? '✓' : '↓'}</span>
       </div>;
     })}</div>
   </StudyFrame>;
@@ -121,12 +160,12 @@ export const QuizScene: React.FC<z.input<typeof quizSceneSchema>> = (input) => {
     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 40}}>{p.options.map((o, i) => {
       const correct = answered && i === p.correctIndex;
       return <div key={i} style={{...entrance('pop', f - p.optionsAt - i * p.optionStagger, fps, U)}}>
-        <Pulse at={i === p.correctIndex ? [p.answerAt] : []} color="#74e3b6" style={{display: 'block'}}>
-          <div style={{padding: '42px 30px', fontSize: 36, border: `2px solid ${correct ? '#74e3b6' : '#38566e'}`, borderRadius: 18,
-            background: correct ? '#16463d' : '#142b40', opacity: answered && !correct ? 0.45 : 1}}>
-            <span style={{color: '#8faabe', marginRight: 30}}>{'ABCD'[i]}</span>
+        <Pulse at={i === p.correctIndex ? [p.answerAt] : []} color="#35784e" style={{display: 'block'}}>
+          <div style={{padding: '42px 30px', fontSize: 36, border: `2px solid ${correct ? '#35784e' : '#38566e'}`, borderRadius: 18,
+            background: correct ? '#e0efdb' : '#fffaf1', opacity: answered && !correct ? 0.45 : 1}}>
+            <span style={{color: '#514b59', marginRight: 30}}>{'ABCD'[i]}</span>
             <AnimatedText as="span" text={o} mode="none" />
-            {correct ? <span style={{marginLeft: 16, color: '#74e3b6', display: 'inline-block', ...entrance('pop', f - p.answerAt, fps, U)}}>✓</span> : null}
+            {correct ? <span style={{marginLeft: 16, color: '#35784e', display: 'inline-block', ...entrance('pop', f - p.answerAt, fps, U)}}>✓</span> : null}
           </div>
         </Pulse>
       </div>;
@@ -150,8 +189,8 @@ export const SummaryScene: React.FC<z.input<typeof summarySceneSchema>> = (input
   return <StudyFrame title={p.title} eyebrow="RECAP / TAKE THESE WITH YOU" textAnimation={p.textAnimation}>
     <div style={{display: 'flex', flexDirection: 'column', gap: 20, marginTop: 25}}>{p.points.map((point, i) => {
       const at = p.startAt + i * p.stagger;
-      return <div key={i} style={{padding: '22px 30px', fontSize: 34, background: '#142d40', borderRadius: 14, display: 'flex', gap: 26, ...entrance('slide-left', f - at, fps, U)}}>
-        <span style={{color: '#71e3af', display: 'inline-block', ...entrance('pop', f - at - 5, fps, U)}}>✓</span>
+      return <div key={i} style={{padding: '22px 30px', fontSize: 34, background: '#fffaf1', borderRadius: 14, display: 'flex', gap: 26, ...entrance('slide-left', f - at, fps, U)}}>
+        <span style={{color: '#35784e', display: 'inline-block', ...entrance('pop', f - at - 5, fps, U)}}>✓</span>
         <AnimatedText as="span" text={point} mode={p.textAnimation} startAt={at + 6} stagger={3} />
       </div>;
     })}</div>

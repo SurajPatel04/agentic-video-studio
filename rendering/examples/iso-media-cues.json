@@ -1,0 +1,385 @@
+{
+  "width": 1280,
+  "height": 720,
+  "fps": 24,
+  "brand": false,
+  "defaultTransition": {
+    "type": "none"
+  },
+  "scenes": [
+    {
+      "id": "broadcast",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "A breaking story goes live",
+        "objects": [
+          {
+            "id": "studio",
+            "kind": "studiocamera",
+            "label": "Studio",
+            "at": [
+              -4.5,
+              4.5
+            ],
+            "badge": "onair"
+          },
+          {
+            "id": "stream",
+            "kind": "livestream",
+            "label": "Livestream",
+            "at": [
+              0,
+              0
+            ],
+            "badge": "live"
+          },
+          {
+            "id": "station",
+            "kind": "tv",
+            "label": "TV station",
+            "at": [
+              4.5,
+              -4.5
+            ],
+            "badge": "breaking"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "at": 0.2,
+            "target": "station",
+            "rating": {
+              "to": 24
+            }
+          },
+          {
+            "at": 0.57,
+            "target": "stream",
+            "badge": "nosignal"
+          }
+        ],
+        "sound": false
+      }
+    },
+    {
+      "id": "edit",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "Editors decide what gets published",
+        "objects": [
+          {
+            "id": "story",
+            "kind": "newspaper",
+            "label": "Lead story",
+            "at": [
+              -4.5,
+              4.5
+            ],
+            "badge": "draft"
+          },
+          {
+            "id": "alternate",
+            "kind": "file",
+            "label": "Alternate story",
+            "at": [
+              0,
+              0
+            ],
+            "badge": "review"
+          },
+          {
+            "id": "source",
+            "kind": "mic",
+            "label": "Source interview",
+            "at": [
+              4.5,
+              -4.5
+            ],
+            "badge": "offrecord"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "at": 0.25,
+            "target": "story",
+            "badge": "review"
+          },
+          {
+            "at": 0.47,
+            "target": "story",
+            "badge": "approved"
+          },
+          {
+            "at": 0.47,
+            "target": "alternate",
+            "badge": "rejected"
+          },
+          {
+            "at": 0.7,
+            "target": "story",
+            "badge": "published"
+          }
+        ],
+        "sound": false
+      }
+    },
+    {
+      "id": "verification",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "A claim is checked and corrected",
+        "objects": [
+          {
+            "id": "claim",
+            "kind": "socialpost",
+            "label": "Original claim",
+            "at": [
+              -4.5,
+              4.5
+            ],
+            "badge": "factcheck"
+          },
+          {
+            "id": "context",
+            "kind": "file",
+            "label": "Missing context",
+            "at": [
+              0,
+              0
+            ],
+            "badge": "misleading"
+          },
+          {
+            "id": "release",
+            "kind": "pressrelease",
+            "label": "Press release",
+            "at": [
+              4.5,
+              -4.5
+            ],
+            "badge": "embargo"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "at": 0.3,
+            "target": "claim",
+            "badge": "false"
+          },
+          {
+            "at": 0.54,
+            "target": "context",
+            "badge": "verified"
+          },
+          {
+            "at": 0.66,
+            "target": "claim",
+            "badge": "correction"
+          },
+          {
+            "at": 0.66,
+            "target": "release",
+            "badge": "released"
+          }
+        ],
+        "sound": false
+      }
+    },
+    {
+      "id": "distribution",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "Reach, engagement, and ad revenue",
+        "objects": [
+          {
+            "id": "ad",
+            "kind": "sponsoredpost",
+            "label": "Paid placement",
+            "at": [
+              -4.5,
+              4.5
+            ],
+            "badge": "sponsored"
+          },
+          {
+            "id": "post",
+            "kind": "socialpost",
+            "label": "Social post",
+            "at": [
+              0,
+              0
+            ],
+            "badge": "aigenerated"
+          },
+          {
+            "id": "feed",
+            "kind": "scrollingfeed",
+            "label": "Share activity",
+            "at": [
+              4.5,
+              -4.5
+            ],
+            "badge": "trending"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "at": 0.13,
+            "target": "ad",
+            "revenue": {
+              "to": 5000,
+              "prefix": "$"
+            }
+          },
+          {
+            "at": 0.13,
+            "target": "post",
+            "reach": {
+              "to": 2000000
+            }
+          },
+          {
+            "at": 0.13,
+            "target": "feed",
+            "engage": {
+              "likes": 900,
+              "comments": 85,
+              "shares": 120
+            }
+          }
+        ],
+        "sound": false
+      }
+    },
+    {
+      "id": "audience",
+      "component": "IsoScene",
+      "durationInFrames": 144,
+      "props": {
+        "title": "What did the audience take away?",
+        "objects": [
+          {
+            "id": "coverage",
+            "kind": "tv",
+            "label": "Coverage",
+            "at": [
+              -4.5,
+              4.5
+            ],
+            "badge": "none"
+          },
+          {
+            "id": "poll",
+            "kind": "comments",
+            "label": "Audience poll",
+            "at": [
+              0,
+              0
+            ],
+            "badge": "none"
+          },
+          {
+            "id": "credibility",
+            "kind": "newspaper",
+            "label": "Credibility",
+            "at": [
+              4.5,
+              -4.5
+            ],
+            "badge": "none"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "at": 0.12,
+            "target": "coverage",
+            "compare": {
+              "reach": 80,
+              "understood": 30
+            }
+          },
+          {
+            "at": 0.12,
+            "target": "poll",
+            "survey": {
+              "labels": [
+                "Clear",
+                "Somewhat clear",
+                "Unclear"
+              ],
+              "values": [
+                54,
+                30,
+                16
+              ]
+            }
+          },
+          {
+            "at": 0.12,
+            "target": "credibility",
+            "trust": {
+              "to": 75
+            }
+          },
+          {
+            "at": 0.52,
+            "target": "poll",
+            "sentiment": [
+              60,
+              25,
+              15
+            ]
+          },
+          {
+            "at": 0.52,
+            "target": "credibility",
+            "trust": {
+              "to": 40
+            }
+          }
+        ],
+        "sound": false
+      }
+    },
+    {
+      "id": "cycle",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "The story leaves the news cycle",
+        "objects": [
+          {
+            "id": "story",
+            "kind": "newspaper",
+            "label": "Yesterday’s story",
+            "at": [
+              -4.5,
+              4.5
+            ],
+            "badge": "none"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "at": 0.15,
+            "target": "story",
+            "cycle": {
+              "hours": 24
+            }
+          }
+        ],
+        "sound": false
+      }
+    }
+  ]
+}

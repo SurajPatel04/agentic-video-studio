@@ -1,0 +1,195 @@
+{
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "brand": false,
+  "scenes": [
+    {
+      "id": "badges-0",
+      "component": "IsoScene",
+      "durationInFrames": 300,
+      "props": {
+        "title": "Cache lookup",
+        "objects": [
+          {
+            "id": "target",
+            "kind": "cache",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "target": "target",
+            "at": 0.0,
+            "badge": "checking"
+          },
+          {
+            "target": "target",
+            "at": 0.2,
+            "badge": "found"
+          },
+          {
+            "target": "target",
+            "at": 0.4,
+            "badge": "miss"
+          },
+          {
+            "target": "target",
+            "at": 0.6,
+            "badge": "stale"
+          },
+          {
+            "target": "target",
+            "at": 0.8,
+            "badge": "fresh"
+          }
+        ]
+      }
+    },
+    {
+      "id": "badges-1",
+      "component": "IsoScene",
+      "durationInFrames": 240,
+      "props": {
+        "title": "Service health",
+        "objects": [
+          {
+            "id": "target",
+            "kind": "server",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "target": "target",
+            "at": 0.0,
+            "badge": "offline"
+          },
+          {
+            "target": "target",
+            "at": 0.25,
+            "badge": "online"
+          },
+          {
+            "target": "target",
+            "at": 0.5,
+            "badge": "warning"
+          },
+          {
+            "target": "target",
+            "at": 0.75,
+            "badge": "error"
+          }
+        ]
+      }
+    },
+    {
+      "id": "badges-2",
+      "component": "IsoScene",
+      "durationInFrames": 300,
+      "props": {
+        "title": "Worker activity",
+        "objects": [
+          {
+            "id": "target",
+            "kind": "server",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "target": "target",
+            "at": 0.0,
+            "badge": "loading"
+          },
+          {
+            "target": "target",
+            "at": 0.2,
+            "badge": "queued"
+          },
+          {
+            "target": "target",
+            "at": 0.4,
+            "badge": "processing"
+          },
+          {
+            "target": "target",
+            "at": 0.6,
+            "badge": "waiting"
+          },
+          {
+            "target": "target",
+            "at": 0.8,
+            "badge": "done"
+          }
+        ]
+      }
+    },
+    {
+      "id": "badges-3",
+      "component": "IsoScene",
+      "durationInFrames": 300,
+      "props": {
+        "title": "Access and verification",
+        "objects": [
+          {
+            "id": "target",
+            "kind": "phone",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "target": "target",
+            "at": 0.0,
+            "badge": "blocked"
+          },
+          {
+            "target": "target",
+            "at": 0.2,
+            "badge": "locked"
+          },
+          {
+            "target": "target",
+            "at": 0.4,
+            "badge": "unlocked"
+          },
+          {
+            "target": "target",
+            "at": 0.6,
+            "badge": "verified"
+          },
+          {
+            "target": "target",
+            "at": 0.8,
+            "badge": {
+              "icon": "bell",
+              "text": "New order",
+              "tone": "good"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

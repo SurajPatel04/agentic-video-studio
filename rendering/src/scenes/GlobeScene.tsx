@@ -1,3 +1,4 @@
+import {PAPER} from '../iso/iso';
 import {z} from 'zod';
 import {useThree} from '@react-three/fiber';
 import {ThreeCanvas} from '@remotion/three';
@@ -409,7 +410,7 @@ export const GlobeScene: React.FC<GlobeSceneProps> = ({
   const spinY = yaw + spin;
   // In follow mode zoom in a little mid-flight (closer camera = larger globe).
   // Scaled so the globe fits the band rather than the full frame height.
-  const camZ = (cameraDistance - zoom) * (height / bandH);
+  const camZ = (cameraDistance - zoom) * (height / Math.min(bandH, width));
 
   const globeIn = spring({frame, fps, config: {damping: 200}});
   const scale = interpolate(globeIn, [0, 1], [0.85, 1]);
@@ -436,8 +437,8 @@ export const GlobeScene: React.FC<GlobeSceneProps> = ({
 
   return (
     <AbsoluteFill>
-      {showStars && <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 50%, #0d2035 0%, #020611 72%)'}}>
-        {Array.from({length: 130}, (_, i) => <div key={i} style={{position: 'absolute', left: `${((i * 73.137) % 100)}%`, top: `${((i * 37.719) % 100)}%`, width: (i % 4 === 0 ? 2 : 1) * u, height: (i % 4 === 0 ? 2 : 1) * u, borderRadius: '50%', background: '#c9def7', opacity: 0.15 + (i % 5) * 0.1}}/>)}
+      {showStars && <AbsoluteFill style={{pointerEvents: 'none'}}>
+        {Array.from({length: 130}, (_, i) => <div key={i} style={{position: 'absolute', left: `${((i * 73.137) % 100)}%`, top: `${((i * 37.719) % 100)}%`, width: (i % 4 === 0 ? 2 : 1) * u, height: (i % 4 === 0 ? 2 : 1) * u, borderRadius: '50%', background: PAPER.inkSoft, opacity: 0.15 + (i % 5) * 0.1}}/>)}
       </AbsoluteFill>}
       <AbsoluteFill>
         <ThreeCanvas width={width} height={height} camera={{position: [0, 0, camZ], fov: FOV}}>
@@ -505,8 +506,9 @@ export const GlobeScene: React.FC<GlobeSceneProps> = ({
                 top: l.y - 34 * u,
                 padding: `${4 * u}px ${12 * u}px`,
                 borderRadius: 8 * u,
-                background: 'rgba(2,6,23,0.7)',
-                color: '#ffffff',
+                background: PAPER.card,
+                color: PAPER.ink,
+                border: `1px solid ${PAPER.track}`,
                 fontSize: 26 * u,
                 fontWeight: 600,
                 whiteSpace: 'nowrap',

@@ -81,15 +81,16 @@ export const IsoCylinder: FC<Space & {cx: number; cy: number; z: number; r: numb
 };
 
 /** A little person (pill body + round head), feet at `at`. */
-export const IsoPerson: FC<{at: Pt; size: number; color: string; sw: number; scale?: number; opacity?: number}> = ({
-  at, size: s, color, sw, scale = 1, opacity = 1,
+export const IsoPerson: FC<{at: Pt; size: number; color: string; sw: number; scale?: number; opacity?: number; facing?:number}> = ({
+  at, size: s, color, sw, scale = 1, opacity = 1, facing,
 }) => {
   const bh = s * 1.3;
   return (
     <g transform={`translate(${at.x} ${at.y}) scale(${scale})`} opacity={opacity}>
       <ellipse cx={0} cy={0} rx={s * 0.55} ry={s * 0.2} fill={PAPER.shadow} />
       <rect x={-s / 2} y={-bh} width={s} height={bh} rx={s / 2} fill={color} stroke={PAPER.ink} strokeWidth={sw * 0.75} />
-      <circle cx={0} cy={-bh - s * 0.48} r={s * 0.42} fill="#fffaf2" stroke={PAPER.ink} strokeWidth={sw * 0.75} />
+      <circle cx={s*(facing ?? 0)*0.1} cy={-bh - s * 0.48} r={s * 0.42} fill="#fffaf2" stroke={PAPER.ink} strokeWidth={sw * 0.75} />
+      {facing !== undefined && <circle cx={s*facing*0.33} cy={-bh-s*0.5} r={s*0.075} fill={PAPER.ink}/>}
     </g>
   );
 };
@@ -149,7 +150,7 @@ const wrap = (text: string, max: number) => {
 export const noteSize = (text: string, u: number) => {
   const lines = wrap(text, 26);
   const fs = 26 * u, lh = fs * 1.25;
-  return {lines, fs, lh, w: Math.max(...lines.map((l) => l.length)) * fs * 0.56 + 44 * u, h: lines.length * lh + 30 * u};
+  return {lines, fs, lh, w: Math.max(...lines.map((l) => l.length)) * fs * 0.6 + 48 * u, h: lines.length * lh + 30 * u}; // bold text: 0.6 em per character
 };
 
 /** Speech bubble pointing at `at`: above it (pointer down), or to its right / left (pointer sideways). */
@@ -183,11 +184,11 @@ export const Note: FC<{at: Pt; text: string; u: number; scale: number; side?: 'a
 };
 
 /** Small rounded label (link labels, crowd labels). */
-export const Tag: FC<{at: Pt; text: string; u: number; opacity?: number; children?: ReactNode}> = ({at, text, u, opacity = 1}) => {
+export const Tag: FC<{at: Pt; text: string; u: number; opacity?: number; fill?: string; children?: ReactNode}> = ({at, text, u, fill = PAPER.card, opacity = 1}) => {
   const fs = 20 * u, w = text.length * fs * 0.62 + 26 * u, h = 36 * u;
   return (
     <g transform={`translate(${at.x} ${at.y})`} opacity={opacity}>
-      <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={h / 2} fill={PAPER.card} stroke={PAPER.ink} strokeWidth={2.2 * u} />
+      <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={h / 2} fill={fill} stroke={PAPER.ink} strokeWidth={2.2 * u} />
       <text x={0} y={fs * 0.36} textAnchor="middle" fontFamily={PAPER.font} fontWeight={700} fontSize={fs} fill={PAPER.ink}>{text}</text>
     </g>
   );

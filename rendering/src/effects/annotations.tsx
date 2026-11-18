@@ -5,6 +5,7 @@
  *   <Mark kind="check" at={{x: 50, y: 50}} />                          self-drawing ✓ / ✗
  *   <Badge at={{x: 30, y: 30}} text={1} />                             numbered step badge
  */
+import {PAPER} from '../iso/iso';
 import type {FC} from 'react';
 import {interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {z} from 'zod';
@@ -66,7 +67,7 @@ export const Callout: FC<CalloutProps> = (input) => {
       </svg>
       <div style={{position: 'absolute', left: x2, top: y2, transform: `translate(${right ? 0 : -100}%, -50%) scale(${box})`,
         transformOrigin: right ? 'left center' : 'right center', opacity: box, padding: `${10 * u}px ${18 * u}px`, borderRadius: 14 * u,
-        background: 'rgba(2,6,23,0.85)', border: `${3 * u}px solid ${color}`, color: theme.text, fontSize: p.size * u, fontWeight: 600,
+        background: PAPER.card, border: `${3 * u}px solid ${color}`, color: theme.text, fontSize: p.size * u, fontWeight: 600,
         whiteSpace: 'nowrap', boxShadow: `0 ${8 * u}px ${30 * u}px rgba(0,0,0,0.35)`}}>
         <AnimatedText text={p.label} mode="none" as="span" markColor={color} />
       </div>
@@ -239,7 +240,7 @@ export const Tooltip: FC<TooltipProps> = (input) => {
   const side = p.side !== 'auto' ? p.side : p.at.y < 22 ? 'bottom' : p.at.x > 85 ? 'left' : p.at.x < 15 ? 'right' : 'top';
   const pop = spring({frame: f - p.startAt, fps, config: {damping: 15}});
   const out = p.hideAt !== undefined ? 1 - progress(f, p.hideAt, 8) : 1;
-  const bg = p.color ?? '#0f172a';
+  const bg = p.color ?? PAPER.card;
   const gap = 16 * u;
   const tr = {top: `translate(-50%, calc(-100% - ${gap}px))`, bottom: `translate(-50%, ${gap}px)`, left: `translate(calc(-100% - ${gap}px), -50%)`, right: `translate(${gap}px, -50%)`}[side];
   const arrow = {

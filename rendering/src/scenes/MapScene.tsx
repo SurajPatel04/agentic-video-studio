@@ -1,3 +1,4 @@
+import {PAPER} from '../iso/iso';
 import {Easing, interpolate, useCurrentFrame} from 'remotion';
 import {z} from 'zod';
 import {geoArea, geoCentroid, geoGraticule10, geoNaturalEarth1, geoPath} from 'd3-geo';
@@ -41,10 +42,10 @@ export const mapSceneSchema = z.object({
   startAt: nonnegative.default(10),
   stagger: nonnegative.default(14),
   drawFrames: positive.default(38),
-  oceanColor: z.string().default('#091c2e'),
-  landColor: z.string().default('#173b52'),
+  oceanColor: z.string().default('#e6eff2'),
+  landColor: z.string().default('#b8d6c0'),
   highlightColor: z.string().optional(),
-  borderColor: z.string().default('#2d5268'),
+  borderColor: z.string().default('#7b9786'),
   routeColor: z.string().optional(),
   footer: z.string().default('Country outlines are from Natural Earth; this is a visualization, not a survey map.'),
 });
@@ -148,7 +149,7 @@ export const MapScene: React.FC<z.input<typeof mapSceneSchema>> = (input) => {
 
         <rect x={0} y={0} width={1440} height={575} rx={18} fill={p.oceanColor} />
         <rect x={0} y={0} width={1440} height={575} rx={18} fill="url(#map-ocean-glow)" />
-        {p.showGraticule ? <path d={path(geoGraticule10()) ?? ''} fill="none" stroke="#7fb4cf" strokeOpacity={0.11} strokeWidth={1} /> : null}
+        {p.showGraticule ? <path d={path(geoGraticule10()) ?? ''} fill="none" stroke="#7fb4cf" strokeOpacity={0.28} strokeWidth={1} /> : null}
 
         {LAND.map((country, i) => {
           const active = highlighted.has(normalize(country.properties.name));
@@ -185,7 +186,7 @@ export const MapScene: React.FC<z.input<typeof mapSceneSchema>> = (input) => {
           return (
             <g key={city.name} opacity={reveal}>
               <circle cx={city.x} cy={city.y} r={13} fill={routeColor} fillOpacity={0.16} />
-              <circle cx={city.x} cy={city.y} r={5.5} fill={routeColor} stroke="#071522" strokeWidth={2} />
+              <circle cx={city.x} cy={city.y} r={5.5} fill={routeColor} stroke={PAPER.card} strokeWidth={2} />
               {p.showLabels ? (
                 <text
                   x={city.x + 13}
@@ -193,7 +194,7 @@ export const MapScene: React.FC<z.input<typeof mapSceneSchema>> = (input) => {
                   fill={theme.text}
                   fontSize={18}
                   fontWeight={600}
-                  style={{paintOrder: 'stroke', stroke: '#071522', strokeWidth: 7, strokeLinejoin: 'round'}}
+                  style={{paintOrder: 'stroke', stroke: PAPER.card, strokeWidth: 7, strokeLinejoin: 'round'}}
                 >
                   {city.name}
                 </text>

@@ -1,6 +1,8 @@
 import {ThreeCanvas} from '@remotion/three';
 import {z} from 'zod';
-import {CityWorld} from '../components/CityWorld';
+import {OrthographicCamera} from 'three';
+import {WorldIcons, type WorldIcon} from '../components/WorldIcons';
+import {CityWorld, citySites, cityKinds} from '../components/CityWorld';
 import {StudioLights} from '../components/NetworkWorld';
 import {StudyFrame} from '../components/StudyFrame';
 import {useTheme} from '../theme';
@@ -17,9 +19,20 @@ export const description = 'An overhead 3D city connected by a progressively ill
 export const tags = ['MAN', 'city', 'fibre', 'ring'];
 export const CityNetworkScene: React.FC<z.input<typeof cityNetworkSceneSchema>> = (input) => {
   const p = cityNetworkSceneSchema.parse(input); const theme = useTheme();
+  const width = 1440, height = 575;
+  const camera = new OrthographicCamera(-width / 2, width / 2, height / 2, -height / 2, 0.1, 1000);
+  camera.position.set(0, 20, 16);
+  camera.lookAt(0, 0, 0);
+  camera.zoom = 29;
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+  const positions = citySites(p.buildingCount);
+  const icons: WorldIcon[] = positions.map((position, i) => ({kind: cityKinds[i % cityKinds.length], position, size: 3.9 + i % 3 * 0.6}));
+  icons.push({kind: 'building', position: [0, 0, 0], size: 5});
   return <StudyFrame title={p.title} eyebrow="MAN / METROPOLITAN AREA NETWORK" footer={p.caption}>
-    <ThreeCanvas width={1440} height={575} orthographic camera={{position: [0, 20, 16], zoom: 29}}>
-      <StudioLights/><CityWorld {...p} color={theme.accent}/>
+    <ThreeCanvas width={width} height={height} camera={camera}>
+      <StudioLights/><CityWorld {...p} positions={positions} color={theme.accent}/>
     </ThreeCanvas>
+    <WorldIcons camera={camera} width={width} height={height} icons={icons}/>
   </StudyFrame>;
 };

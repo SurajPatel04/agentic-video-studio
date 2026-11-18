@@ -1,3 +1,8 @@
+import {useCurrentFrame} from 'remotion';
+import {OrthographicCamera} from 'three';
+import {WorldIcons} from '../components/WorldIcons';
+import {networkLayout} from '../components/networkLayout';
+import {PAPER} from '../iso/iso';
 import {ThreeCanvas} from '@remotion/three';
 import {z} from 'zod';
 import {StudyFrame} from '../components/StudyFrame';
@@ -28,11 +33,25 @@ const explanations = {
 export const NetworkScene: React.FC<NetworkSceneProps> = (input) => {
   const p = networkSceneSchema.parse(input);
   const theme = useTheme();
+  const frame = useCurrentFrame();
+  const width = 1440, height = 575, zoom = 105;
+  const camera = new OrthographicCamera(-width / 2, width / 2, height / 2, -height / 2, 0.1, 1000);
+  camera.position.set(0, 8, 10);
+  camera.lookAt(0, 0, 0);
+  camera.zoom = zoom;
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+  const layout = networkLayout(p.topology, p.devices.length);
+  const icons = layout.positions.map((position, i) => {
+    const opacity = Math.max(0, Math.min(1, (frame - i * 3) / 18));
+    return {kind: p.devices[i], position, size: (p.devices.length > 6 ? 1.28 : 1.68) * (0.7 + 0.3 * opacity), opacity};
+  });
   return <StudyFrame title={p.title} eyebrow={`LAN / ${p.topology.toUpperCase()} TOPOLOGY`} footer={p.caption ?? explanations[p.topology]}>
-    <ThreeCanvas width={1440} height={575} orthographic camera={{position: [0, 8, 10], zoom: 105}}>
+    <ThreeCanvas width={width} height={height} camera={camera}>
       <StudioLights/>
-      <NetworkWorld topology={p.topology} kinds={p.devices} startAt={p.startAt} stagger={p.stagger} drawFrames={p.drawFrames} packetFrames={p.packetFrames} accent={theme.accent} effect={p.effect}/>
+      <NetworkWorld layout={layout} startAt={p.startAt} stagger={p.stagger} drawFrames={p.drawFrames} packetFrames={p.packetFrames} accent={theme.accent} effect={p.effect}/>
     </ThreeCanvas>
-    <div style={{position: 'absolute', top: 12, right: 0, border: '1px solid #355269', borderRadius: 12, padding: '12px 20px', fontSize: 19, color: '#c5dce9', background: '#102236'}}>{p.effect === 'current' ? '● Moving dots = electric current' : p.effect === 'light' ? '● Moving light = data on fibre' : '● Moving box = data packet'}</div>
+    <WorldIcons camera={camera} width={width} height={height} icons={icons}/>
+    <div style={{zIndex: 300, position: 'absolute', top: 12, right: 0, border: `1px solid ${PAPER.track}`, borderRadius: 12, padding: '12px 20px', fontSize: 19, color: PAPER.ink, background: PAPER.card}}>{p.effect === 'current' ? '● Moving dots = electric current' : p.effect === 'light' ? '● Moving light = data on fibre' : '● Moving box = data packet'}</div>
   </StudyFrame>;
 };

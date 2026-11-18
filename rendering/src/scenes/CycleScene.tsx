@@ -1,3 +1,4 @@
+import {PAPER} from '../iso/iso';
 import {Easing, interpolate, useCurrentFrame} from 'remotion';
 import {useId} from 'react';
 import {z} from 'zod';
@@ -66,7 +67,7 @@ export const CycleScene: React.FC<z.input<typeof cycleSceneSchema>> = (input) =>
               <path d="M 0 0 L 10 5 L 0 10 z" fill={theme.accent} />
             </marker>
           </defs>
-          <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="none" stroke="#29465c" strokeWidth={2} strokeDasharray="7 8" />
+          <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="none" stroke={PAPER.track} strokeWidth={2} strokeDasharray="7 8" />
           {p.steps.map((_step, i) => {
             const startAngle = -90 + sign * (i * angleStep + arrowGap);
             const endAngle = -90 + sign * ((i + 1) * angleStep - arrowGap);
@@ -118,8 +119,8 @@ export const CycleScene: React.FC<z.input<typeof cycleSceneSchema>> = (input) =>
                 textAlign: 'center',
                 padding: '8px 12px',
                 borderRadius: 14,
-                border: `2px solid ${active ? theme.accent : '#35576f'}`,
-                background: active ? `${theme.accent}20` : '#132b3f',
+                border: `2px solid ${active ? theme.accent : PAPER.inkSoft}`,
+                background: active ? `${theme.accent}20` : PAPER.card,
                 opacity: reveal,
                 transform: `translateY(${(1 - reveal) * 16}px)`,
                 boxShadow: '0 8px 22px rgba(0,0,0,0.18)',

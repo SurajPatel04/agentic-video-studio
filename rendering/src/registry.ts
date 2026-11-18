@@ -1,3 +1,9 @@
+import {algorithmLessons} from './scenes/AlgorithmLessons';
+import {mathLessons} from './scenes/MathLessons';
+import * as TransactionDB from './scenes/TransactionScene';
+import * as SchemaDB from './scenes/SchemaScene';
+import * as JoinDB from './scenes/JoinScene';
+import * as TableDB from './scenes/TableScene';
 import type {ComponentType} from 'react';
 import {ZodObject, type ZodType} from 'zod';
 export {overlaysSchema, overlaySchema} from './effects/overlays';
@@ -142,6 +148,12 @@ const baseCatalog: Record<string, SceneEntry> = {
   RaceScene: {...Race, component: Race.RaceScene, schema: Race.raceSceneSchema},
   LiveDashboardScene: {...LiveDashboard, component: LiveDashboard.LiveDashboardScene, schema: LiveDashboard.liveDashboardSceneSchema},
   MapTrackingScene: {...MapTracking, component: MapTracking.MapTrackingScene, schema: MapTracking.mapTrackingSceneSchema},
+  TableScene: {...TableDB, component: TableDB.TableScene, schema: TableDB.tableSceneSchema},
+  JoinScene: {...JoinDB, component: JoinDB.JoinScene, schema: JoinDB.joinSceneSchema},
+  SchemaScene: {...SchemaDB, component: SchemaDB.SchemaScene, schema: SchemaDB.schemaSceneSchema},
+  TransactionScene: {...TransactionDB, component: TransactionDB.TransactionScene, schema: TransactionDB.transactionSceneSchema},
+  ...algorithmLessons,
+  ...mathLessons,
   // <promoted-scenes> (the backend adds promoted agent-made scenes above this line)
   ...stagingCatalog,
 };

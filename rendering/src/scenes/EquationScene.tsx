@@ -82,7 +82,7 @@ export const EquationScene: React.FC<z.input<typeof equationSceneSchema>> = (inp
                 border: `1.5px solid ${emphasized ? theme.accent : 'transparent'}`,
                 borderLeft: `5px solid ${emphasized ? theme.accent : '#2a4358'}`,
                 borderRadius: 14,
-                background: emphasized ? `${theme.accent}18` : '#122638',
+                background: emphasized ? `${theme.accent}18` : '#fffaf1',
                 opacity: reveal * (dimmed ? 0.42 : 1),
                 transform: `translateY(${(1 - reveal) * 18}px)`,
               }}
@@ -92,7 +92,7 @@ export const EquationScene: React.FC<z.input<typeof equationSceneSchema>> = (inp
               </div>
               <div style={{flex: 1, minWidth: 0}}>
                 <div
-                  style={{fontSize, lineHeight: 1.15, color: emphasized ? theme.text : '#d7e4ee', overflow: 'hidden'}}
+                  style={{fontSize, lineHeight: 1.15, color: emphasized ? theme.text : '#514b59', overflow: 'hidden'}}
                   dangerouslySetInnerHTML={{__html: rendered[i]}}
                 />
                 {step.note ? (

@@ -8,6 +8,7 @@
  * Rows keep their identity through the first column (or "key"). Forgiving input: rows as objects,
  * stage names/ops in plain words, "output"/"result" tables.
  */
+import {arrowHead} from './dsaKit';
 import type {FC} from 'react';
 import {spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {z} from 'zod';
@@ -156,11 +157,13 @@ export const PipelineScene: FC<z.input<typeof pipelineSceneSchema>> = (input) =>
   const colK = (c: string) => { const inB = before.columns.includes(c), inA = after.columns.includes(c); const g = ease(clamp01((t - 0.45) / 0.45)); return inB && inA ? 1 : inA ? g : 1 - g; };
 
   // layout
+  const portrait = H > W;
   const ROW = 66 * u, HEAD = 62 * u;
-  const tabW = Math.min(W - 260 * u, Math.max(760 * u, cols.length * 250 * u));
+  const tabW = Math.min(W - (portrait ? 104 : 260) * u, Math.max(760 * u, cols.length * 250 * u));
   const totalK = cols.reduce((a, c) => a + colK(c), 0) || 1;
   const tableH = HEAD + Math.max(...tables.map((tb) => tb.rows.length), 1) * ROW;
-  const tabX = (W - tabW) / 2, tabY = Math.max(320 * u, (320 * u + H - 160 * u) / 2 - tableH / 2);
+  const tabX = (W - tabW) / 2;
+  const tabY = portrait ? 540 * u : Math.max(320 * u, (320 * u + H - 160 * u) / 2 - tableH / 2);
   const sweep = cur >= 0 && t > 0 && t < 0.55 ? t / 0.55 : -1; // a band passing down the table
   const rowPhase = (bi: number) => clamp01((t - (bi / Math.max(1, before.rows.length)) * 0.4) / 0.15); // when the sweep reaches a row
   const flow = ease(clamp01((t - 0.55) / 0.4)); // rows move to their new places
@@ -183,8 +186,17 @@ export const PipelineScene: FC<z.input<typeof pipelineSceneSchema>> = (input) =>
 
   // stage pills
   const pills = [{label: p.source.name ?? 'Source', op: 'source' as const, detail: undefined as string | undefined}, ...p.stages];
-  const pillW = Math.min(250 * u, (W - 200 * u - (pills.length - 1) * 60 * u) / pills.length);
-  const pillsX = (W - (pills.length * pillW + (pills.length - 1) * 60 * u)) / 2;
+  const pillColumns = portrait ? Math.min(3, pills.length) : pills.length;
+  const pillGap = (portrait ? 46 : 60) * u, pillH = 84 * u, rowGap = 40 * u;
+  const pillW = Math.min(250 * u, (W - (portrait ? 104 : 200) * u - (pillColumns - 1) * pillGap) / pillColumns);
+  const pillsX = (W - (pillColumns * pillW + (pillColumns - 1) * pillGap)) / 2;
+  const pillTop = (portrait ? 226 : 164) * u;
+  const pillPosition = (i: number) => {
+    const row = Math.floor(i / pillColumns);
+    const col = row % 2 === 0 ? i % pillColumns : pillColumns - 1 - (i % pillColumns);
+    return {x: pillsX + col * (pillW + pillGap), y: pillTop + row * (pillH + rowGap)};
+  };
+  const detailY = portrait ? pillPosition(pills.length - 1).y + pillH + 18 * u : 262 * u;
 
   const cues: Cue[] = [];
   if (p.sound) p.stages.forEach((s, k) => {
@@ -203,22 +215,32 @@ export const PipelineScene: FC<z.input<typeof pipelineSceneSchema>> = (input) =>
       {/* stages */}
       {pills.map((s, k) => {
         const active = k - 1 === cur && t < 1, done = k - 1 < cur || (k - 1 === cur && t >= 1), st = OP_STYLE[s.op] ?? OP_STYLE.custom;
-        const x = pillsX + k * (pillW + 60 * u), y = 164 * u;
+        const {x, y} = pillPosition(k);
+        const prev = k > 0 ? pillPosition(k - 1) : null;
+        const color = done || active ? PAPER.ink : PAPER.track;
         const glow = active ? 0.6 + 0.4 * Math.sin(f / 4) : 0;
         return <div key={k}>
-          {k > 0 ? <div style={{position: 'absolute', left: x - 52 * u, top: y + 40 * u, width: 44 * u, height: 4 * u, background: done || active ? PAPER.ink : PAPER.track, borderRadius: 2 * u}}>
-            <div style={{position: 'absolute', right: -6 * u, top: -6 * u, width: 0, height: 0, borderLeft: `${12 * u}px solid ${done || active ? PAPER.ink : PAPER.track}`, borderTop: `${8 * u}px solid transparent`, borderBottom: `${8 * u}px solid transparent`}} />
-          </div> : null}
+          {prev ? (() => {
+            const across = prev.y === y, rightward = prev.x < x;
+            const startX = across ? prev.x + (rightward ? pillW : 0) : x + pillW / 2;
+            const endX = across ? x + (rightward ? 0 : pillW) : startX;
+            const startY = across ? y + pillH / 2 : prev.y + pillH;
+            const endY = across ? startY : y;
+            return <svg width={W} height={H} style={{position: 'absolute', inset: 0, pointerEvents: 'none'}}>
+              <path d={`M${startX},${startY} L${endX},${endY}`} stroke={color} strokeWidth={3 * u} />
+              <path d={arrowHead(startX, startY, endX, endY, 15 * u)} fill={color} />
+            </svg>;
+          })() : null}
           <div style={{position: 'absolute', left: x, top: y, width: pillW, height: 84 * u, borderRadius: 18 * u, background: k === 0 || done || active ? st.color : PAPER.card, border: `${2.5 * u}px solid ${PAPER.ink}`,
-            display: 'flex', alignItems: 'center', paddingLeft: 86 * u, boxSizing: 'border-box', fontSize: 22 * u, fontWeight: 800, opacity: enter, transform: `scale(${active ? 1.06 : 1})`,
-            boxShadow: active ? `0 0 0 ${4 * u}px rgba(255,85,0,${0.8 * glow})` : `0 ${4 * u}px 0 ${PAPER.track}`, whiteSpace: 'nowrap', overflow: 'hidden'}}>
+            display: 'flex', alignItems: 'center', paddingLeft: (portrait ? 74 : 86) * u, paddingRight: 8 * u, boxSizing: 'border-box', fontSize: (portrait ? 20 : 22) * u, fontWeight: 800, opacity: enter, transform: `scale(${active ? 1.06 : 1})`,
+            boxShadow: active ? `0 0 0 ${4 * u}px rgba(255,85,0,${0.8 * glow})` : `0 ${4 * u}px 0 ${PAPER.track}`, overflowWrap: 'anywhere', overflow: 'hidden'}}>
             {s.label}
           </div>
           <IsoIcon kind={k === 0 ? isoKindFor(s.label, 'database') : OP_KIND[s.op] ?? 'tile'} icon={st.icon} cx={x + 46 * u} by={y + 76 * u} w={66 * u} h={60 * u} u={u * 0.6} id={`st-${k}`} time={f / fps} highlight={active ? 1 : 0} shadow={false} />
         </div>;
       })}
       {/* rule of the running stage */}
-      {cur >= 0 && p.stages[cur].detail ? <div style={{position: 'absolute', left: 0, right: 0, top: 262 * u, display: 'flex', justifyContent: 'center'}}>
+      {cur >= 0 && p.stages[cur].detail ? <div style={{position: 'absolute', left: 0, right: 0, top: detailY, display: 'flex', justifyContent: 'center'}}>
         <div style={{fontFamily: MONO, fontSize: 24 * u, padding: `${6 * u}px ${18 * u}px`, borderRadius: 12 * u, background: style.color, border: `${2 * u}px solid ${PAPER.ink}`, opacity: clamp01((f - starts[cur]) / 6)}}>
           {p.stages[cur].op !== 'custom' ? `${p.stages[cur].op}: ` : ''}{p.stages[cur].detail}
         </div>
@@ -260,7 +282,7 @@ export const PipelineScene: FC<z.input<typeof pipelineSceneSchema>> = (input) =>
       </div>
       {/* join input slides in from the right */}
       {joinWith && joinK > 0 ? (
-        <div style={{position: 'absolute', left: Math.min(tabX + tabW + 30 * u, W - 300 * u) + (1 - joinK) * 80 * u, top: tabY - 20 * u, zIndex: 3, boxShadow: `0 ${10 * u}px ${20 * u}px rgba(0,0,0,0.15)`, width: 260 * u, borderRadius: 14 * u, background: '#f3fbf4', border: `${2.5 * u}px solid ${PAPER.ink}`, opacity: joinK, overflow: 'hidden', fontSize: 18 * u}}>
+        <div style={{position: 'absolute', left: (portrait ? tabX : Math.min(tabX + tabW + 30 * u, W - 300 * u)) + (1 - joinK) * 80 * u, top: portrait ? tabY + tableH + 35 * u : tabY - 20 * u, zIndex: 3, boxShadow: `0 ${10 * u}px ${20 * u}px rgba(0,0,0,0.15)`, width: portrait ? tabW - 80 * u : 260 * u, borderRadius: 14 * u, background: '#f3fbf4', border: `${2.5 * u}px solid ${PAPER.ink}`, opacity: joinK, overflow: 'hidden', fontSize: 18 * u}}>
           <div style={{padding: `${8 * u}px ${12 * u}px`, fontWeight: 800, background: '#dff3e2', borderBottom: `${2 * u}px solid ${PAPER.ink}`, fontFamily: MONO}}>{joinWith.name ?? 'other table'}</div>
           {joinWith.rows.slice(0, 6).map((r, i) => <div key={i} style={{padding: `${5 * u}px ${12 * u}px`, fontFamily: MONO, borderBottom: `${1 * u}px solid ${PAPER.track}`, whiteSpace: 'nowrap', overflow: 'hidden'}}>{r.map(show).join(' · ')}</div>)}
         </div>

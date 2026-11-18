@@ -10,7 +10,7 @@ import {z} from 'zod';
 import {Sfx} from '../audio';
 import {PAPER} from '../iso/iso';
 import {useSceneLength, useUnit} from '../theme';
-import {MONO, PaperStage, clamp01, flexValue, type Cue} from './paperStage';
+import {MONO, MONO_W, PaperStage, clamp01, flexValue, type Cue} from './paperStage';
 import {FILL, NoteBar, arrowHead, argsOf, flexSteps, intOf, lerpPt, playhead, schedule, show, stepSchema, valOf, type Pt, type Step} from './dsaKit';
 
 const VERBS: Record<string, string> = {
@@ -132,16 +132,19 @@ export const HashScene: FC<z.input<typeof hashSceneSchema>> = (input) => {
 
   // layout
   const portrait = H > W;
-  const top = 220 * u, bottom = H - 255 * u;
+  // portrait: title, key + hash machine, buckets, stats, note, then the (2-line) captions, top to bottom
+  const top = portrait ? 540 * u : 220 * u, bottom = portrait ? H - 500 * u : H - 255 * u;
   const rowH = Math.min(86 * u, (bottom - top) / p.size);
   const bx = portrait ? 120 * u : W * 0.43, bw = 76 * u;
   const by = (i: number) => top + (bottom - top - rowH * p.size) / 2 + i * rowH;
   const maxChain = Math.max(1, ...states.map((s) => Math.max(...s.b.map((r) => r.length))));
-  const nodeW = Math.min(p.showValues ? 230 * u : 150 * u, (W - 90 * u - bx - bw - 30 * u) / maxChain - 46 * u), nodeH = rowH * 0.74;
-  const nodeAt = (b: number, i: number): Pt => ({x: bx + bw + 46 * u + i * (nodeW + 46 * u), y: by(b) + (rowH - nodeH) / 2, w: nodeW, h: nodeH});
-  const machine = portrait ? {x: W / 2 - 230 * u, y: top - 10 * u, w: 460 * u, h: 150 * u} : {x: 110 * u, y: (top + bottom) / 2 - 110 * u, w: Math.min(520 * u, bx - 190 * u), h: 220 * u};
+  const chainSlot = (W - 120 * u - bx - bw) / maxChain;
+  const linkGap = Math.min(46 * u, chainSlot * 0.22);
+  const nodeW = Math.min(p.showValues ? 230 * u : 150 * u, chainSlot - linkGap), nodeH = rowH * 0.74;
+  const nodeAt = (b: number, i: number): Pt => ({x: bx + bw + linkGap + i * (nodeW + linkGap), y: by(b) + (rowH - nodeH) / 2, w: nodeW, h: nodeH});
+  const machine = portrait ? {x: W / 2 - 230 * u, y: 340 * u, w: 460 * u, h: 150 * u} : {x: 110 * u, y: (top + bottom) / 2 - 110 * u, w: Math.min(520 * u, bx - 190 * u), h: 220 * u};
   const keyIn: Pt = {x: machine.x + machine.w / 2 - 90 * u, y: machine.y - 100 * u, w: 180 * u, h: 64 * u};
-  const keyHash: Pt = {x: machine.x + machine.w / 2 - 90 * u, y: machine.y + 18 * u, w: 180 * u, h: 64 * u};
+  const keyHash: Pt = {x: machine.x + machine.w / 2 - 90 * u, y: machine.y + (portrait ? 12 : 18) * u, w: 180 * u, h: (portrait ? 52 : 64) * u};
   const where = (s: St, id: number): Pt | undefined => { for (let b = 0; b < s.b.length; b++) { const i = s.b[b].findIndex((x) => x.id === id); if (i >= 0) return nodeAt(b, i); } return undefined; };
   const nodes = new Map<number, Node>();
   [...prev.b.flat(), ...next.b.flat()].forEach((x) => nodes.set(x.id, x));
@@ -161,6 +164,22 @@ export const HashScene: FC<z.input<typeof hashSceneSchema>> = (input) => {
   const count = (k >= 0.5 ? next : prev).b.flat().length;
   const note = [...micros.slice(0, c + 1)].reverse().find((m) => m.note)?.note;
   const formulaStep = cur?.kind === 'hash' ? Math.floor(k * 2.2) : 2;
+  const bucketRoute = activeBucket === undefined ? null : (() => {
+    const end = {x: bx - 2 * u, y: by(activeBucket) + rowH / 2};
+    if (portrait) {
+      const x = bx - 58 * u, y = machine.y + machine.h / 2, r = 24 * u;
+      return {
+        d: `M${machine.x},${y} H${x + r} Q${x},${y} ${x},${y + r} V${end.y - r} Q${x},${end.y} ${x + r},${end.y} H${end.x}`,
+        head: arrowHead(x + r, end.y, end.x, end.y, 16 * u),
+      };
+    }
+    const x = machine.x + machine.w, y = machine.y + machine.h / 2;
+    const bend = (end.x - x) / 2;
+    return {
+      d: `M${x},${y} C${x + bend},${y} ${end.x - bend},${end.y} ${end.x},${end.y}`,
+      head: arrowHead(end.x - bend, end.y, end.x, end.y, 16 * u),
+    };
+  })();
 
   // the key chip of the current operation (before it lands)
   let chip: {pt: Pt; label: string; opacity: number} | undefined;
@@ -171,11 +190,11 @@ export const HashScene: FC<z.input<typeof hashSceneSchema>> = (input) => {
     <PaperStage eyebrow={p.eyebrow} title={p.title}>
       <div style={{position: 'absolute', inset: 0, opacity: enter}}>
         {/* stats */}
-        <div style={{position: 'absolute', right: 90 * u, top: (p.title ? 70 : 56) * u, display: 'flex', gap: 12 * u}}>
+        <div style={{position: 'absolute', ...(portrait ? {left: 0, right: 0, top: H - 470 * u, justifyContent: 'center'} : {right: 90 * u, top: (p.title ? 70 : 56) * u}), display: 'flex', gap: 12 * u}}>
           {[['keys', count], ['buckets', p.size], ['load', (count / p.size).toFixed(2)]].map(([a, b]) => <div key={a as string} style={{padding: `${8 * u}px ${16 * u}px`, borderRadius: 12 * u, background: PAPER.card, border: `${2 * u}px solid ${PAPER.ink}`, fontSize: 21 * u, fontWeight: 700, color: PAPER.inkSoft}}>{a}: <span style={{fontFamily: MONO, color: PAPER.ink, fontWeight: 800}}>{b}</span></div>)}
         </div>
         {/* hash machine */}
-        <div style={{position: 'absolute', left: machine.x, top: machine.y, width: machine.w, height: machine.h, borderRadius: 22 * u, background: '#e9e2f7', border: `${3 * u}px solid ${PAPER.ink}`, boxShadow: `0 ${8 * u}px ${18 * u}px rgba(70,50,30,0.14)`}}>
+        <div style={{position: 'absolute', left: machine.x, top: machine.y, width: machine.w, height: machine.h, boxSizing: 'border-box', borderRadius: 22 * u, background: '#e9e2f7', border: `${3 * u}px solid ${PAPER.ink}`, boxShadow: `0 ${8 * u}px ${18 * u}px rgba(70,50,30,0.14)`}}>
           <div style={{position: 'absolute', left: 0, right: 0, bottom: 14 * u, textAlign: 'center', fontFamily: MONO, fontSize: 21 * u, color: PAPER.ink, lineHeight: 1.5}}>
             {op?.formula ? op.formula.map((l, i) => <div key={i} style={{opacity: lastHash === cur && i >= formulaStep ? 0.15 : 1, fontWeight: i === 1 ? 800 : 500, color: i === 1 ? FILL.purple : PAPER.ink}}>{l}</div>) : <div style={{fontWeight: 800}}>hash(key) % {p.size}</div>}
           </div>
@@ -190,24 +209,20 @@ export const HashScene: FC<z.input<typeof hashSceneSchema>> = (input) => {
         {/* chain links */}
         <svg width={W} height={H} style={{position: 'absolute', inset: 0, pointerEvents: 'none'}}>
           {/* path from the machine to the chosen bucket */}
-          {cur && (cur.kind === 'hash' ? k > 0.75 : cur.kind === 'place') && op?.bucket !== undefined ? (() => {
-            const x1 = machine.x + machine.w, y1 = machine.y + machine.h / 2, x2 = bx - 8 * u, y2 = by(op.bucket) + rowH / 2;
-            return <g><path d={`M${x1},${y1} C${x1 + 60 * u},${y1} ${x2 - 60 * u},${y2} ${x2},${y2}`} stroke={FILL.accent} strokeWidth={3.5 * u} fill="none" strokeDasharray={`${10 * u} ${8 * u}`} /><path d={arrowHead(x2 - 30 * u, y2, x2, y2, 16 * u)} fill={FILL.accent} /></g>;
-          })() : null}
+          {bucketRoute ? <g><path d={bucketRoute.d} stroke={FILL.accent} strokeWidth={3.5 * u} fill="none" strokeDasharray={`${10 * u} ${8 * u}`} /><path d={bucketRoute.head} fill={FILL.accent} /></g> : null}
           {Array.from({length: p.size}, (_, b) => {
-            const pts = [...nodes.values()].map((nd) => {
+            const useNext = cur?.kind === 'place' ? k >= 1 : k >= 0.5;
+            const pts = (useNext ? next : prev).b[b].map((nd) => {
               const a = where(prev, nd.id), z2 = where(next, nd.id);
-              if (!a && !z2) return null;
-              const inRow = (s: St) => s.b[b].some((x) => x.id === nd.id);
-              if (!inRow(prev) && !inRow(next)) return null;
-              const q = a && z2 ? lerpPt(a, z2, k) : (z2 ?? a)!;
-              return {q, order: (next.b[b].findIndex((x) => x.id === nd.id) + 1 || prev.b[b].findIndex((x) => x.id === nd.id) + 1)};
-            }).filter(Boolean).sort((x, y) => x!.order - y!.order) as {q: Pt}[];
-            const chain = [{x: bx + bw - 20 * u, y: by(b) + rowH / 2 - nodeH / 2, w: 20 * u, h: nodeH}, ...pts.map((x) => x.q)];
+              if (a && z2) return lerpPt(a, z2, k);
+              return z2 ?? {...a!, y: a!.y + k * 60 * u};
+            });
+            const chain = [{x: bx + bw, y: by(b) + (rowH - nodeH) / 2, w: 0, h: nodeH}, ...pts];
             return chain.slice(0, -1).map((a, i) => {
               const z2 = chain[i + 1];
               const x1 = a.x + (a.w ?? 0), y1 = a.y + (a.h ?? 0) / 2, x2 = z2.x - 2 * u, y2 = z2.y + (z2.h ?? 0) / 2;
-              return <g key={`${b}-${i}`}><line x1={x1} y1={y1} x2={x2 - 8 * u} y2={y2} stroke={PAPER.ink} strokeWidth={3 * u} /><path d={arrowHead(x1, y1, x2, y2, 14 * u)} fill={PAPER.ink} /></g>;
+              if (x2 <= x1) return null;
+              return <g key={`${b}-${i}`}><line x1={x1} y1={y1} x2={x2} y2={y2} stroke={PAPER.ink} strokeWidth={Math.min(3 * u, linkGap / 4)} /><path d={arrowHead(x1, y1, x2, y2, Math.min(14 * u, (x2 - x1) / 2))} fill={PAPER.ink} /></g>;
             });
           })}
         </svg>
@@ -225,20 +240,24 @@ export const HashScene: FC<z.input<typeof hashSceneSchema>> = (input) => {
           const isFound = cur?.kind === 'found' && cur.id === nd.id;
           const updated = cur?.kind === 'place' && cur.id === nd.id && !!a;
           const shown = (k >= 0.5 ? next : prev).b.flat().find((x) => x.id === nd.id) ?? nd;
+          const keyText = show(shown.key);
+          const valueText = p.showValues && shown.value !== undefined ? `: ${show(shown.value)}` : '';
+          const fontSize = Math.min(24 * u, (q.h ?? 50) * 0.36, (q.w ?? nodeW) * 0.88 / ((keyText.length + valueText.length) * MONO_W));
           const fill = removing ? FILL.red : isFound ? FILL.found : walkHere ? FILL.compare : updated ? FILL.blue : placing && cur?.collide ? '#ffd9c7' : FILL.item;
           return (
             <div key={nd.id} style={{position: 'absolute', left: q.x, top: q.y, width: q.w, height: q.h, borderRadius: 12 * u, background: fill, border: `${2.5 * u}px solid ${PAPER.ink}`, boxSizing: 'border-box', opacity,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 * u, fontFamily: MONO, fontSize: Math.min(24 * u, (q.h ?? 50) * 0.36), whiteSpace: 'nowrap', overflow: 'hidden',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontSize, whiteSpace: 'nowrap', overflow: 'hidden',
               boxShadow: walkHere || isFound ? `0 0 0 ${5 * u}px ${isFound ? 'rgba(63,154,87,0.4)' : 'rgba(255,160,60,0.45)'}` : `0 ${5 * u}px ${10 * u}px rgba(70,50,30,0.12)`}}>
-              <b>{show(shown.key)}</b>{p.showValues && shown.value !== undefined ? <span style={{color: PAPER.inkSoft}}>: {show(shown.value)}</span> : null}
+              <b>{keyText}</b>{valueText ? <span style={{color: PAPER.inkSoft}}>{valueText}</span> : null}
             </div>
           );
         })}
         {chip ? <div style={{position: 'absolute', left: chip.pt.x, top: chip.pt.y, width: chip.pt.w, height: chip.pt.h, borderRadius: 999, background: '#fff', border: `${3 * u}px solid ${FILL.accent}`, boxSizing: 'border-box', opacity: chip.opacity,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontWeight: 800, fontSize: 26 * u}}>"{chip.label}"</div> : null}
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden',
+          fontSize: Math.min(26 * u, 155 * u / ((chip.label.length + 2) * MONO_W))}}>"{chip.label}"</div> : null}
         {cur?.kind === 'missing' && op?.bucket !== undefined ? <div style={{position: 'absolute', left: nodeAt(op.bucket, next.b[op.bucket].length).x, top: by(op.bucket) + rowH / 2 - 18 * u, fontFamily: MONO, fontWeight: 800, fontSize: 24 * u, color: '#b2402f', opacity: k}}>null ✗</div> : null}
       </div>
-      <NoteBar text={note} cx={W / 2} y={H - 238 * u} u={u} maxW={W - 200 * u} />
+      <NoteBar text={note} cx={W / 2} y={portrait ? H - 400 * u : H - 238 * u} u={u} maxW={W - 200 * u} />
       {cues.map((q, i) => <Sfx key={i} sound={q.sound} at={q.at} volume={q.volume} />)}
     </PaperStage>
   );

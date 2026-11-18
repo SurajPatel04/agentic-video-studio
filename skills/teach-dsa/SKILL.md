@@ -38,8 +38,19 @@ metadata:
   - dijkstra
   - shortest path
   - pointers
+  - merge sort
+  - quicksort
+  - call stack
+  - big o
+  - code trace
+  - dynamic programming
+  - dp table
   scenes:
   - ArrayScene
+  - RecursionScene
+  - BigORaceScene
+  - CodeTraceScene
+  - DPTableScene
   - StackScene
   - HashScene
   - TreeScene
@@ -61,10 +72,12 @@ Explain the invariant or decision behind each operation, not just the movement. 
 Include a revealing edge case after the main example. Derive complexity from the work performed and state the input size, case, and assumptions. Avoid presenting a few measured timings as proof of asymptotic complexity.
 
 Use the dedicated paper-style animations (allowed even when a style guide says "every scene IsoScene"); they compute the trace for you, so the state is always correct:
-- ArrayScene: "values" + "algorithm" bubble | selection | insertion | binary-search | linear-search ("target" for searches). Comparisons, swaps, i/j pointers, counters and the pseudocode line are generated. 5-8 values. Own steps only for an algorithm not listed.
+- ArrayScene: "values" + "algorithm" bubble | selection | insertion | merge | quick | binary-search | linear-search ("target" for searches). Comparisons, swaps, i/j pointers, counters and the pseudocode line are generated. 5-8 values. Own steps only for an algorithm not listed.
 - StackScene: "kind" stack | queue, steps push {value} / pop / peek. Popped items line up so LIFO vs FIFO order is visible.
 - HashScene: "size", steps insert {key, value} / get / delete. The bucket is computed (letter-code sum % size): "cat" and "act" collide, show a chain.
 - TreeScene: kind bst | avl (rotations animate) | tree (nested {label, children}); steps insert / delete / find / traverse {order}.
 - GraphScene: nodes, edges ["A-B 4"], steps bfs / dfs {from} (queue / stack shown), dijkstra {from, to}.
 - LinkedListScene: values, steps insert {value, after} / append / prepend / delete / find / reverse (pointer re-wiring shown).
 Pair each with EditorScene of the real code for the same input. Never write the numbers of a trace yourself in narration that the scene does not show. End a section with a prediction or choice that tests the invariant rather than vocabulary alone.
+
+Use RecursionScene for factorial calls and returns, DPTableScene for right/down grid paths, and BigORaceScene for comparing model operation counts as input grows. CodeTraceScene accepts code lines and after-line variable snapshots.

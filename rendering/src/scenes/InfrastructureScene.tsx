@@ -1,7 +1,7 @@
-import {ThreeCanvas} from '@remotion/three';
 import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
 import {z} from 'zod';
-import {InfrastructureObject} from '../components/InfrastructureObject';
+import {PaperDeviceArt} from '../components/PaperDeviceArt';
+import {PAPER, ISO_COLORS} from '../iso/iso';
 import {deviceKindSchema} from '../components/Device';
 import {useTheme} from '../theme';
 
@@ -41,10 +41,10 @@ export const description = 'Buildings and technology objects grow from their bas
 export const tags = ['building', 'city', 'server', 'computer', 'laptop', 'router', 'infrastructure'];
 const presets: Record<'city' | 'technology' | 'mixed', z.input<typeof infrastructureObjectSchema>[]> = {
   city: [
-    {kind: 'building', label: 'Small office', size: 'small', color: '#426775'},
-    {kind: 'building', label: 'Headquarters', size: 'large', color: '#3f6179'},
-    {kind: 'building', label: 'Apartments', height: 1.2, color: '#536c7d'},
-    {kind: 'building', label: 'Studio', size: 'small', width: 1.3, color: '#687b85'},
+    {kind: 'building', label: 'Small office', size: 'small', color: ISO_COLORS.sky},
+    {kind: 'building', label: 'Headquarters', size: 'large', color: ISO_COLORS.lavender},
+    {kind: 'building', label: 'Apartments', height: 1.2, color: ISO_COLORS.mint},
+    {kind: 'building', label: 'Studio', size: 'small', width: 1.3, color: ISO_COLORS.peach},
   ],
   technology: [
     {kind: 'server', label: 'Server rack'},
@@ -53,7 +53,7 @@ const presets: Record<'city' | 'technology' | 'mixed', z.input<typeof infrastruc
     {kind: 'router', label: 'Router'},
   ],
   mixed: [
-    {kind: 'building', label: 'Office', size: 'large', color: '#3f6179'},
+    {kind: 'building', label: 'Office', size: 'large', color: ISO_COLORS.lavender},
     {kind: 'server', label: 'Server'},
     {kind: 'computer', label: 'Computer'},
     {kind: 'router', label: 'Network'},
@@ -67,14 +67,15 @@ const smooth = (value: number) => {
 export const InfrastructureScene: React.FC<InfrastructureSceneProps> = (input) => {
   const props = infrastructureSceneSchema.parse(input);
   const frame = useCurrentFrame();
-  const {width, height, durationInFrames} = useVideoConfig();
+  const {width, height, durationInFrames, fps} = useVideoConfig();
   const theme = useTheme();
   const objects = props.objects ?? presets[props.preset].map(o => infrastructureObjectSchema.parse(o));
   const exitStart = props.disappearAt ?? Math.max(0, durationInFrames - props.disappearFrames - 1);
   const u = Math.min(width / 1920, height / 1080);
-  const canvasHeight = Math.round(height * 0.66);
-  const worldWidth = 12.5 * width / height / (16 / 9);
-  const slot = worldWidth * 0.9 / Math.max(1, objects.length);
+  const columns = width < height ? Math.min(4, Math.max(1, objects.length)) : Math.min(8, Math.max(1, objects.length));
+  const rows = Math.max(1, Math.ceil(objects.length / columns));
+  const slot = width * 0.86 / columns;
+  const rowH = height * 0.52 / rows;
   const states = objects.map((o, i) => {
     const start = o.delay ?? i * props.stagger;
     const grow = smooth((frame - start) / (o.growFrames ?? props.growFrames));
@@ -82,39 +83,31 @@ export const InfrastructureScene: React.FC<InfrastructureSceneProps> = (input) =
     const visibility = props.animation === 'none' ? (frame >= start ? 1 - out : 0) : grow * (1 - out);
     const size = {small: 0.72, medium: 1, large: 1.28}[o.size];
     const scale = size * o.scale * props.scale;
-    const fit = Math.min(1, slot / (2.5 * scale * o.width), 4.2 / (3.2 * scale * o.height));
-    return {o, visibility, scale: scale * fit, x: o.x === undefined ? -worldWidth * 0.45 + slot * (i + 0.5) : (o.x / 100 - 0.5) * worldWidth};
+    const w = Math.min(slot * 0.88, 265 * u * scale * o.width);
+    const h = Math.min(rowH * 0.72, 340 * u * scale * o.height);
+    const row = Math.floor(i / columns);
+    const count = Math.min(columns, objects.length - row * columns);
+    const cx = o.x === undefined ? width / 2 + (i % columns - (count - 1) / 2) * slot :
+      Math.max(w / 2 + 10 * u, Math.min(width - w / 2 - 10 * u, width * o.x / 100));
+    const by = height * 0.22 + rowH * (row + 0.86) - (rows === 1 ? (o.y - 76) * 3 * u : 0);
+    return {o, visibility, w, h, cx, by};
   });
-  return <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 45%, #263747 0%, #101a27 60%, #090f18 100%)'}}>
+  return <AbsoluteFill>
     <div style={{position: 'absolute', top: height * 0.075, left: width * 0.075, right: width * 0.075}}>
-      <div style={{fontSize: 17 * u, letterSpacing: 5 * u, color: '#8fa9bc', marginBottom: 22 * u}}>INFRASTRUCTURE / {props.preset === 'city' ? 'ARCHITECTURE' : 'SYSTEMS'}</div>
+      <div style={{fontSize: 17 * u, letterSpacing: 5 * u, color: theme.accent, marginBottom: 22 * u}}>INFRASTRUCTURE / {props.preset === 'city' ? 'ARCHITECTURE' : 'SYSTEMS'}</div>
       <div style={{fontSize: 58 * u, fontWeight: 600, color: theme.text, letterSpacing: -1.6 * u}}>{props.title}</div>
     </div>
-    <div style={{position: 'absolute', top: height * 0.23, width, height: canvasHeight}}>
-      <ThreeCanvas width={width} height={canvasHeight} shadows orthographic camera={{position: [0, 5.2, 13], zoom: width / worldWidth, near: 0.1, far: 100}} gl={{antialias: true, alpha: true}}>
-        <ambientLight intensity={0.9}/>
-        <directionalLight position={[1, 3, 9]} intensity={2.4} color="#e6efff"/>
-        <hemisphereLight args={['#c5ddf5', '#18202b', 1.2]}/>
-        <directionalLight position={[-5, 8, 6]} intensity={3.2} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-10} shadow-camera-right={10} shadow-camera-top={8} shadow-camera-bottom={-8} shadow-bias={-0.0002}/>
-        <directionalLight position={[6, 4, -4]} intensity={2.5} color="#82b9e0"/>
-        {props.showPlatform && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.51, 0]} receiveShadow>
-          <planeGeometry args={[200, 200]}/><shadowMaterial transparent opacity={0.35}/>
-        </mesh>}
-        {states.map(({o, visibility, scale, x}, i) => <group key={i} position={[x, -1.5 + (76 - o.y) * 0.05, 0]} rotation={[0, -0.35, 0]}>
-          {props.showPlatform && <mesh position={[0, -0.05, 0]} receiveShadow>
-            <boxGeometry args={[Math.min(slot * 0.93, 2.7), 0.09, 2.05]}/>
-            <meshStandardMaterial color="#303d4b" metalness={0.5} roughness={0.4}/>
-          </mesh>}
-          {visibility > 0 && <group scale={[scale * o.width, scale * o.height * (props.animation === 'grow' ? Math.max(0.001, visibility) : 1), scale * o.width]}>
-            <InfrastructureObject kind={o.kind} color={o.color} glow={o.glow} opacity={visibility}/>
-          </group>}
-        </group>)}
-      </ThreeCanvas>
-    </div>
-    {props.showLabels && <div style={{position: 'absolute', top: height * 0.81, left: '5%', right: '5%', display: 'flex'}}>
-      {states.map(({o, visibility}, i) => <div key={i} style={{flex: 1, textAlign: 'center', opacity: visibility, color: '#b9c8d4', fontSize: 23 * u, letterSpacing: 0.4 * u}}>{o.label ?? o.kind}</div>)}
-    </div>}
-    {props.caption ? <div style={{position: 'absolute', left: '7.5%', right: '7.5%', bottom: height * 0.065, borderTop: '1px solid #344353', paddingTop: 24 * u, fontSize: 22 * u, color: '#8296a8'}}>{props.caption}</div> : null}
+    {states.map(({o, visibility, w, h, cx, by}, i) => <div key={i} style={{position: 'absolute', inset: 0, opacity: visibility}}>
+      {props.showPlatform ? <div style={{position: 'absolute', left: cx - w / 2, top: by - 12 * u, width: w, height: 23 * u,
+        borderRadius: '50%', border: `1px solid ${PAPER.track}`, background: PAPER.card}}/> : null}
+      <PaperDeviceArt kind={o.kind} color={o.color} glow={o.glow} cx={cx} by={by} w={w} h={h * (props.animation === 'grow' ? Math.max(0.01, visibility) : 1)}
+        u={u} time={frame / fps} state={o.glow ? 'active' : 'on'}/>
+      {props.showLabels ? <div style={{position: 'absolute', left: Math.max(0, Math.min(width - slot, cx - slot / 2)), width: slot,
+        top: by + 20 * u, textAlign: 'center', color: theme.muted, fontSize: Math.min(25 * u, slot / 5), overflowWrap: 'anywhere'}}>
+        {o.label ?? o.kind}
+      </div> : null}
+    </div>)}
+    {props.caption ? <div style={{position: 'absolute', left: '7.5%', right: '7.5%', bottom: height * 0.065, borderTop: `1px solid ${PAPER.track}`, paddingTop: 24 * u, fontSize: 22 * u, color: theme.muted}}>{props.caption}</div> : null}
   </AbsoluteFill>;
 };
 

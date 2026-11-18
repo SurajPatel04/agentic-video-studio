@@ -1,0 +1,58 @@
+{
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "brand": false,
+  "scenes": [
+    {
+      "id": "cache-hit",
+      "component": "IsoScene",
+      "props": {
+        "eyebrow": "PATH A / MENU ALREADY STORED",
+        "title": "The app asks. The cache replies.",
+        "subtitle": "A hit answers this request without fetching from the server.",
+        "objects": [
+          {
+            "id": "app",
+            "kind": "phone",
+            "label": "App",
+            "at": [
+              -4,
+              4
+            ],
+            "color": "sky",
+            "enter": "drop"
+          },
+          {
+            "id": "cache",
+            "kind": "cache",
+            "label": "Cache",
+            "at": [
+              4,
+              -4
+            ],
+            "color": "butter",
+            "highlight": true,
+            "enter": "drop"
+          }
+        ],
+        "links": [
+          {
+            "from": "app",
+            "to": "cache",
+            "label": "Request: App \u2192 Cache",
+            "returnLabel": "Reply: Cache \u2192 App",
+            "flow": "dots",
+            "enter": "draw",
+            "bidirectional": true,
+            "replyAfter": 0.5
+          }
+        ],
+        "steps": [],
+        "zoom": 1,
+        "sound": false
+      },
+      "durationInFrames": 150
+    }
+  ]
+}

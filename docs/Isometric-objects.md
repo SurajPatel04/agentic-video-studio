@@ -135,3 +135,82 @@ Aliases: `press-release`, `press-release-document`, `podium-with-microphones`, `
 | `governmentoffice` | Public information building, service sign, entrance and noticeboard |
 
 Aliases include `parliament-building`, `ballot-box`, `campaign-rally`, `public-meeting`, `protest-placard`, `government-information-office` and `government-office`. Example: `rendering/examples/iso-public-affairs.json`. Render with `cd rendering && node render-media.mjs publicaffairs`; the sheet is saved to `test_picture/iso-icon/18-media/publicaffairs.png`.
+
+For a request and response on the same connection, use one link with `"bidirectional": true`. It draws a lavender outbound arrow and a mint return arrow, with traffic following each direction. Omit the field for a one-way arrow. Both directions support the existing flow and dashed options.
+
+```json
+{"from":"app","to":"cache","label":"Request","returnLabel":"Reply","bidirectional":true,"flow":"dots"}
+```
+
+### Animated badges
+
+Set `badge` on an object for its initial state or on a timed step to change it.
+The badge stays above the target until another badge replaces it or `"badge": "none"` clears it.
+The existing `lookup` field and its `recovered` value also work.
+
+Presets include `checking`, `found`, `miss`, `offline`, `online`, `loading`, `queued`, `processing`, `done`, `error`, `blocked`, `locked`, `unlocked`, `waiting`, `stale`, `fresh`, `verified` and `warning`. A timed `found` step plays a chime when scene sound is enabled. Set the step's `sound` to `none` to silence it.
+
+```json
+{"at": 0.55, "target": "cache", "badge": "found"}
+```
+
+Custom badges accept a Lucide icon name, up to 30 characters of text, and an optional tone from `neutral`, `good`, `warn`, `bad`, `info` or `purple`.
+
+```json
+{"at": 0.8, "target": "app", "badge": {"icon": "bell", "text": "New order", "tone": "good"}}
+```
+
+[Runnable example with all badges](../rendering/examples/iso-badges.json)
+
+### Computed values, link traffic and reactions
+
+[The cue gallery composition](../rendering/examples/iso-cues.json) includes cues 20–35. Add object cues to a step with `target` and `at`. The renderer calculates intermediate values from the scene frame and fps. Timer, count, meter, and progress transitions take one second. TTL uses video seconds and displays **Stale** at expiry. Retry shows each attempt for one second, then displays its outcome. Queue operations add to or subtract from the previous balance, stopping at zero.
+
+A new cue step on the same object replaces its previous cue display. Put multiple cue fields on one step to display them together. Numeric history is kept within the scene. A `think` value of `"?"` advances through question, ellipsis, and exclamation at one-second intervals. Reactions accept `like`, `love`, and `angry`. Moods accept `happy`, `neutral`, and `upset`.
+
+Use `transform: "clean"` on a dot link to turn packets from grey to green, or `drop: true` to make a packet fall and fade before delivery. Key and coin flows carry the corresponding icons. A timed step such as `{"at":0.5,"target":"cache","badge":"found","reply":"cache→app"}` starts the return trip on an existing app-to-cache link and keeps the completed request visible.
+
+### Mass communication cues
+
+Broadcast badges include `onair`, `live`, `breaking` and `nosignal`. Editorial and verification badges include `draft`, `review`, `approved`, `rejected`, `published`, `factcheck`, `false`, `misleading`, `verified` and `correction`. Use `sponsored`, `aigenerated`, `trending`, `embargo` and `offrecord` for attribution, distribution and source handling. Schedule a later `"badge":"released"` step on an embargoed object to open its lock at the release time.
+
+Add these fields to a step with `at` and `target`. The scene animates the numbers from their current values to the supplied values over one second.
+
+| Cue | Step field |
+| --- | --- |
+| Reach | `"reach":{"to":2000000}` |
+| Engagement | `"engage":{"likes":900,"comments":85,"shares":120}` |
+| Reach vs. understanding | `"compare":{"reach":80,"understood":30}` |
+| TV ratings | `"rating":{"to":24}` |
+| Ad revenue | `"revenue":{"to":5000,"prefix":"$"}` |
+| Trust gauge | `"trust":{"to":40}` |
+| News cycle | `"cycle":{"hours":24,"seconds":3}` |
+| Sentiment | `"sentiment":[60,25,15]` |
+| Survey | `"survey":{"labels":["Clear","Unclear"],"values":[65,35]}` |
+
+Supply any combination of likes, comments and shares. Compare, rating and trust values are percentages. Sentiment takes positive, neutral and negative percentages that add up to 100. Surveys accept one to five labeled values. The news cycle compresses the specified hours into three video seconds by default. Set `seconds` to change the playback duration. The target artwork fades as the ring empties.
+
+[Runnable mass communication example](../rendering/examples/iso-media-cues.json)
+
+### Media links and audience changes
+
+Connect a broadcast source to every receiver with `"flow":"wave"`. A link with `"via":"leader"` travels through the named object before continuing to its destination. Add `"noise":true` for interference. Draw feedback with a separate link from the audience to the sender using `"dashed":true,"label":"Feedback"`.
+
+| Cue | Timed step field | How it plays |
+| --- | --- | --- |
+| Share ripple | `"spread":{"depth":3}` | A copy travels along existing outgoing links and fans out one hop at a time, up to the specified depth. |
+| Gate filter | `"gate":{"pass":2,"drop":3}` | Target the editor. The first incoming and outgoing traffic links carry the submitted and selected stories. |
+| Frame swap | `"frame":["Protest","Riot"]` | The same illustrated photo gets two successive headlines. |
+| Agenda stack | `"agenda":["Economy","Sports","Climate"]` | Topics are listed from highest to lowest coverage priority. Use a second step to demonstrate a change in order. |
+| Echo bubble | `"bubble":true` | A bubble forms around the target, and incoming traffic on solid links bounces back. Use `false` to clear it. |
+| Rumour and correction | `"race":{"rumour":3,"correction":1}` | Both dot streams run together on the target’s outgoing traffic links. Values control relative animation speeds. |
+| Crowd attention | `"attention":70` | The specified share of the crowd turns toward its first incoming source. |
+| Crowd reaction | `"react":"angry"` | A reaction floats above the crowd. Use `question` for a question-mark reaction. |
+| Opinion shift | `"opinion":{"from":30,"to":60}` | Crowd colors change gradually as the example share shifts. |
+| Audience split | `"split":[55,45]` | Two colored groups pull apart. The shares must add to 100. |
+| Speech | `"say":"We're investigating"` | The target shows a speech bubble. |
+| Headline flip | `"headline":"Updated: Road reopens"` | A later headline step flips the previous headline to the update. |
+
+Use `people` for attention, opinion and split steps. Show both sides of the rumour race and the reach-versus-understanding comparison together. Use labels such as “Saw it” or “Shared” for exposure or distribution, and reserve belief labels for measured beliefs. Introduce illustrative statistics as “example numbers” in narration.
+
+[Runnable media links and audience example](../rendering/examples/iso-media-flows.json)

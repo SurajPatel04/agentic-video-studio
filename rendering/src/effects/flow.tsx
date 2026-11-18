@@ -7,6 +7,7 @@
  *   <FlowPath points={...} effect="bits" />        0 1 0 1 binary stream
  *   <SignalWaves at={{x: 30, y: 40}} toward={{x: 70, y: 40}} />   Wi-Fi / radio waves
  */
+import {PAPER} from '../iso/iso';
 import {getLength, getPointAtLength} from '@remotion/paths';
 import type {FC} from 'react';
 import {useMemo} from 'react';
@@ -178,7 +179,7 @@ export const FlowPath: FC<FlowProps> = (input) => {
       </svg>
       {p.label && p.effect !== 'packet' && draw >= 1 ? (
         <div style={{position: 'absolute', left: mid.x, top: mid.y, transform: 'translate(-50%, -150%)', padding: `${5 * u}px ${12 * u}px`,
-          borderRadius: 10 * u, background: 'rgba(2,6,23,0.75)', color: '#fff', fontSize: 26 * u, fontWeight: 600, whiteSpace: 'nowrap'}}>
+          borderRadius: 10 * u, background: PAPER.card, border: `1px solid ${PAPER.track}`, color: PAPER.ink, fontSize: 26 * u, fontWeight: 600, whiteSpace: 'nowrap'}}>
           {p.label}
         </div>
       ) : null}

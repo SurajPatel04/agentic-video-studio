@@ -1,0 +1,139 @@
+{
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "brand": false,
+  "scenes": [
+    {
+      "id": "cache-hit",
+      "component": "IsoScene",
+      "props": {
+        "eyebrow": "PATH A / MENU ALREADY STORED",
+        "title": "Is the delivery status cached?",
+        "subtitle": "A cache hit returns the saved status to the app.",
+        "objects": [
+          {
+            "id": "app",
+            "kind": "phone",
+            "label": "App",
+            "at": [
+              -4,
+              4
+            ],
+            "color": "sky",
+            "enter": "drop"
+          },
+          {
+            "id": "cache",
+            "kind": "cache",
+            "label": "Cache",
+            "at": [
+              4,
+              -4
+            ],
+            "color": "butter",
+            "highlight": true,
+            "enter": "drop"
+          }
+        ],
+        "links": [
+          {
+            "from": "app",
+            "to": "cache",
+            "label": "Request: App \u2192 Cache",
+            "returnLabel": "Reply: Cache \u2192 App",
+            "flow": "dots",
+            "enter": "draw",
+            "bidirectional": true,
+            "replyAfter": 0.64
+          }
+        ],
+        "steps": [
+          {
+            "at": 0.34,
+            "target": "cache",
+            "lookup": "checking"
+          },
+          {
+            "at": 0.6,
+            "target": "cache",
+            "lookup": "found"
+          }
+        ],
+        "zoom": 1,
+        "sound": false
+      },
+      "durationInFrames": 210
+    },
+    {
+      "id": "cache-miss",
+      "component": "IsoScene",
+      "props": {
+        "eyebrow": "PATH B / CACHE MISS",
+        "title": "What if the server goes offline?",
+        "subtitle": "A miss needs a server lookup. The app can retry when the service recovers.",
+        "objects": [
+          {
+            "id": "cache",
+            "kind": "cache",
+            "label": "Cache",
+            "at": [
+              -4,
+              4
+            ],
+            "color": "butter",
+            "enter": "drop"
+          },
+          {
+            "id": "service",
+            "kind": "server",
+            "label": "Service",
+            "at": [
+              4,
+              -4
+            ],
+            "color": "lavender",
+            "highlight": false,
+            "enter": "drop"
+          }
+        ],
+        "links": [
+          {
+            "to": "service",
+            "label": "Fetch status",
+            "appearAt": 0.32,
+            "flow": "none",
+            "from": "cache"
+          }
+        ],
+        "steps": [
+          {
+            "at": 0.14,
+            "target": "cache",
+            "lookup": "checking"
+          },
+          {
+            "at": 0.3,
+            "target": "cache",
+            "lookup": "miss"
+          },
+          {
+            "at": 0.52,
+            "target": "service",
+            "lookup": "offline",
+            "color": "coral"
+          },
+          {
+            "at": 0.81,
+            "target": "service",
+            "lookup": "recovered",
+            "color": "mint"
+          }
+        ],
+        "zoom": 1,
+        "sound": false
+      },
+      "durationInFrames": 210
+    }
+  ]
+}

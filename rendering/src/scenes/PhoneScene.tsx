@@ -513,12 +513,15 @@ export const PhoneScene: FC<z.input<typeof phoneSceneSchema>> = (input) => {
 
   // phone placement: steps on the left, phone on the right when there is a title/notes; centred otherwise
   const notes = acts.filter((a) => a.note);
-  const side = Boolean(p.title || p.eyebrow || notes.length);
+  const portrait = H > W;
+  const side = !portrait && Boolean(p.title || p.eyebrow || notes.length);
   const devW = SW + BEZEL * 2, devH = SH + BEZEL * 2;
-  const fit = Math.min(1, (H - 60 * u - 165 * u) / (devH * u)); // keep the phone above the captions
+  const top = (portrait && (p.title || p.eyebrow) ? 210 : 60) * u;
+  const bottom = (portrait ? 390 : 165) * u;
+  const fit = Math.min(portrait ? 1.24 : 1, (H - top - bottom) / (devH * u));
   const s = u * fit;
   const dx = side ? W * 0.68 - (devW * s) / 2 : (W - devW * s) / 2;
-  const dy = 60 * u + (H - 60 * u - 165 * u - devH * s) / 2;
+  const dy = top + (H - top - bottom - devH * s) / 2;
   const sx = dx + BEZEL * s, sy = dy + BEZEL * s; // screen origin on the frame
   const pointOn = (id: string | undefined, fr: number) => {
     if (!id) return null;
@@ -734,6 +737,13 @@ export const PhoneScene: FC<z.input<typeof phoneSceneSchema>> = (input) => {
         </div>
         <Finger x={finger.x} y={finger.y} s={u * Math.max(0.85, fit)} press={finger.press} ripple={finger.ripple} opacity={finger.op * enter} />
       </div>
+      {portrait && curNote >= 0 ? (
+        <div style={{position: 'absolute', top: H - 350 * u, left: 90 * u, right: 90 * u, textAlign: 'center',
+          padding: `${12 * u}px ${24 * u}px`, borderRadius: 20 * u, background: PAPER.card,
+          border: `${2 * u}px solid ${PAPER.ink}`, fontSize: 29 * u, fontWeight: 750, overflowWrap: 'anywhere'}}>
+          {notes[curNote].note}
+        </div>
+      ) : null}
       {cues.map((c, k) => <Sfx key={k} sound={c.sound} at={c.at} volume={c.volume} duration={c.duration} loop={c.loop} />)}
     </PaperStage>
   );

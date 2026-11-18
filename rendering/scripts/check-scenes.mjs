@@ -6,8 +6,8 @@ import assert from 'node:assert/strict';
 const root = path.resolve(import.meta.dirname, '..');
 await mkdir(path.join(root, 'out'), {recursive: true});
 const output = path.join(root, 'out', 'catalog-check.mjs');
-await build({stdin: {contents: `export {sceneCatalog, overlaySchema} from './src/registry'; export {networkLayout} from './src/components/networkLayout';`, resolveDir: root, loader: 'ts'}, outfile: output, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: {'.css': 'empty'}, plugins: [{name:'bundle-world-map',setup(b){b.onResolve({filter:/^world-atlas\//},args=>({path:path.join(root,'node_modules',args.path),external:false}));}}], logLevel: 'silent'});
-const {sceneCatalog, overlaySchema, networkLayout} = await import(pathToFileURL(output));
+await build({stdin: {contents: `export {sceneCatalog, overlaySchema} from './src/registry'; export {networkLayout} from './src/components/networkLayout'; export {algorithmLessons} from './src/scenes/AlgorithmLessons'; export {mathLessons} from './src/scenes/MathLessons';`, resolveDir: root, loader: 'ts'}, outfile: output, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: {'.css': 'empty'}, plugins: [{name:'bundle-world-map',setup(b){b.onResolve({filter:/^world-atlas\//},args=>({path:path.join(root,'node_modules',args.path),external:false}));}}], logLevel: 'silent'});
+const {sceneCatalog, overlaySchema, networkLayout, algorithmLessons, mathLessons} = await import(pathToFileURL(output));
 const {existsSync} = await import('node:fs');
 const {z} = await import('zod');
 for (const [name, entry] of Object.entries(sceneCatalog)) {
@@ -112,7 +112,13 @@ assert(!sceneCatalog.LiveDashboardScene.schema.safeParse({baselineMs: 500, peakM
 assert(!sceneCatalog.MapTrackingScene.schema.safeParse({route: [[0.5, 0.5], [0.5, 0.5]]}).success);
 assert(!sceneCatalog.MapTrackingScene.schema.safeParse({route: [[0, 0], [2, 1]]}).success);
 assert(sceneCatalog.MapTrackingScene.schema.safeParse({route: [[0, 0], [0, 0], [1, 1]]}).success); // zero-length segment is safe
-const entries=Object.entries(sceneCatalog).map(([name,e])=>({name,version:'1.0.0',description:e.description,tags:e.tags,path:existsSync(path.join(root,`src/staging/${name}.tsx`))?`rendering/src/staging/${name}.tsx`:`rendering/src/scenes/${({BuildingScene:'InfrastructureScene',TechnologyScene:'InfrastructureScene',CircuitScene:'ConnectionScene',WirelessScene:'ConnectionScene',GraphScene:'TreeScene'})[name]??name}.tsx`,staged:existsSync(path.join(root,`src/staging/${name}.tsx`)),propsSchema:z.toJSONSchema(e.schema,{io:'input'}),example:e.schema.parse({})}));
+const sceneSources = {
+  BuildingScene:'InfrastructureScene', TechnologyScene:'InfrastructureScene',
+  CircuitScene:'ConnectionScene', WirelessScene:'ConnectionScene', GraphScene:'TreeScene',
+  ...Object.fromEntries(Object.keys(algorithmLessons).map(name => [name,'AlgorithmLessons'])),
+  ...Object.fromEntries(Object.keys(mathLessons).map(name => [name,'MathLessons'])),
+};
+const entries=Object.entries(sceneCatalog).map(([name,e])=>({name,version:'1.0.0',description:e.description,tags:e.tags,path:existsSync(path.join(root,`src/staging/${name}.tsx`))?`rendering/src/staging/${name}.tsx`:`rendering/src/scenes/${sceneSources[name]??name}.tsx`,staged:existsSync(path.join(root,`src/staging/${name}.tsx`)),propsSchema:z.toJSONSchema(e.schema,{io:'input'}),example:e.schema.parse({})}));
 await mkdir(path.join(root,'../library'), {recursive:true});
 await writeFile(path.join(root,'../library/registry.json'),JSON.stringify(entries,null,2)+'\n');
 const overlays=overlaySchema.options.map((o)=>{const s=z.toJSONSchema(o,{io:'input'});const type=s.properties.type.const;delete s.properties.type;s.required=(s.required??[]).filter((k)=>k!=='type');return {type,propsSchema:s};});

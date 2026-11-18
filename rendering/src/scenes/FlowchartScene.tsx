@@ -118,9 +118,9 @@ export const FlowchartScene: React.FC<z.input<typeof flowchartSceneSchema>> = (i
 
   const kindStyle = (kind: string) => {
     if (kind === 'start') return {border: theme.accent, background: `${theme.accent}20`, color: theme.accent};
-    if (kind === 'end') return {border: '#34d399', background: '#34d39920', color: '#6ee7b7'};
-    if (kind === 'decision') return {border: '#fbbf24', background: '#fbbf2418', color: '#fcd34d'};
-    return {border: '#35576f', background: '#132b3f', color: theme.text};
+    if (kind === 'end') return {border: '#34d399', background: '#34d39920', color: '#35784e'};
+    if (kind === 'decision') return {border: '#fbbf24', background: '#fbbf2418', color: '#825716'};
+    return {border: '#35576f', background: '#fffaf1', color: theme.text};
   };
 
   return (
@@ -158,8 +158,8 @@ export const FlowchartScene: React.FC<z.input<typeof flowchartSceneSchema>> = (i
                     <foreignObject x={(layout.x ?? mid.x) - (layout.width ?? 140) / 2}
                       y={(layout.y ?? mid.y) - 38} width={layout.width ?? 140} height={76} opacity={progress}>
                       <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                        <div style={{padding: '6px 8px', background: '#0f172a', border: '1px solid #324658', borderRadius: 9,
-                          color: '#cbd5e1', textAlign: 'center', fontSize: 17, lineHeight: 1.25, overflowWrap: 'anywhere'}}>{edge.label}</div>
+                        <div style={{padding: '6px 8px', background: '#fffaf1', border: '1px solid #324658', borderRadius: 9,
+                          color: '#514b59', textAlign: 'center', fontSize: 17, lineHeight: 1.25, overflowWrap: 'anywhere'}}>{edge.label}</div>
                       </div>
                     </foreignObject>
                   ) : null}
@@ -197,7 +197,7 @@ export const FlowchartScene: React.FC<z.input<typeof flowchartSceneSchema>> = (i
               >
                 <div style={{fontSize: 13, fontWeight: 800, letterSpacing: 2, color: style.color, marginBottom: 10}}>{String(i + 1).padStart(2, '0')}</div>
                 <div style={{fontSize: node.label.length > 45 ? 23 : 27, lineHeight: 1.15, fontWeight: 700, color: style.color, overflowWrap: 'anywhere'}}>{node.label}</div>
-                {node.detail ? <div style={{fontSize: 20, lineHeight: 1.3, color: '#bdcbd8', marginTop: 12, overflowWrap: 'anywhere'}}>{node.detail}</div> : null}
+                {node.detail ? <div style={{fontSize: 20, lineHeight: 1.3, color: '#514b59', marginTop: 12, overflowWrap: 'anywhere'}}>{node.detail}</div> : null}
               </div>
             );
           })}

@@ -1,0 +1,532 @@
+{
+  "width": 1280,
+  "height": 720,
+  "fps": 24,
+  "brand": false,
+  "defaultTransition": {
+    "type": "none"
+  },
+  "scenes": [
+    {
+      "id": "broadcast",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "A broadcast reaches multiple receivers",
+        "eyebrow": "Illustrative example",
+        "objects": [
+          {
+            "id": "tower",
+            "kind": "tower",
+            "label": "Broadcast tower",
+            "at": [
+              -4,
+              3
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "radio",
+            "kind": "radio",
+            "label": "Radio receiver",
+            "at": [
+              1,
+              -4
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "tv",
+            "kind": "tv",
+            "label": "TV receiver",
+            "at": [
+              6,
+              -1
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [
+          {
+            "from": "tower",
+            "to": "radio",
+            "flow": "wave"
+          },
+          {
+            "from": "tower",
+            "to": "tv",
+            "flow": "wave"
+          },
+          {
+            "from": "tv",
+            "to": "tower",
+            "dashed": true,
+            "label": "Feedback",
+            "flow": "none"
+          }
+        ],
+        "steps": [],
+        "sound": false
+      }
+    },
+    {
+      "id": "spread",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "One share becomes many",
+        "eyebrow": "Illustrative example",
+        "objects": [
+          {
+            "id": "post",
+            "kind": "socialpost",
+            "label": "Original post",
+            "at": [
+              -6,
+              5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "reader",
+            "kind": "user",
+            "label": "First share",
+            "at": [
+              -2,
+              1
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "a",
+            "kind": "user",
+            "label": "Reader A",
+            "at": [
+              2,
+              -5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "b",
+            "kind": "user",
+            "label": "Reader B",
+            "at": [
+              3,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "c",
+            "kind": "user",
+            "label": "Reader C",
+            "at": [
+              7,
+              -5
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [
+          {
+            "from": "post",
+            "to": "reader"
+          },
+          {
+            "from": "reader",
+            "to": "a"
+          },
+          {
+            "from": "reader",
+            "to": "b"
+          },
+          {
+            "from": "b",
+            "to": "c"
+          }
+        ],
+        "steps": [
+          {
+            "at": 0.18,
+            "target": "post",
+            "spread": {
+              "depth": 3
+            }
+          }
+        ],
+        "sound": false
+      }
+    },
+    {
+      "id": "gate",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "An editor selects stories for publication",
+        "eyebrow": "Illustrative example",
+        "objects": [
+          {
+            "id": "stories",
+            "kind": "file",
+            "label": "Submitted stories",
+            "at": [
+              -5,
+              5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "editor",
+            "kind": "user",
+            "label": "Editor",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "paper",
+            "kind": "newspaper",
+            "label": "Publication",
+            "at": [
+              5,
+              -5
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [
+          {
+            "from": "stories",
+            "to": "editor",
+            "label": "Submitted"
+          },
+          {
+            "from": "editor",
+            "to": "paper",
+            "label": "Selected"
+          }
+        ],
+        "steps": [
+          {
+            "at": 0.15,
+            "target": "editor",
+            "gate": {
+              "pass": 2,
+              "drop": 3
+            }
+          }
+        ],
+        "sound": false
+      }
+    },
+    {
+      "id": "framing",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "The photo stays the same as the framing changes",
+        "eyebrow": "Illustrative example",
+        "objects": [
+          {
+            "id": "front",
+            "kind": "socialpost",
+            "label": "Photo story",
+            "at": [
+              -5,
+              5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "desk",
+            "kind": "file",
+            "label": "Story agenda",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "updates",
+            "kind": "newspaper",
+            "label": "News update",
+            "at": [
+              5,
+              -5
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "at": 0.1,
+            "target": "front",
+            "frame": [
+              "Protest",
+              "Riot"
+            ]
+          },
+          {
+            "at": 0.1,
+            "target": "desk",
+            "agenda": [
+              "Economy",
+              "Sports",
+              "Climate"
+            ]
+          },
+          {
+            "at": 0.1,
+            "target": "updates",
+            "headline": "Road closure announced"
+          },
+          {
+            "at": 0.49,
+            "target": "desk",
+            "agenda": [
+              "Climate",
+              "Economy",
+              "Sports"
+            ]
+          },
+          {
+            "at": 0.49,
+            "target": "updates",
+            "headline": "Updated: Road reopens at noon"
+          }
+        ],
+        "sound": false
+      }
+    },
+    {
+      "id": "relay",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "The message travels through an opinion leader",
+        "eyebrow": "Illustrative example",
+        "objects": [
+          {
+            "id": "station",
+            "kind": "tv",
+            "label": "Media outlet",
+            "at": [
+              -5,
+              5
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "leader",
+            "kind": "user",
+            "label": "Opinion leader",
+            "at": [
+              0,
+              0
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "crowd",
+            "kind": "people",
+            "label": "Audience",
+            "at": [
+              5,
+              -5
+            ],
+            "enter": "none",
+            "count": 12
+          }
+        ],
+        "links": [
+          {
+            "from": "station",
+            "to": "crowd",
+            "via": "leader",
+            "appearAt": 0.07
+          }
+        ],
+        "steps": [
+          {
+            "at": 0.6,
+            "target": "crowd",
+            "attention": 70
+          },
+          {
+            "at": 0.78,
+            "target": "crowd",
+            "react": "question"
+          }
+        ],
+        "sound": false
+      }
+    },
+    {
+      "id": "bubble",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "An audience filters outside views",
+        "eyebrow": "Illustrative example",
+        "objects": [
+          {
+            "id": "source",
+            "kind": "socialpost",
+            "label": "Outside view",
+            "at": [
+              -4,
+              4
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "crowd",
+            "kind": "people",
+            "label": "Audience",
+            "at": [
+              4,
+              -4
+            ],
+            "enter": "none",
+            "count": 16
+          }
+        ],
+        "links": [
+          {
+            "from": "source",
+            "to": "crowd",
+            "label": "Outside view"
+          }
+        ],
+        "steps": [
+          {
+            "at": 0.12,
+            "target": "crowd",
+            "bubble": true,
+            "attention": 70
+          },
+          {
+            "at": 0.49,
+            "target": "crowd",
+            "split": [
+              55,
+              45
+            ],
+            "react": "angry"
+          }
+        ],
+        "sound": false
+      }
+    },
+    {
+      "id": "race",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "Rumour and correction travel at different speeds",
+        "eyebrow": "Illustrative example",
+        "objects": [
+          {
+            "id": "feed",
+            "kind": "socialpost",
+            "label": "Shared messages",
+            "at": [
+              -4,
+              4
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "crowd",
+            "kind": "people",
+            "label": "Audience",
+            "at": [
+              4,
+              -4
+            ],
+            "enter": "none",
+            "count": 16
+          }
+        ],
+        "links": [
+          {
+            "from": "feed",
+            "to": "crowd"
+          }
+        ],
+        "steps": [
+          {
+            "at": 0.13,
+            "target": "feed",
+            "race": {
+              "rumour": 3,
+              "correction": 1
+            }
+          }
+        ],
+        "sound": false
+      }
+    },
+    {
+      "id": "interference",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "Noise changes what the audience receives",
+        "eyebrow": "Illustrative example",
+        "objects": [
+          {
+            "id": "speaker",
+            "kind": "spokesperson",
+            "label": "Spokesperson",
+            "at": [
+              -4,
+              4
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "crowd",
+            "kind": "people",
+            "label": "Audience",
+            "at": [
+              4,
+              -4
+            ],
+            "enter": "none",
+            "count": 16
+          }
+        ],
+        "links": [
+          {
+            "from": "speaker",
+            "to": "crowd",
+            "noise": true,
+            "label": "Message"
+          }
+        ],
+        "steps": [
+          {
+            "at": 0.15,
+            "target": "speaker",
+            "say": "We're investigating"
+          },
+          {
+            "at": 0.48,
+            "target": "crowd",
+            "opinion": {
+              "from": 30,
+              "to": 60
+            }
+          }
+        ],
+        "sound": false
+      }
+    }
+  ]
+}

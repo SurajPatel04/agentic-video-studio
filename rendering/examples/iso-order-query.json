@@ -1,0 +1,148 @@
+{
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "brand": false,
+  "defaultTransition": {
+    "type": "none"
+  },
+  "scenes": [
+    {
+      "id": "request",
+      "component": "IsoScene",
+      "durationInFrames": 105,
+      "props": {
+        "title": "The app asks for order 104",
+        "objects": [
+          {
+            "id": "app",
+            "kind": "phone",
+            "label": "App",
+            "at": [
+              -3,
+              3
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "db",
+            "kind": "database",
+            "label": "Orders database",
+            "at": [
+              3,
+              -3
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [
+          {
+            "from": "app",
+            "to": "db",
+            "label": "Find order 104"
+          }
+        ],
+        "steps": [
+          {
+            "at": 0.6,
+            "target": "db",
+            "badge": "checking"
+          }
+        ],
+        "sound": false
+      }
+    },
+    {
+      "id": "table",
+      "component": "QueryScene",
+      "durationInFrames": 240,
+      "props": {
+        "title": "Inside the orders database",
+        "eyebrow": "SAMPLE DATA",
+        "query": "SELECT * FROM orders WHERE id = 104",
+        "mode": "scan",
+        "table": {
+          "name": "orders",
+          "columns": [
+            "id",
+            "status",
+            "eta_min"
+          ],
+          "rows": [
+            [
+              101,
+              "Ready",
+              15
+            ],
+            [
+              102,
+              "Sent",
+              8
+            ],
+            [
+              103,
+              "Ready",
+              12
+            ],
+            [
+              104,
+              "Nearby",
+              3
+            ],
+            [
+              105,
+              "Sent",
+              9
+            ]
+          ]
+        },
+        "sound": false
+      }
+    },
+    {
+      "id": "return",
+      "component": "IsoScene",
+      "durationInFrames": 105,
+      "props": {
+        "title": "The app receives the matching row",
+        "objects": [
+          {
+            "id": "app",
+            "kind": "phone",
+            "label": "App",
+            "at": [
+              -3,
+              3
+            ],
+            "enter": "none"
+          },
+          {
+            "id": "db",
+            "kind": "database",
+            "label": "Orders database",
+            "at": [
+              3,
+              -3
+            ],
+            "enter": "none"
+          }
+        ],
+        "links": [
+          {
+            "from": "db",
+            "to": "app",
+            "label": "104 \u00b7 Nearby \u00b7 3 min"
+          }
+        ],
+        "steps": [
+          {
+            "at": 0,
+            "target": "db",
+            "badge": "found"
+          }
+        ],
+        "sound": false
+      }
+    }
+  ]
+}

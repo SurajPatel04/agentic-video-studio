@@ -66,7 +66,7 @@ export const StatScene: React.FC<z.input<typeof statSceneSchema>> = (input) => {
         </div>
 
         {p.comparisons.length ? (
-          <div style={{display: 'flex', flexDirection: 'column', gap: 22, padding: '28px 30px', border: '1px solid #2e4b61', borderRadius: 18, background: '#112638'}}>
+          <div style={{display: 'flex', flexDirection: 'column', gap: 22, padding: '28px 30px', border: '1px solid #2e4b61', borderRadius: 18, background: '#fffaf1'}}>
             {p.comparisons.map((item, i) => {
               const reveal = clamp((frame - p.startAt - 10 - i * 7) / 18);
               const width = comparisonMax ? (item.value / comparisonMax) * 100 : 0;

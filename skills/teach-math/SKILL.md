@@ -36,8 +36,23 @@ metadata:
   - interest rate
   - growth rate
   - sine wave
+  - truth table
+  - boolean logic
+  - number line
+  - unit circle
+  - vectors
+  - matrix multiplication
   scenes:
   - EquationScene
+  - GeometryScene
+  - NumberLineScene
+  - UnitCircleScene
+  - VectorScene
+  - MatrixMultiplyScene
+  - ProbabilityScene
+  - FractionScene
+  - AlgebraStepsScene
+  - TruthTableScene
   - PlotScene
   - LiveChartScene
   - ChartScene
@@ -59,3 +74,5 @@ Both are paper style and allowed with the house style.
 Use EquationScene or charts only within their supported contracts. Match chart scales and labels to the numerical example. Prefer a clear sequence of supported scenes over an invented symbolic animation.
 
 Include a common misconception or boundary case and a short prediction checkpoint when useful. Do not substitute formula lists for an explanation of when and why the method applies.
+
+GeometryScene works through a right triangle. Use NumberLineScene for signed movement, UnitCircleScene for trigonometric coordinates, and VectorScene for tip-to-tail addition. MatrixMultiplyScene highlights each row and column pair. ProbabilityScene takes equally likely outcomes, FractionScene shades equal parts, AlgebraStepsScene solves ax + b = c, and TruthTableScene evaluates Boolean operators.

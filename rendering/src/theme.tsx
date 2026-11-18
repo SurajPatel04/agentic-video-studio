@@ -1,13 +1,14 @@
 import {createContext, useContext} from 'react';
 import {useVideoConfig} from 'remotion';
+import {PAPER} from './iso/iso';
 import type {Theme} from './types';
 
 export const defaultTheme: Theme = {
-  background: '#0f172a',
-  text: '#f8fafc',
-  muted: '#94a3b8',
-  accent: '#38bdf8',
-  fontFamily: "'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif",
+  background: PAPER.bg,
+  text: PAPER.ink,
+  muted: PAPER.inkSoft,
+  accent: '#71569f',
+  fontFamily: PAPER.sans,
 };
 
 const ThemeContext = createContext<Theme>(defaultTheme);

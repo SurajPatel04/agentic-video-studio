@@ -168,14 +168,22 @@ export const QueryScene: FC<z.input<typeof querySceneSchema>> = (input) => {
   const flyAt = (j: number) => res0 + ((res1 - res0) * j) / Math.max(1, matches.length);
 
   // layout
-  const top = 280 * u, bottom = H - 170 * u, left = 90 * u, right = W - 90 * u;
-  const idxW = mode === 'index' ? 300 * u : 0, gap = 40 * u;
-  const resW = Math.min(520 * u, (sel.length * 150 + 20) * u);
-  const tabX = left + idxW + (idxW ? gap : 0), tabW = right - resW - gap - tabX;
-  const rowH = Math.min(62 * u, (bottom - top - 60 * u) / (n + 1));
+  const portrait = H > W;
+  const top = (portrait ? 355 : 280) * u, bottom = H - (portrait ? 320 : 170) * u;
+  const left = (portrait ? 52 : 90) * u, right = W - left;
+  const idxW = mode === 'index' ? (portrait ? 240 : 300) * u : 0, gap = (portrait ? 30 : 40) * u;
+  const resW = portrait ? right - left : Math.min(520 * u, (sel.length * 150 + 20) * u);
+  const resX = portrait ? left : right - resW;
+  const tabX = left + idxW + (idxW ? gap : 0), tabW = (portrait ? right : resX - gap) - tabX;
+  const headerH = 52 * u, sectionGap = 52 * u;
+  const rowH = Math.min(62 * u, (bottom - top - (portrait ? 2 * headerH + sectionGap : headerH)) /
+    (n + 1 + (portrait ? matches.length + 1 : 0)));
+  const resY = portrait ? top + headerH + (n + 1) * rowH + sectionGap : top;
   const font = Math.min(26 * u, rowH * 0.46);
   const colW = tabW / T.columns.length;
-  const rowY = (i: number) => top + 50 * u + (i + 1) * rowH;
+  const rowY = (i: number) => top + headerH + (i + 1) * rowH;
+  const resultCells = (i: number) => sel.map((c) => <div key={c} style={{flex: 1, minWidth: 0, padding: `0 ${14 * u}px`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{String(T.rows[i][T.columns.indexOf(c)] ?? 'NULL')}</div>);
+  const rowStyle = {display: 'flex', height: rowH, boxSizing: 'border-box' as const, alignItems: 'center', fontSize: font, fontFamily: MONO, fontWeight: 700, borderBottom: `${1 * u}px solid ${PAPER.track}`};
 
   const lit = (i: number) => f >= checkedAt(i);
   const scanRow = mode === 'scan' && f >= look0 && f < look1 ? Math.min(n - 1, Math.floor(((f - look0) / (look1 - look0)) * n)) : -1;
@@ -192,11 +200,11 @@ export const QueryScene: FC<z.input<typeof querySceneSchema>> = (input) => {
   return (
     <PaperStage eyebrow={p.eyebrow} title={p.title}>
       {/* query bar */}
-      <div style={{position: 'absolute', left, right: W - right, top: 172 * u, height: 72 * u, borderRadius: 16 * u, background: DARK.bg, border: `${3 * u}px solid ${PAPER.ink}`, display: 'flex', alignItems: 'center', gap: 16 * u, padding: `0 ${26 * u}px`,
-        fontFamily: MONO, fontSize: 27 * u, color: DARK.text, opacity: enter, whiteSpace: 'nowrap', overflow: 'hidden'}}>
+      <div style={{position: 'absolute', left, right: W - right, top: (portrait ? 187 : 172) * u, height: (portrait ? 124 : 72) * u, borderRadius: 16 * u, background: DARK.bg, border: `${3 * u}px solid ${PAPER.ink}`, display: 'flex', alignItems: 'center', gap: 16 * u, padding: `0 ${26 * u}px`,
+        fontFamily: MONO, fontSize: (portrait ? 22 : 27) * u, color: DARK.text, opacity: enter, whiteSpace: portrait ? 'normal' : 'nowrap', overflowWrap: 'anywhere', overflow: 'hidden'}}>
         <span style={{color: DARK.green, fontWeight: 700}}>sql&gt;</span>
         <span>{sqlColor(typed)}{f < typeEnd + 6 && Math.floor(f / 8) % 2 === 0 ? <span style={{display: 'inline-block', width: 13 * u, height: 28 * u, background: DARK.text, verticalAlign: 'middle', marginLeft: 3 * u}} /> : null}</span>
-        <span style={{marginLeft: 'auto', fontFamily: PAPER.sans, fontSize: 19 * u, fontWeight: 800, padding: `${6 * u}px ${14 * u}px`, borderRadius: 10 * u, background: mode === 'index' ? '#2f5d3a' : '#5d3a2f', color: mode === 'index' ? DARK.green : DARK.orange}}>
+        <span style={{marginLeft: 'auto', flexShrink: 0, maxWidth: '23%', fontFamily: PAPER.sans, fontSize: 19 * u, fontWeight: 800, padding: `${6 * u}px ${14 * u}px`, borderRadius: 10 * u, background: mode === 'index' ? '#2f5d3a' : '#5d3a2f', color: mode === 'index' ? DARK.green : DARK.orange}}>
           {mode === 'index' ? `INDEX on ${idxCol}` : 'FULL TABLE SCAN'}
         </span>
       </div>
@@ -204,16 +212,16 @@ export const QueryScene: FC<z.input<typeof querySceneSchema>> = (input) => {
       {/* index panel */}
       {mode === 'index' ? (
         <div style={{position: 'absolute', left, top, width: idxW, borderRadius: 18 * u, background: PAPER.card, border: `${2.5 * u}px solid ${PAPER.ink}`, overflow: 'hidden', opacity: enter}}>
-          <div style={{height: 50 * u, display: 'flex', alignItems: 'center', gap: 10 * u, padding: `0 ${16 * u}px`, background: '#e7f3ea', borderBottom: `${2 * u}px solid ${PAPER.ink}`, fontWeight: 800, fontSize: 20 * u}}>
+          <div style={{height: headerH, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 10 * u, padding: `0 ${16 * u}px`, background: '#e7f3ea', borderBottom: `${2 * u}px solid ${PAPER.ink}`, fontWeight: 800, fontSize: 20 * u}}>
             <span style={{fontFamily: MONO}}>⚡ index({idxCol})</span>
           </div>
           {idxRows.map((x, k) => {
             const probeK = probes.indexOf(k);
             const probing = probeK >= 0 && f >= probeAt(probeK) && f < probeAt(probeK) + fps * 0.45;
             const found = matchSet.has(x.i) && f >= foundAt;
-            return <div key={k} style={{height: rowH, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${16 * u}px`, fontFamily: MONO, fontSize: font,
+            return <div key={k} style={{height: rowH, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${16 * u}px`, fontFamily: MONO, fontSize: portrait ? Math.min(font, 22 * u) : font,
               background: found ? '#d8f0dd' : probing ? '#ffe2c4' : k % 2 ? '#fbf6ec' : 'transparent', borderBottom: `${1 * u}px solid ${PAPER.track}`, fontWeight: found ? 800 : 500}}>
-              <span>{x.key}</span><span style={{color: PAPER.inkSoft}}>→ row {x.i + 1}</span>
+              <span style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{x.key}</span><span style={{color: PAPER.inkSoft, whiteSpace: 'nowrap', marginLeft: 6 * u}}>→ row {x.i + 1}</span>
             </div>;
           })}
         </div>
@@ -224,26 +232,27 @@ export const QueryScene: FC<z.input<typeof querySceneSchema>> = (input) => {
         {matches.map((i, j) => {
           const k = clamp01((f - pointAt(j)) / 8);
           if (k <= 0) return null;
-          const yIdx = top + 50 * u + (idxRows.findIndex((x) => x.i === i) + 0.5) * rowH;
+            const yIdx = top + headerH + (idxRows.findIndex((x) => x.i === i) + 0.5) * rowH;
           const x0 = left + idxW, x1 = tabX, y1 = rowY(i) + rowH / 2;
-          return <path key={i} d={`M${x0},${yIdx} C${x0 + gap},${yIdx} ${x1 - gap},${y1} ${x0 + (x1 - x0) * k},${yIdx + (y1 - yIdx) * k}`} stroke="#3f9a57" strokeWidth={3 * u} fill="none" />;
+          return <path key={i} d={`M${x0},${yIdx} C${x0 + gap / 2},${yIdx} ${x1 - gap / 2},${y1} ${x1},${y1}`} stroke="#3f9a57" strokeWidth={3 * u} fill="none"
+            pathLength={1} strokeDasharray={k < 1 ? 1 : undefined} strokeDashoffset={k < 1 ? 1 - k : undefined} />;
         })}
       </svg> : null}
 
       {/* the table */}
       <div style={{position: 'absolute', left: tabX, top, width: tabW, borderRadius: 18 * u, background: PAPER.card, border: `${2.5 * u}px solid ${PAPER.ink}`, overflow: 'hidden', opacity: enter, boxShadow: `0 ${8 * u}px ${18 * u}px rgba(70,50,30,0.14)`}}>
-        <div style={{height: 50 * u, display: 'flex', alignItems: 'center', padding: `0 ${16 * u}px`, background: '#efe8dc', borderBottom: `${2 * u}px solid ${PAPER.ink}`, fontWeight: 800, fontSize: 20 * u}}>
+        <div style={{height: headerH, boxSizing: 'border-box', display: 'flex', alignItems: 'center', padding: `0 ${16 * u}px`, background: '#efe8dc', borderBottom: `${2 * u}px solid ${PAPER.ink}`, fontWeight: 800, fontSize: 20 * u}}>
           <span style={{fontFamily: MONO}}>{T.name}</span>
           <span style={{marginLeft: 'auto', fontSize: 19 * u, padding: `${4 * u}px ${12 * u}px`, borderRadius: 10 * u, background: counterBad && rowsRead > matches.length ? '#fbe1dc' : '#dff3e2', color: counterBad && rowsRead > matches.length ? '#b2402f' : '#2f7a3d'}}>rows read: {rowsRead} / {n}</span>
         </div>
-        <div style={{display: 'flex', height: rowH, alignItems: 'center', borderBottom: `${2 * u}px solid ${PAPER.track}`, fontWeight: 800, fontSize: font * 0.9, color: PAPER.inkSoft}}>
-          {T.columns.map((c) => <div key={c} style={{width: colW, padding: `0 ${14 * u}px`, boxSizing: 'border-box', color: c === where?.column ? '#8a6fd1' : undefined}}>{c}</div>)}
+        <div style={{display: 'flex', height: rowH, boxSizing: 'border-box', alignItems: 'center', borderBottom: `${2 * u}px solid ${PAPER.track}`, fontWeight: 800, fontSize: font * 0.9, color: PAPER.inkSoft}}>
+          {T.columns.map((c) => <div key={c} style={{width: colW, minWidth: 0, padding: `0 ${14 * u}px`, boxSizing: 'border-box', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: c === where?.column ? '#8a6fd1' : undefined}}>{c}</div>)}
         </div>
         {T.rows.map((r, i) => {
           const hit = matchSet.has(i) && lit(i);
           const miss = !matchSet.has(i) && lit(i);
           const cursor = scanRow === i;
-          return <div key={i} style={{display: 'flex', height: rowH, alignItems: 'center', fontSize: font, fontFamily: MONO, borderBottom: `${1 * u}px solid ${PAPER.track}`,
+          return <div key={i} style={{display: 'flex', height: rowH, boxSizing: 'border-box', alignItems: 'center', fontSize: font, fontFamily: MONO, borderBottom: `${1 * u}px solid ${PAPER.track}`,
             background: cursor ? '#ffe2c4' : hit ? '#d8f0dd' : miss ? '#f1ece4' : 'transparent', color: miss ? '#a39b90' : PAPER.ink, fontWeight: hit ? 800 : 500, boxShadow: cursor ? `inset ${5 * u}px 0 0 #ff5500` : hit ? `inset ${5 * u}px 0 0 #3f9a57` : undefined}}>
             {r.map((v, k) => <div key={k} style={{width: colW, padding: `0 ${14 * u}px`, boxSizing: 'border-box', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{String(v ?? 'NULL')}</div>)}
           </div>;
@@ -251,23 +260,27 @@ export const QueryScene: FC<z.input<typeof querySceneSchema>> = (input) => {
       </div>
 
       {/* result */}
-      <div style={{position: 'absolute', left: right - resW, top, width: resW, borderRadius: 18 * u, background: '#f3fbf4', border: `${2.5 * u}px solid ${PAPER.ink}`, overflow: 'hidden', opacity: interpolate(f, [res0 - 10, res0], [0.35, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}) * enter}}>
-        <div style={{height: 50 * u, display: 'flex', alignItems: 'center', padding: `0 ${16 * u}px`, background: '#dff3e2', borderBottom: `${2 * u}px solid ${PAPER.ink}`, fontWeight: 800, fontSize: 20 * u}}>
-          result <span style={{marginLeft: 'auto', color: '#2f7a3d'}}>{matches.filter((_, j) => f >= flyAt(j) + 10).length} row{matches.length === 1 ? '' : 's'}</span>
+      <div style={{position: 'absolute', left: resX, top: resY, width: resW, borderRadius: 18 * u, background: '#f3fbf4', border: `${2.5 * u}px solid ${PAPER.ink}`, overflow: 'hidden', opacity: interpolate(f, [res0 - 10, res0], [0.35, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}) * enter}}>
+        <div style={{height: headerH, boxSizing: 'border-box', display: 'flex', alignItems: 'center', padding: `0 ${16 * u}px`, background: '#dff3e2', borderBottom: `${2 * u}px solid ${PAPER.ink}`, fontWeight: 800, fontSize: 20 * u}}>
+          result <span style={{marginLeft: 'auto', color: '#2f7a3d'}}>{matches.filter((_, j) => f >= flyAt(j) + 12).length} row{matches.length === 1 ? '' : 's'}</span>
         </div>
-        <div style={{display: 'flex', height: rowH, alignItems: 'center', borderBottom: `${2 * u}px solid ${PAPER.track}`, fontWeight: 800, fontSize: font * 0.9, color: PAPER.inkSoft}}>
-          {sel.map((c) => <div key={c} style={{flex: 1, padding: `0 ${14 * u}px`}}>{c}</div>)}
+        <div style={{display: 'flex', height: rowH, boxSizing: 'border-box', alignItems: 'center', borderBottom: `${2 * u}px solid ${PAPER.track}`, fontWeight: 800, fontSize: font * 0.9, color: PAPER.inkSoft}}>
+          {sel.map((c) => <div key={c} style={{flex: 1, minWidth: 0, padding: `0 ${14 * u}px`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{c}</div>)}
         </div>
         {matches.map((i, j) => {
           const k = ease(clamp01((f - flyAt(j)) / 12));
-          if (k <= 0) return null;
-          const fromX = tabX - (right - resW), fromY = rowY(i) - (top + 50 * u + (j + 1) * rowH);
-          return <div key={i} style={{display: 'flex', height: rowH, alignItems: 'center', fontSize: font, fontFamily: MONO, fontWeight: 700, borderBottom: `${1 * u}px solid ${PAPER.track}`,
-            transform: `translate(${fromX * (1 - k)}px, ${fromY * (1 - k)}px)`, background: k < 1 ? '#d8f0dd' : 'transparent'}}>
-            {sel.map((c) => <div key={c} style={{flex: 1, padding: `0 ${14 * u}px`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{String(T.rows[i][T.columns.indexOf(c)] ?? 'NULL')}</div>)}
-          </div>;
+          return k <= 0 ? null : <div key={i} style={{...rowStyle, visibility: k < 1 ? 'hidden' : 'visible'}}>{resultCells(i)}</div>;
         })}
       </div>
+      {matches.map((i, j) => {
+        const k = ease(clamp01((f - flyAt(j)) / 12));
+        if (k <= 0 || k >= 1) return null;
+        const y = resY + headerH + (j + 1) * rowH;
+        return <div key={i} style={{...rowStyle, position: 'absolute', left: tabX + (resX - tabX) * k,
+          top: rowY(i) + (y - rowY(i)) * k, width: tabW + (resW - tabW) * k, background: '#d8f0dd', borderRadius: 6 * u}}>
+          {resultCells(i)}
+        </div>;
+      })}
       {cues.map((c, k) => <Sfx key={k} sound={c.sound} at={c.at} volume={c.volume} duration={c.duration} loop={c.loop} />)}
     </PaperStage>
   );

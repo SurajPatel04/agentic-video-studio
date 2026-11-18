@@ -73,7 +73,9 @@ Concept recipes:
 - AI and emerging media: one post card with aigeneratedlabel beside a aivoice robot, an alteredimage comparison, a recommendation feed and a verified panel; use steps to walk through the checks a viewer can make (label, original image, source trail) instead of claiming a detector is perfect.
 - Podcast production: podcastbooth in the centre, boommic and headphones beside it, then audiorecorder and mixingconsole linked in a record → edit → publish chain; finish with a speaker for the listener. Use steps to name each stage.
 
-Use real examples, but don't invent statistics, dates or quotes; keep claims general when unsure.
+Use real examples with source-supported statistics, dates and quotes. Keep claims general when evidence is unavailable. Introduce illustrative reach, ratings, opinion and trust values as “example numbers” in narration and identify the example on screen. Describe exposure with “Saw it” and distribution with “Shared.” Attribute changes in understanding, belief or opinion only when the topic provides evidence. Keep both series visible together for rumour versus correction and reach versus understanding.
+
+For individual beats in IsoScene, use `flow: "wave"` for a broadcast, `via` for an opinion leader, `noise: true` for interference, and a dashed link from the audience to the sender for feedback. Use timed `spread`, `gate`, `frame`, `agenda`, `bubble`, `race`, `attention`, `opinion`, `split`, `react`, `say` and `headline` fields to demonstrate the corresponding changes on the diagram.
 
 News and journalism animations (prefer these for complete sequences):
 - `NewsCycleScene`: event → reporter with mic → editor / funnel → publication → audience reactions. Set `event`, `output` (`print` or `broadcast`) and `stories` (`label`, `selected`).

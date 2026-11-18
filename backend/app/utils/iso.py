@@ -30,12 +30,17 @@ def _end_state(scene: dict[str, Any]) -> tuple[list[dict], list[dict]]:
         for key in CARRY:
             if key in st:
                 o[key] = st[key]
+        if "badge" in st or "lookup" in st:
+            key = "badge" if "badge" in st else "lookup"
+            o.pop("lookup" if key == "badge" else "badge", None)
+            o[key] = copy.deepcopy(st[key])
         if st.get("hide") is True:
             o["_hidden"] = True
         elif st.get("hide") is False:
             o.pop("_hidden", None)
     alive = {i: o for i, o in objs.items() if not o.pop("_hidden", False)}
-    links = [copy.deepcopy(l) for l in props.get("links") or [] if isinstance(l, dict) and l.get("from") in alive and l.get("to") in alive]
+    links = [copy.deepcopy(l) for l in props.get("links") or [] if isinstance(l, dict) and l.get("from") in alive
+             and l.get("to") in alive and ("via" not in l or l["via"] in alive)]
     return list(alive.values()), links
 
 
@@ -62,7 +67,8 @@ def expand_continuations(spec: dict[str, Any]) -> dict[str, Any]:
             ids = {o["id"] for o in kept} | new_ids
             new_links = [l for l in props.get("links") or [] if isinstance(l, dict)]
             pairs = {(l.get("from"), l.get("to")) for l in new_links}
-            kept_links = [l for l in links if l["from"] in ids and l["to"] in ids and (l["from"], l["to"]) not in pairs]
+            kept_links = [l for l in links if l["from"] in ids and l["to"] in ids
+                          and ("via" not in l or l["via"] in ids) and (l["from"], l["to"]) not in pairs]
             props["objects"] = kept + new_objs
             props["links"] = kept_links + new_links
             props.setdefault("steps", [])

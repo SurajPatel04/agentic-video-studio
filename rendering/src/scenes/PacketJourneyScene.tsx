@@ -1,7 +1,9 @@
 import {ThreeCanvas} from '@remotion/three';
 import {useCurrentFrame} from 'remotion';
 import {z} from 'zod';
-import {InfrastructureObject} from '../components/InfrastructureObject';
+import {OrthographicCamera, Vector3} from 'three';
+import {WorldIcons} from '../components/WorldIcons';
+import {PAPER} from '../iso/iso';
 import {StudioLights} from '../components/NetworkWorld';
 import {deviceKindSchema} from '../components/Device';
 import {RBox} from '../components/three/parts';
@@ -28,16 +30,29 @@ export const PacketJourneyScene: React.FC<z.input<typeof packetJourneySceneSchem
   const progress=Math.min(1,Math.max(0,(time%segment-p.holdFrames)/p.travelFrames));
   const packetIndex=Math.min(p.stops.length-1,hop+progress);
   const x=(i:number)=>-5+i*10/(p.stops.length-1);
+  const width = 1440, height = 375;
+  const camera = new OrthographicCamera(-width / 2, width / 2, height / 2, -height / 2, 0.1, 1000);
+  camera.position.set(0, 3, 12);
+  camera.lookAt(0, 0, 0);
+  camera.zoom = 100;
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
   return <StudyFrame title={p.title} eyebrow="PACKET JOURNEY / ONE HOP AT A TIME" footer="A simplified route: actual packets can traverse many intermediate routers.">
-    <ThreeCanvas width={1440} height={375} orthographic camera={{position:[0,3,12],zoom:100}}>
+    <ThreeCanvas width={width} height={height} camera={camera}>
       <StudioLights/>
       <mesh position={[0,-0.65,0.8]}><boxGeometry args={[10,0.035,0.035]}/><meshBasicMaterial color="#43748c"/></mesh>
-      {p.stops.map((stop,i)=><group key={i} position={[x(i),-0.7,0]} scale={0.55}>
-        <InfrastructureObject kind={stop.kind} state={i===hop?'active':'on'}/>
-      </group>)}
       {frame>=p.startAt&&<RBox p={[x(packetIndex),-0.45,1]} s={[0.26,0.18,0.18]} r={0.04} color="#ffe29b" mat="glow" glow={2.2}/>}
     </ThreeCanvas>
-    <div style={{display:'flex',justifyContent:'space-between',margin:'0 105px',fontSize:23}}>{p.stops.map((s,i)=><span key={i} style={{color:i===hop?'#ffe29b':'#99b5c9'}}>{s.label}</span>)}</div>
-    <div style={{marginTop:38,padding:'22px 30px',background:'#193149',borderLeft:'4px solid #ffe29b',fontSize:27,borderRadius:8}}><strong>{hop+1}. {p.stops[hop].label}</strong><span style={{color:'#b9ccdc'}}> — {p.stops[hop].detail}</span></div>
+    <div style={{position: 'absolute', inset: '0 0 auto', width, height, pointerEvents: 'none'}}>
+      <WorldIcons camera={camera} width={width} height={height} icons={p.stops.map((stop, i) => ({
+        kind: stop.kind, position: [x(i), -0.7, 0], size: 1.65, state: i === hop ? 'active' : 'on',
+      }))}/>
+    </div>
+    <div style={{position: 'relative', height: 32, fontSize: 23}}>{p.stops.map((stop, i) => {
+      const anchor = new Vector3(x(i), -0.7, 0).project(camera);
+      return <span key={i} style={{position: 'absolute', left: (anchor.x + 1) * width / 2, transform: 'translateX(-50%)',
+        color: i === hop ? PAPER.ink : PAPER.inkSoft, textAlign: 'center', maxWidth: width / p.stops.length}}>{stop.label}</span>;
+    })}</div>
+    <div style={{marginTop:12,padding:'22px 30px',background:PAPER.card,borderLeft:`4px solid ${PAPER.warn}`,fontSize:27,borderRadius:8}}><strong>{hop+1}. {p.stops[hop].label}</strong><span style={{color:PAPER.inkSoft}}> — {p.stops[hop].detail}</span></div>
   </StudyFrame>;
 };

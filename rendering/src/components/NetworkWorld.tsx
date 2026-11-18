@@ -1,10 +1,10 @@
 import {useMemo} from 'react';
 import {useCurrentFrame, useVideoConfig} from 'remotion';
 import * as THREE from 'three';
-import {InfrastructureObject, type ObjectKind} from './InfrastructureObject';
+import {PAPER} from '../iso/iso';
 import {Movers, type Flow3DEffect} from './three/effects';
 import {makeLook, type V3} from './three/parts';
-import {networkLayout, type Point3, type Topology} from './networkLayout';
+import type {NetworkLayout, Point3} from './networkLayout';
 
 export const Cable: React.FC<{points: Point3[]; start: number; drawFrames: number; packetFrames: number; color: string; effect?: Flow3DEffect; size?: number}> = ({points, start, drawFrames, packetFrames, color, effect = 'packet', size = 0.06}) => {
   const frame = useCurrentFrame();
@@ -26,21 +26,13 @@ export const StudioLights = () => <>
   <ambientLight intensity={0.9}/><directionalLight position={[1, 5, 8]} intensity={2.4}/>
   <directionalLight position={[-5, 7, -3]} intensity={1.8} color="#8cc9ff"/>
 </>;
-export const NetworkWorld: React.FC<{topology: Topology; kinds: ObjectKind[]; startAt: number; stagger: number; drawFrames: number; packetFrames: number; accent: string; room?: boolean; effect?: Flow3DEffect}> = ({topology, kinds, startAt, stagger, drawFrames, packetFrames, accent, room = false, effect = 'packet'}) => {
-  const frame = useCurrentFrame();
-  const layout = useMemo(() => networkLayout(topology, kinds.length), [topology, kinds.length]);
+export const NetworkWorld: React.FC<{layout: NetworkLayout; startAt: number; stagger: number; drawFrames: number; packetFrames: number; accent: string; room?: boolean; effect?: Flow3DEffect}> = ({layout, startAt, stagger, drawFrames, packetFrames, accent, room = false, effect = 'packet'}) => {
   return <group>
-    <mesh position={[0, -0.12, 0]}><boxGeometry args={[11, 0.15, 7.5]}/><meshStandardMaterial color="#172b3e" roughness={0.65}/></mesh>
+    <mesh position={[0, -0.12, 0]}><boxGeometry args={[11, 0.15, 7.5]}/><meshBasicMaterial color={PAPER.track}/></mesh>
     {room && <>
-      <mesh position={[0, 0.6, -3.7]}><boxGeometry args={[11, 1.4, 0.1]}/><meshStandardMaterial color="#3a4e60" transparent opacity={0.6}/></mesh>
-      <mesh position={[-5.45, 0.6, 0]}><boxGeometry args={[0.1, 1.4, 7.5]}/><meshStandardMaterial color="#3a4e60" transparent opacity={0.6}/></mesh>
+      <mesh position={[0, 0.6, -3.7]}><boxGeometry args={[11, 1.4, 0.1]}/><meshBasicMaterial color="#d9cbbd"/></mesh>
+      <mesh position={[-5.45, 0.6, 0]}><boxGeometry args={[0.1, 1.4, 7.5]}/><meshBasicMaterial color="#e2d6c7"/></mesh>
     </>}
     {layout.paths.map((points, i) => <Cable key={i} points={points} start={startAt + i * stagger} drawFrames={drawFrames} packetFrames={packetFrames} color={accent} effect={effect}/>)}
-    {layout.positions.map((p, i) => {
-      const growth = Math.max(0, Math.min(1, (frame - i * 3) / 18));
-      return <group key={i} position={p} scale={[0.55, 0.55 * Math.max(0.001, growth), 0.55]} rotation={[0, -0.15, 0]}>
-        <InfrastructureObject kind={kinds[i]} opacity={growth}/>
-      </group>;
-    })}
   </group>;
 };

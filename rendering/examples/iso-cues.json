@@ -1,0 +1,386 @@
+{
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "brand": false,
+  "defaultTransition": {
+    "type": "none"
+  },
+  "scenes": [
+    {
+      "id": "numbers",
+      "component": "IsoScene",
+      "durationInFrames": 210,
+      "props": {
+        "title": "Request measurements",
+        "sound": false,
+        "objects": [
+          {
+            "id": "server",
+            "kind": "server",
+            "at": [
+              0,
+              0
+            ],
+            "label": "Server",
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "at": 0,
+            "target": "server",
+            "timer": {
+              "to": 12,
+              "unit": "ms"
+            }
+          },
+          {
+            "at": 0.35,
+            "target": "server",
+            "count": {
+              "to": 1200,
+              "label": "requests"
+            }
+          },
+          {
+            "at": 0.68,
+            "target": "server",
+            "meter": 85
+          }
+        ]
+      }
+    },
+    {
+      "id": "rings",
+      "component": "IsoScene",
+      "durationInFrames": 270,
+      "props": {
+        "title": "Upload and cached-copy lifetime",
+        "sound": false,
+        "objects": [
+          {
+            "id": "cache",
+            "kind": "cache",
+            "at": [
+              0,
+              0
+            ],
+            "label": "Cache",
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "at": 0,
+            "target": "cache",
+            "progress": {
+              "to": 100
+            }
+          },
+          {
+            "at": 0.3,
+            "target": "cache",
+            "ttl": {
+              "seconds": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "jobs",
+      "component": "IsoScene",
+      "durationInFrames": 240,
+      "props": {
+        "title": "Retry and queue activity",
+        "sound": false,
+        "objects": [
+          {
+            "id": "server",
+            "kind": "server",
+            "at": [
+              0,
+              0
+            ],
+            "label": "Server",
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "at": 0,
+            "target": "server",
+            "retry": {
+              "attempts": 3,
+              "success": true
+            }
+          },
+          {
+            "at": 0.53,
+            "target": "server",
+            "queue": {
+              "add": 4
+            }
+          },
+          {
+            "at": 0.77,
+            "target": "server",
+            "queue": {
+              "take": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "clean",
+      "component": "IsoScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "Clean incoming data",
+        "sound": false,
+        "objects": [
+          {
+            "id": "app",
+            "kind": "phone",
+            "at": [
+              -3,
+              3
+            ],
+            "label": "App",
+            "enter": "none"
+          },
+          {
+            "id": "service",
+            "kind": "server",
+            "at": [
+              3,
+              -3
+            ],
+            "label": "Service",
+            "enter": "none"
+          }
+        ],
+        "links": [
+          {
+            "from": "app",
+            "to": "service",
+            "transform": "clean"
+          }
+        ],
+        "steps": []
+      }
+    },
+    {
+      "id": "loss",
+      "component": "IsoScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "Packet loss",
+        "sound": false,
+        "objects": [
+          {
+            "id": "app",
+            "kind": "phone",
+            "at": [
+              -3,
+              3
+            ],
+            "label": "App",
+            "enter": "none"
+          },
+          {
+            "id": "service",
+            "kind": "server",
+            "at": [
+              3,
+              -3
+            ],
+            "label": "Service",
+            "enter": "none"
+          }
+        ],
+        "links": [
+          {
+            "from": "app",
+            "to": "service",
+            "drop": true
+          }
+        ],
+        "steps": []
+      }
+    },
+    {
+      "id": "keys",
+      "component": "IsoScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "Send an access key",
+        "sound": false,
+        "objects": [
+          {
+            "id": "app",
+            "kind": "phone",
+            "at": [
+              -3,
+              3
+            ],
+            "label": "App",
+            "enter": "none"
+          },
+          {
+            "id": "service",
+            "kind": "server",
+            "at": [
+              3,
+              -3
+            ],
+            "label": "Service",
+            "enter": "none"
+          }
+        ],
+        "links": [
+          {
+            "from": "app",
+            "to": "service",
+            "flow": "key"
+          }
+        ],
+        "steps": []
+      }
+    },
+    {
+      "id": "payment",
+      "component": "IsoScene",
+      "durationInFrames": 90,
+      "props": {
+        "title": "Transfer a payment",
+        "sound": false,
+        "objects": [
+          {
+            "id": "app",
+            "kind": "phone",
+            "at": [
+              -3,
+              3
+            ],
+            "label": "App",
+            "enter": "none"
+          },
+          {
+            "id": "service",
+            "kind": "server",
+            "at": [
+              3,
+              -3
+            ],
+            "label": "Service",
+            "enter": "none"
+          }
+        ],
+        "links": [
+          {
+            "from": "app",
+            "to": "service",
+            "flow": "coin"
+          }
+        ],
+        "steps": []
+      }
+    },
+    {
+      "id": "reply",
+      "component": "IsoScene",
+      "durationInFrames": 120,
+      "props": {
+        "title": "Return the cached response",
+        "sound": false,
+        "objects": [
+          {
+            "id": "app",
+            "kind": "phone",
+            "at": [
+              -3,
+              3
+            ],
+            "label": "App",
+            "enter": "none"
+          },
+          {
+            "id": "cache",
+            "kind": "cache",
+            "at": [
+              3,
+              -3
+            ],
+            "label": "Cache",
+            "enter": "none"
+          }
+        ],
+        "links": [
+          {
+            "from": "app",
+            "to": "cache"
+          }
+        ],
+        "steps": [
+          {
+            "at": 0.46,
+            "target": "cache",
+            "badge": "found",
+            "reply": "cache\u2192app"
+          }
+        ]
+      }
+    },
+    {
+      "id": "person",
+      "component": "IsoScene",
+      "durationInFrames": 270,
+      "props": {
+        "title": "A customer waits for an answer",
+        "sound": false,
+        "objects": [
+          {
+            "id": "person",
+            "kind": "person",
+            "at": [
+              0,
+              0
+            ],
+            "label": "Person",
+            "enter": "none"
+          }
+        ],
+        "links": [],
+        "steps": [
+          {
+            "at": 0,
+            "target": "person",
+            "think": "?"
+          },
+          {
+            "at": 0.36,
+            "target": "person",
+            "say": "Is it open?"
+          },
+          {
+            "at": 0.58,
+            "target": "person",
+            "mood": "upset"
+          },
+          {
+            "at": 0.78,
+            "target": "person",
+            "react": "like",
+            "mood": "happy"
+          }
+        ]
+      }
+    }
+  ]
+}

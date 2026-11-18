@@ -1,0 +1,185 @@
+{
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "brand": false,
+  "defaultTransition": {
+    "type": "none"
+  },
+  "scenes": [
+    {
+      "id": "iso-table",
+      "component": "IsoScene",
+      "props": {
+        "title": "The users table inside the database",
+        "objects": [
+          {
+            "id": "db",
+            "kind": "database",
+            "label": "Database",
+            "at": [
+              -3,
+              3
+            ]
+          },
+          {
+            "id": "users",
+            "kind": "table",
+            "at": [
+              2,
+              -2
+            ],
+            "table": {
+              "name": "users",
+              "columns": [
+                "id",
+                "name",
+                "email"
+              ],
+              "rows": [
+                [
+                  1,
+                  "Asha",
+                  "a@example"
+                ],
+                [
+                  2,
+                  "Ravi",
+                  null
+                ],
+                [
+                  2,
+                  "Dev",
+                  "d@example"
+                ]
+              ],
+              "indexed": [
+                "id"
+              ],
+              "duplicateKey": "id",
+              "locked": [
+                1
+              ]
+            }
+          }
+        ],
+        "links": [
+          {
+            "from": "db",
+            "to": "users",
+            "label": "contains",
+            "flow": "none"
+          }
+        ],
+        "steps": [],
+        "sound": false
+      },
+      "durationInFrames": 120
+    },
+    {
+      "id": "row-changes",
+      "component": "TableScene",
+      "props": {
+        "table": {
+          "name": "users",
+          "columns": [
+            "id",
+            "name",
+            "email"
+          ],
+          "rows": [
+            [
+              1,
+              "Asha",
+              "a@example"
+            ],
+            [
+              2,
+              "Ravi",
+              null
+            ],
+            [
+              2,
+              "Dev",
+              "d@example"
+            ]
+          ],
+          "indexed": [
+            "id"
+          ],
+          "duplicateKey": "id",
+          "locked": [
+            1
+          ]
+        },
+        "steps": [
+          {
+            "op": "insert",
+            "values": [
+              4,
+              "Mira",
+              null
+            ]
+          },
+          {
+            "op": "update",
+            "row": 1,
+            "column": "email",
+            "value": "r@example"
+          },
+          {
+            "op": "delete",
+            "row": 2
+          }
+        ]
+      },
+      "durationInFrames": 210
+    },
+    {
+      "id": "inner-join",
+      "component": "JoinScene",
+      "props": {
+        "kind": "inner"
+      },
+      "durationInFrames": 150
+    },
+    {
+      "id": "left-join",
+      "component": "JoinScene",
+      "props": {
+        "kind": "left"
+      },
+      "durationInFrames": 150
+    },
+    {
+      "id": "right-join",
+      "component": "JoinScene",
+      "props": {
+        "kind": "right"
+      },
+      "durationInFrames": 150
+    },
+    {
+      "id": "schema",
+      "component": "SchemaScene",
+      "props": {},
+      "durationInFrames": 150
+    },
+    {
+      "id": "commit",
+      "component": "TransactionScene",
+      "props": {
+        "outcome": "commit"
+      },
+      "durationInFrames": 180
+    },
+    {
+      "id": "rollback",
+      "component": "TransactionScene",
+      "props": {
+        "outcome": "rollback"
+      },
+      "durationInFrames": 180
+    }
+  ]
+}

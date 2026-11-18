@@ -4,10 +4,12 @@ import {AbsoluteFill, Sequence} from 'remotion';
 import {BrandIntro, BrandWatermark, brandTiming, resolveBrand} from './brand';
 import {audioSettingsSchema, Captions, resolveCaptions, type CaptionsSettings, Music, SfxContext, SfxCues, sfxCuesSchema, Sfx, Voice, voiceSchema, type AudioSettings} from './audio';
 import {Overlays, overlaysSchema} from './effects/overlays';
+import {PAPER} from './iso/iso';
+import {PaperStage} from './scenes/paperStage';
 import {registry, sceneCatalog} from './registry';
 import {defaultTheme, SceneLengthProvider, ThemeProvider} from './theme';
 import {presentationFor, transitionFrames, transitionInto} from './transitions';
-import type {CompositionSpec, SceneSpec, Theme} from './types';
+import type {CompositionSpec, SceneSpec} from './types';
 
 const UnknownScene: React.FC<{name: string}> = ({name}) => (
   <AbsoluteFill
@@ -17,13 +19,9 @@ const UnknownScene: React.FC<{name: string}> = ({name}) => (
   </AbsoluteFill>
 );
 
-/** Applies the merged theme + background, then renders the scene's component. */
-const SceneFrame: React.FC<{scene: SceneSpec; baseTheme: Theme; audio: AudioSettings; captions: CaptionsSettings; fps: number}> = ({scene, baseTheme, audio, captions, fps}) => {
-  const theme: Theme = {
-    ...baseTheme,
-    ...scene.theme,
-    ...(scene.background ? {background: scene.background} : {}),
-  };
+const textCards = new Set(['TitleScene', 'ExplainScene', 'BulletListScene', 'QuoteScene']);
+/** Every scene shares the paper canvas, including scenes from older compositions. */
+const SceneFrame: React.FC<{scene: SceneSpec; audio: AudioSettings; captions: CaptionsSettings; fps: number}> = ({scene, audio, captions, fps}) => {
   const Scene = registry[scene.component];
   const parsed = useMemo(() => Scene ? sceneCatalog[scene.component].schema.safeParse(scene.props ?? {}) : null, [Scene, scene.component, scene.props]);
   if (parsed && !parsed.success) throw new Error(`Scene ${scene.id} (${scene.component}): ${parsed.error.message}`);
@@ -48,10 +46,12 @@ const SceneFrame: React.FC<{scene: SceneSpec; baseTheme: Theme; audio: AudioSett
   const content = Scene ? <Scene {...(parsed?.success ? parsed.data as Record<string, unknown> : scene.props)} /> : <UnknownScene name={scene.component} />;
 
   return (
-    <ThemeProvider value={theme}>
+    <ThemeProvider value={defaultTheme}>
      <SceneLengthProvider value={scene.durationInFrames}>
-      <AbsoluteFill style={{background: theme.background, color: theme.text, fontFamily: theme.fontFamily}}>
-        {content}
+      <AbsoluteFill style={{color: defaultTheme.text, fontFamily: defaultTheme.fontFamily}}>
+        <PaperStage>
+          {textCards.has(scene.component) ? <AbsoluteFill style={{inset: '6% 5% 17%', width: '90%', height: '77%', borderRadius: 24, background: PAPER.card, border: '1px solid ' + PAPER.track}}>{content}</AbsoluteFill> : content}
+        </PaperStage>
         {overlays?.success && overlays.data.length ? <Overlays items={overlayItems} scene={content} /> : null}
         {voice?.success ? <Voice voice={voice.data} volume={audio.voiceVolume} /> : null}
         {cues?.success ? <SfxCues cues={cues.data} /> : null}
@@ -70,7 +70,6 @@ const sceneStarts = (spec: CompositionSpec) => {
 };
 
 export const VideoComposition: React.FC<CompositionSpec> = (spec) => {
-  const baseTheme: Theme = {...defaultTheme, ...spec.theme};
   const audio = useMemo(() => {
     const r = audioSettingsSchema.safeParse(spec.audio ?? {});
     if (!r.success) throw new Error(`audio: ${r.error.message}`);
@@ -97,7 +96,7 @@ export const VideoComposition: React.FC<CompositionSpec> = (spec) => {
   });
   return (
     <SfxContext.Provider value={{enabled: audio.effects, volume: audio.effectsVolume}}>
-    <AbsoluteFill style={{background: baseTheme.background}}>
+    <AbsoluteFill style={{background: PAPER.bg}}>
      <Sequence from={offset} name="video">
       {audio.music ? <Music music={audio.music} speaking={speaking} /> : null}
       {audio.transitions
@@ -115,7 +114,7 @@ export const VideoComposition: React.FC<CompositionSpec> = (spec) => {
                 />
               ) : null}
               <TransitionSeries.Sequence durationInFrames={scene.durationInFrames}>
-                <SceneFrame scene={scene} baseTheme={baseTheme} audio={audio} captions={shownCaptions} fps={spec.fps} />
+                <SceneFrame scene={scene} audio={audio} captions={shownCaptions} fps={spec.fps} />
               </TransitionSeries.Sequence>
             </Fragment>
           );

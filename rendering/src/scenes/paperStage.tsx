@@ -34,14 +34,16 @@ export const PaperStage: FC<{eyebrow?: string; title?: string; instant?: boolean
   const u = useUnit();
   const titleIn = instant ? 1 : spring({frame: f - 2, fps, config: {damping: 200}});
   const step = 46 * u, lines: string[] = [];
-  for (let c = -H; c < W + H; c += step * 2) lines.push(`M${c},0 l${H * 1.732},${H}`, `M${c},0 l${-H * 1.732},${H}`);
+  const run = H * 1.732;
+  const start = H > W ? Math.floor(-run / (step * 2)) * step * 2 : -H;
+  for (let c = start; c < W + run; c += step * 2) lines.push(`M${c},0 l${run},${H}`, `M${c},0 l${-run},${H}`);
   return (
     <AbsoluteFill style={{background: `radial-gradient(ellipse at 50% 45%, ${PAPER.bgCenter} 0%, ${PAPER.bg} 70%)`, fontFamily: PAPER.sans, color: PAPER.ink, overflow: 'hidden'}}>
       <svg width={W} height={H} style={{position: 'absolute', inset: 0}}><path d={lines.join('')} stroke={PAPER.grid} strokeWidth={1.2 * u} fill="none" /></svg>
       {!side && (eyebrow || title) ? (
-        <div style={{position: 'absolute', left: 90 * u, top: 56 * u, opacity: titleIn, transform: `translateY(${(1 - titleIn) * 16 * u}px)`}}>
+        <div style={{position: 'absolute', left: 90 * u, right: H > W ? 72 * u : undefined, top: 56 * u, opacity: titleIn, transform: `translateY(${(1 - titleIn) * 16 * u}px)`, overflowWrap: 'anywhere'}}>
           {eyebrow ? <div style={{fontFamily: PAPER.font, fontWeight: 700, fontSize: 22 * u, letterSpacing: 3 * u, color: '#8a6fd1', textTransform: 'uppercase'}}>{eyebrow}</div> : null}
-          {title ? <div style={{fontSize: 46 * u, fontWeight: 800, marginTop: 6 * u}}>{title}</div> : null}
+          {title ? <div style={{fontSize: (H > W && title.length > 42 ? 39 : 46) * u, lineHeight: 1.1, fontWeight: 800, marginTop: 6 * u}}>{title}</div> : null}
         </div>
       ) : null}
       {children}

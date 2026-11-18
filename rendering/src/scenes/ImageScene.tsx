@@ -1,3 +1,4 @@
+import {PAPER} from '../iso/iso';
 import {Easing, Img, interpolate, staticFile, useCurrentFrame} from 'remotion';
 import {z} from 'zod';
 import {StudyFrame} from '../components/StudyFrame';
@@ -63,7 +64,7 @@ export const ImageScene: React.FC<z.input<typeof imageSceneSchema>> = (input) =>
   return (
     <StudyFrame title={p.title} eyebrow={p.eyebrow} footer={p.footer || undefined}>
       <div style={{height: '100%', display: 'flex', flexDirection: 'column'}}>
-        <div style={{position: 'relative', flex: 1, minHeight: 0, borderRadius: 18, overflow: 'hidden', border: '1px solid #2e4b61', background: '#0a1825'}}>
+        <div style={{position: 'relative', flex: 1, minHeight: 0, borderRadius: 18, overflow: 'hidden', border: `1px solid ${PAPER.track}`, background: PAPER.card}}>
           {src ? (
             <Img
               src={src}
@@ -82,7 +83,7 @@ export const ImageScene: React.FC<z.input<typeof imageSceneSchema>> = (input) =>
             </div>
           )}
           {p.credit ? (
-            <div style={{position: 'absolute', right: 14, bottom: 12, padding: '5px 10px', borderRadius: 7, background: 'rgba(4, 14, 23, 0.72)', color: '#d7e4ee', fontSize: 15}}>
+            <div style={{position: 'absolute', right: 14, bottom: 12, padding: '5px 10px', borderRadius: 7, background: PAPER.card, color: PAPER.ink, fontSize: 15}}>
               {p.credit}
             </div>
           ) : null}
