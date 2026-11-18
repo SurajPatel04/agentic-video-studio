@@ -20,7 +20,15 @@ function validate(p:{table:Table;steps:Operation[]},ctx:z.RefinementCtx){
   });
 }
 export const tableSceneSchema=z.object({...props,title:z.string().default('Changing the users table')}).strict().superRefine(validate);
-export const transactionSceneSchema=z.object({...props,title:z.string().default('A transaction on users'),outcome:z.enum(['commit','rollback']).default('rollback')}).strict().superRefine(validate);
+export const transactionSceneSchema=z.object({...props,title:z.string().default('A transaction on users'),outcome:z.enum(['commit','rollback']).default('rollback'),
+  expectedPendingRows:z.array(z.array(cell)).max(10).optional(),
+}).strict().superRefine(validate).superRefine((p,ctx)=>{
+  if (!p.expectedPendingRows) return;
+  const pending = p.steps.reduce(apply, p.table);
+  if (JSON.stringify(pending.rows) !== JSON.stringify(p.expectedPendingRows)) {
+    ctx.addIssue({code:'custom',path:['expectedPendingRows'],message:'Steps produce different rows before commit or rollback. Check which logical row each update targets.'});
+  }
+});
 function apply(table:Table,s:Operation):Table{
   if(s.op==='insert') return {...table,rows:[...table.rows,s.values]};
   if(s.op==='delete') return {...table,rows:table.rows.filter((_,i)=>i!==s.row),locked:table.locked?.filter(i=>i!==s.row).map(i=>i>s.row?i-1:i)};

@@ -3,8 +3,7 @@
  * prompt, output streams in line by line, progress bars fill, and a run ends with a green check or a
  * red error badge. The window scrolls like a real terminal when it fills up.
  *
- * Actions run one after another: if typing takes longer than the gap to the next "at", the next
- * action waits, so nothing overlaps.
+ * Commands accelerate to meet their response cue. The response stays visible for the explanation.
  */
 import type {FC, ReactNode} from 'react';
 import {spring, useCurrentFrame, useVideoConfig} from 'remotion';
@@ -94,14 +93,22 @@ const ROWS = 12;
 const LINE_H = 50, FONT = 31;
 
 type Ev = Action & {start: number; end: number; typeEnd: number};
-const timeline = (acts: Action[], len: number, fps: number, speed = 1): Ev[] => {
+export const terminalTimeline = (acts: Action[], len: number, fps: number, speed = 1): Ev[] => {
   let t = 0;
-  return [...acts].sort((a, b) => a.at - b.at).map((a) => {
+  const ordered = [...acts].sort((a, b) => a.at - b.at);
+  return ordered.map((a, i) => {
     const start = Math.max(Math.round(a.at * len), t);
     let end = start, typeEnd = start;
-    const lines = (a.text ?? '').split('\n').length;
-    if (a.do === 'run') { typeEnd = start + 4 + Math.ceil(((a.text ?? '').length / (CPS * speed)) * fps); end = typeEnd + 5; }
-    if (a.do === 'output') end = start + Math.max(1, Math.round(3 / speed)) * lines;
+    if (a.do === 'run') {
+      typeEnd = start + 4 + Math.ceil(((a.text ?? '').length / (CPS * speed)) * fps);
+      end = typeEnd + 5;
+      if (ordered[i + 1]?.do === 'output') {
+        const deadline = Math.max(start, Math.round(ordered[i + 1].at * len) - 1);
+        end = Math.min(end, deadline);
+        typeEnd = Math.min(typeEnd, end);
+      }
+    }
+    if (a.do === 'output' && ordered[i - 1]?.do !== 'run') end = start + Math.max(1, Math.round(3 / speed)) * (a.text ?? '').split('\n').length;
     if (a.do === 'progress') end = start + Math.round(((a.seconds ?? 1.5) / speed) * fps);
     if (a.do === 'done') end = start + 8;
     t = end + 1;
@@ -121,14 +128,13 @@ export const TerminalScene: FC<z.input<typeof terminalSceneSchema>> = (input) =>
   const geo = useDevice(p.device, {w: WW, h: WH - 64, hasTitle, bar: 64});
   const s = geo.s;
   // speed up typing / progress when everything would not finish inside the scene
-  let speed = 1, evs = timeline(p.actions, len, fps);
+  let speed = 1, evs = terminalTimeline(p.actions, len, fps);
   for (let k = 0; k < 4; k++) {
     const last = evs[evs.length - 1].end;
     if (last <= len * 0.95 || speed >= 4) break;
     speed = Math.min(4, speed * (last / (len * 0.95)) * 1.05);
-    evs = timeline(p.actions, len, fps, speed);
+    evs = terminalTimeline(p.actions, len, fps, speed);
   }
-  const lineStep = Math.max(1, Math.round(3 / speed));
   const caretOn = Math.floor(f / 15) % 2 === 0;
   const caret = (solid: boolean) => (solid || caretOn ? <span style={{display: 'inline-block', width: 14 * s, height: 30 * s, background: DARK.text, marginLeft: 4 * s, verticalAlign: 'middle'}} /> : null);
   const promptNode = <span style={{color: DARK.green, fontWeight: 700}}>{p.prompt}</span>;
@@ -139,12 +145,14 @@ export const TerminalScene: FC<z.input<typeof terminalSceneSchema>> = (input) =>
     const k = f - e.start;
     if (e.do === 'clear') { rows = []; return; }
     if (e.do === 'run') {
-      const n = Math.max(0, Math.min(e.text!.length, Math.floor(((k - 4) / fps) * CPS * speed)));
+      const fractionTyped = f >= e.typeEnd ? 1 : clamp01((k - 4) / Math.max(1, e.typeEnd - e.start - 4));
+      const n = Math.floor(e.text!.length * fractionTyped);
       rows.push(<div key={`r${i}`}>{promptNode} <span>{e.text!.slice(0, n)}</span>{f < e.typeEnd + 3 ? caret(f < e.typeEnd) : null}</div>);
     }
     if (e.do === 'output') {
       e.text!.split('\n').forEach((line, j) => {
-        if (k >= lineStep * j) rows.push(<div key={`o${i}-${j}`} style={{color: COLOR[e.variant ?? 'normal'], whiteSpace: 'pre'}}>{line || ' '}</div>);
+        if (e.end > e.start && k < j * Math.max(1, Math.round(3 / speed))) return;
+        rows.push(<div key={`o${i}-${j}`} style={{color: COLOR[e.variant ?? 'normal'], whiteSpace: 'pre-wrap', overflowWrap: 'anywhere'}}>{line || ' '}</div>);
       });
     }
     if (e.do === 'progress') {

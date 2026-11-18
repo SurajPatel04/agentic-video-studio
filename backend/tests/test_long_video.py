@@ -76,6 +76,14 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.state.input_tokens, 100)
         self.assertTrue((settings.WORKSPACE_DIR / "long" / self.state.id / "state.json").exists())
 
+    def test_next_chapter_receives_exact_example_values(self):
+        response = '{"id":42,"title":"Dune","author":"Frank Herbert"}'
+        scene = {"component": "TerminalScene", "props": {"actions": [
+            {"do": "run", "text": "GET /books/42"}, {"do": "output", "text": response},
+        ]}}
+        self.state.chapters[0].handoff = lv._handoff(self.state, 1, {"scenes": [scene]})
+        self.assertIn("GET /books/42 → " + response, lv.chapter_context(self.state, 2))
+
     async def test_full_run_handoffs_join_and_resume(self):
         with patch("app.utils.long_video.plan_video", side_effect=self.fake_plan), \
                 patch("app.utils.long_video.render_video", side_effect=self.fake_render):

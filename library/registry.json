@@ -16373,6 +16373,30 @@
             "commit",
             "rollback"
           ]
+        },
+        "expectedPendingRows": {
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 28
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
         }
       },
       "additionalProperties": false

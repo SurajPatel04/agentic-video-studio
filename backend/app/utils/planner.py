@@ -79,6 +79,11 @@ illustrations and keep the title and learning goals grounded in the user's subje
 
 RULES = """You are the planner for a narrated video generator (React/Remotion), for any subject or purpose.
 You turn a topic into ONE composition JSON.
+For transaction demonstrations, supply expectedPendingRows: every row as the explanation predicts
+immediately before commit or rollback. Show the exact crash point and durable state before replay.
+For a lecture, invite the learner to predict the next result, then reveal it. Each subsequent scene
+should advance the example or apply the idea to a new decision. Cue terminal output at or before
+the first spoken reference to its contents, and hold it while explaining the result.
 Match each visual to the point being narrated at that moment. During a comparison, make both sides
 and the relevant difference visible. During a process, show the change as the narrator describes it.
 
@@ -179,6 +184,8 @@ async def _check(reply: str, code_demo: str | None = None) -> tuple[dict[str, An
         await validate(path)
     except RenderError as exc:
         return None, f"The JSON has these errors:\n{exc.details}\nFix them and reply with ONLY the full corrected JSON."
+    if any(s.get("component") == "TransactionScene" and "expectedPendingRows" not in s.get("props", {}) for s in spec.get("scenes", [])):
+        return None, "Supply expectedPendingRows for each TransactionScene so its steps can be checked against the intended lesson."
     if code_demo and not any(scene.get("component") in CODE_SCENES for scene in spec.get("scenes", [])):
         return None, (f"Show this chapter's required code demonstration in an EditorScene: {code_demo}\n"
                       "Explain the relevant code in the narration. Reply with ONLY the full corrected JSON.")

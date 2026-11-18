@@ -6,8 +6,8 @@ import assert from 'node:assert/strict';
 const root = path.resolve(import.meta.dirname, '..');
 await mkdir(path.join(root, 'out'), {recursive: true});
 const output = path.join(root, 'out', 'catalog-check.mjs');
-await build({stdin: {contents: `export {sceneCatalog, overlaySchema} from './src/registry'; export {networkLayout} from './src/components/networkLayout'; export {algorithmLessons} from './src/scenes/AlgorithmLessons'; export {mathLessons} from './src/scenes/MathLessons';`, resolveDir: root, loader: 'ts'}, outfile: output, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: {'.css': 'empty'}, plugins: [{name:'bundle-world-map',setup(b){b.onResolve({filter:/^world-atlas\//},args=>({path:path.join(root,'node_modules',args.path),external:false}));}}], logLevel: 'silent'});
-const {sceneCatalog, overlaySchema, networkLayout, algorithmLessons, mathLessons} = await import(pathToFileURL(output));
+await build({stdin: {contents: `export {terminalTimeline} from './src/scenes/TerminalScene'; export {sceneCatalog, overlaySchema} from './src/registry'; export {networkLayout} from './src/components/networkLayout'; export {algorithmLessons} from './src/scenes/AlgorithmLessons'; export {mathLessons} from './src/scenes/MathLessons';`, resolveDir: root, loader: 'ts'}, outfile: output, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: {'.css': 'empty'}, plugins: [{name:'bundle-world-map',setup(b){b.onResolve({filter:/^world-atlas\//},args=>({path:path.join(root,'node_modules',args.path),external:false}));}}], logLevel: 'silent'});
+const {sceneCatalog, overlaySchema, networkLayout, algorithmLessons, mathLessons, terminalTimeline} = await import(pathToFileURL(output));
 const {existsSync} = await import('node:fs');
 const {z} = await import('zod');
 for (const [name, entry] of Object.entries(sceneCatalog)) {
@@ -50,6 +50,13 @@ const chat = sceneCatalog.ChatScene.schema.parse({device: 'mobile', messages: [{
 assert.deepEqual([chat.device, chat.messages[0].from, chat.messages[1].from, chat.messages[1].text], ['phone', 'me', 'them', 'hello']);
 const term = sceneCatalog.TerminalScene.schema.parse({commands: ['$ npm test'], device: 'computer'});
 assert.deepEqual([term.device, term.actions[0].do, term.actions[0].text], ['laptop', 'run', 'npm test']);
+const [command, response] = terminalTimeline([
+  {at: 0.15, do: 'run', text: 'x'.repeat(120)},
+  {at: 0.38, do: 'output', text: 'HTTP 400\nInvalid title'},
+], 420, 30);
+assert(command.typeEnd < response.start);
+assert.equal(response.start, Math.round(0.38 * 420));
+assert.equal(response.end, response.start);
 const ed = sceneCatalog.EditorScene.schema.parse({code: ['a = 1', 'print(b)'], actions: [{action: 'underline', lineNumber: '2', message: 'b is not defined'}]});
 assert.deepEqual([ed.actions[0].do, ed.actions[0].line], ['error', 2]);
 const ph = sceneCatalog.PhoneScene.schema.parse({screens: [{id: 'a', blocks: [{id: 'go', type: 'button', label: 'Go'}]}, {id: 'b', blocks: [{type: 'heading', label: 'Done'}]}], actions: [{action: 'click', target: 'go'}, {action: 'navigate', to: 'b'}, {action: 'loading', duration: 1500}]});
@@ -59,6 +66,18 @@ const scr = sceneCatalog.ScreenScene.schema.parse({page: [{id: 'q', type: 'input
 assert.deepEqual(scr.actions.map((x) => x.do), ['type', 'click']);
 assert.equal(sceneCatalog.ScreenScene.schema.parse({page: [{type: 'heading', label: 'Own page'}]}).actions.length, 0); // own page: no demo script
 assert(!sceneCatalog.FormScene.schema.safeParse({fields: [{id: 'p', label: 'P', type: 'password'}], actions: [{at: 0.2, do: 'submit', errors: [{to: 'p', text: 'short'}]}, {at: 0.5, do: 'submit', text: 'ok'}]}).success); // success before the fix
+// A valid row index can still update the wrong logical record.
+const transaction = sceneCatalog.TransactionScene.schema;
+for (const outcome of ['commit', 'rollback']) {
+  const change = {
+    outcome, table: {name: 'sink', columns: ['kind', 'value'], rows: [['checkpoint', 102]]},
+    steps: [{op: 'insert', values: ['order', 31]}, {op: 'update', row: 0, column: 'value', value: 103}],
+    expectedPendingRows: [['checkpoint', 103], ['order', 31]],
+  };
+  assert(transaction.safeParse(change).success);
+  change.steps[1].row = 1;
+  assert(!transaction.safeParse(change).success);
+}
 const qs = sceneCatalog.QueryScene.schema.parse({sql: 'SELECT name FROM people WHERE age >= 30', rows: [{name: 'A', age: 31}, {name: 'B', age: 20}], mode: 'full scan'});
 assert.deepEqual([qs.mode, qs.table.columns.join()], ['scan', 'name,age']);
 assert(!sceneCatalog.QueryScene.schema.safeParse({query: 'SELECT * FROM t WHERE nope = 1', table: {columns: ['a'], rows: [[1]]}}).success); // unknown WHERE column

@@ -222,7 +222,8 @@ Rules:
   needs, benefits, supported evidence and a next action. Do not force teaching exercises into other formats.
 - Open with relevant context and end by delivering the promised outcome. Use a quiz only when it helps learning.
 - glossary: shared terms when terminology matters (otherwise empty). examples: recurring examples or situations
-  when relevant, reused across chapters for continuity. Use examples from the requested subject, not automatically software.
+  when relevant. Establish the people, facts or sample data shared across chapters. For data examples,
+  specify stable identifiers, field names, types and values. Use examples from the requested subject.
 - Decide code_demo for each chapter from its viewer outcome. If viewers need to read, write, trace
   or debug source code to meet that goal, describe the specific code demonstration in one short
   sentence. Use an empty string when source code is optional, including when interfaces, sample
@@ -353,7 +354,7 @@ def chapter_context(state: LongState, n: int, note: str = "") -> str:
     if o.glossary:
         lines.append("Glossary (use exactly these words): " + "; ".join(f"{t.term} = {t.meaning}" for t in o.glossary))
     if o.examples:
-        lines.append("Running examples (reuse them, don't invent new ones unless needed): " + "; ".join(o.examples))
+        lines.append("Shared examples (preserve identifiers, types and values across chapters; show any state change explicitly): " + "; ".join(o.examples))
     if o.style:
         lines.append("Visual style for the whole video: " + o.style)
     done = [c.handoff for c in state.chapters[: n - 1] if c.handoff]
@@ -383,7 +384,26 @@ def _handoff(state: LongState, n: int, spec: dict[str, Any]) -> str:
     scenes = spec.get("scenes", [])
     last = next(((s.get("narration") or {}).get("text", "") for s in reversed(scenes) if s.get("narration")), "")
     used = sorted({s.get("component", "") for s in scenes} - {""})
-    return f"Ch {n} {ch.title}: {'; '.join(ch.key_points)}. Scenes used: {', '.join(used)}. It ended with: \"{last[:200]}\""
+    summary = f"Ch {n} {ch.title}: {'; '.join(ch.key_points)}. Scenes used: {', '.join(used)}. It ended with: \"{last[:200]}\""
+    # Carry the concrete exchanges forward as well as the outline's description of them.
+    exchanges = []
+    for scene in scenes:
+        if scene.get("component") != "TerminalScene":
+            continue
+        command = ""
+        for action in (scene.get("props") or {}).get("actions") or []:
+            if not isinstance(action, dict):
+                continue
+            if action.get("do") == "run":
+                command = action.get("text", "")
+            elif action.get("do") == "output" and command:
+                exchange = f"{command} → {action.get('text', '')}"
+                if exchange not in exchanges:
+                    exchanges.append(exchange)
+                command = ""
+    if exchanges:
+        summary += "\nExamples already shown (keep their values and types consistent):\n" + "\n".join(exchanges[:6])
+    return summary
 
 
 async def plan_chapter(state: LongState, n: int) -> dict[str, Any]:
