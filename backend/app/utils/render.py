@@ -21,7 +21,7 @@ from typing import Any
 
 from app.config import settings
 from app.utils.console import step
-from app.utils import subtitles
+from app.utils import cues, subtitles
 from app.utils.iso import expand_continuations, paper_code_scenes
 from app.utils.tts import synthesize, word_timings
 
@@ -122,7 +122,8 @@ async def add_narration(spec: dict[str, Any], *, captions: bool | None = None) -
     Returns (new spec, clips made, clips cached, log lines). The input is not modified.
     """
     spec = set_captions(spec, captions)
-    want_words = captions_enabled(spec)
+    show_words = captions_enabled(spec)
+    want_words = show_words or cues.has_cues(spec)  # word cues need the spoken word times too
     spec = copy.deepcopy(spec)
     fps = int(spec.get("fps", 30))
     default_voice = (spec.get("audio") or {}).get("voice") or settings.TTS_VOICE
@@ -161,6 +162,13 @@ async def add_narration(spec: dict[str, Any], *, captions: bool | None = None) -
         cached += clip.cached
         made += not clip.cached
         lines.append(f"{scene.get('id')}: {clip.seconds:.1f}s speech, {before} -> {scene['durationInFrames']} frames")
+    # Steps cued to words now land on the real spoken time of that word.
+    for scene in scenes:
+        missing = cues.resolve_scene(scene)
+        if missing:
+            lines.append(f"{scene.get('id')}: cues not heard in the narration (kept estimated): {', '.join(missing)}")
+        if not show_words and isinstance(scene.get("voice"), dict):
+            scene["voice"].pop("words", None)  # captions off: the times were only needed for the cues
     return spec, made, cached, lines
 
 
@@ -218,6 +226,7 @@ async def render_video(
     else:
         spec = set_captions(spec, captions)
     spec = set_caption_mode(spec, captions_mode)
+    spec, _ = cues.resolve(spec)  # word cues left (no narration / narrate off): estimated from the text
 
     composition = job_dir / "composition.json"
     composition.write_text(json.dumps(spec, indent=2))

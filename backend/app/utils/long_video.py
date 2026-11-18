@@ -40,7 +40,7 @@ from app.utils import skill_router, skills as teaching_skills
 from app.utils.console import step
 from app.utils.llm import get_llm, text_of, usage_of
 from app.utils.planner import BRIEF_GUIDANCE, PlanError, _extract_json, apply_layout, plan_video
-from app.utils import subtitles
+from app.utils import cues, subtitles
 from app.utils.render import RenderError, captions_enabled, default_caption_mode, render_video, validate, without_intro
 
 log = logging.getLogger(__name__)
@@ -784,7 +784,7 @@ async def set_chapter_plan(job_id: str, n: int, spec: dict[str, Any]) -> LongSta
     if not 1 <= n <= len(state.chapters):
         raise ValueError(f"chapter {n} does not exist")
     tmp = _dir(job_id) / f"ch{n:02d}.check.json"
-    tmp.write_text(json.dumps(spec, indent=2))
+    tmp.write_text(json.dumps(cues.resolve(spec)[0], indent=2))  # word cues are resolved at render
     try:
         await validate(tmp)
     finally:

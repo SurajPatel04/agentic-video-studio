@@ -60,7 +60,7 @@ Layout on the grid (the scene centres and scales everything itself; you only cho
 - Keep objects at least 3 grid units apart; the scene rejects plans where objects cover each other and tells you which ones.
 - Crowds: a "platform" (size [8, 2.6, 0.3]) with "people" standing on it (z: 0.3, at the platform's position plus [1.6, 0.35]).
 
-Timing: every "at" / "appearAt" is a FRACTION of the scene (0 = start, 1 = end), because scenes stretch to fit the narration. Objects drop in during the first third by default; give a later appearAt to something the narration introduces later.
+Timing: sync to the words. A step takes "cue": "<word the narrator says>"; an object or link the narration introduces later takes "appearCue": "<its word>". It then happens exactly on that word. Untimed objects drop in during the first third.
 
 Make it feel alive, matched to the narration, not decoration:
 - status (0-100) shows a level pill (load, reach, trust, sales); animate it with steps ("status": 95); >= 88 turns red and pulses.

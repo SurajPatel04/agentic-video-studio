@@ -28,7 +28,7 @@ from app.utils import catalog, skill_router, skills as teaching_skills
 from app.utils.console import step
 from app.utils.iso import expand_continuations, paper_code_scenes
 from app.utils.llm import get_llm, get_tool_llm, text_of, usage_of
-from app.utils import iso_design
+from app.utils import cues, iso_design
 from app.utils.plan_repair import Repair, scoped_repair, update_plan_fields
 from app.utils.render import RenderError, validate
 
@@ -104,6 +104,11 @@ Rules:
   A centered terminal on BlankScene is main content; use focusOverlay:false only when deliberately keeping it small.
 - Every scene MUST have "narration.text": 1-3 short spoken sentences (max ~40 words), plain words,
   no markup, no emojis. It is read aloud and shown as captions; it should explain what the scene shows.
+  A BUILD-UP scene (one picture that grows: a cued step for each sentence) may have up to 6 sentences (~80 words).
+- Sync every change to the words: give each step/action/message "cue": "<a word or short phrase from THIS scene's
+  narration>" instead of guessing "at"; an object or link that appears later gets "appearCue". The change then
+  happens exactly when the narrator says that word ("cue": "duplicates" -> the badge pops on "duplicates").
+  Cue the word that NAMES the change, in the order spoken.
 - The narration is shown as subtitles at the bottom, so keep scene "caption"/"footer" props short (or leave them out) and never repeat the narration on screen.
 - On-screen text supports markup: **bold**, ==highlight==, __underline__, ((circle)). Keep it short.
 - Scene ids: unique, lowercase, kebab-case. durationInFrames: 90-300 (it is stretched to fit the narration).
@@ -168,7 +173,8 @@ async def _check(reply: str, code_demo: str | None = None) -> tuple[dict[str, An
     work = settings.WORKSPACE_DIR / "plans"
     work.mkdir(parents=True, exist_ok=True)
     path = work / f"{uuid.uuid4().hex[:12]}.json"
-    path.write_text(json.dumps(spec, indent=2))
+    # The plan keeps its word cues (resolved from real word times at render); check an estimated copy.
+    path.write_text(json.dumps(cues.resolve(spec)[0], indent=2))
     try:
         await validate(path)
     except RenderError as exc:
@@ -248,6 +254,7 @@ def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic:
                         "into its own BlankScene (short title, panel at \"center\", the narration about it) right after.")
     problems += _lint_variety(scenes, skills)
     problems += _lint_narration(scenes)
+    problems += _lint_cues(spec)
     problems += _lint_iso(scenes)
     if not problems:
         return ""
@@ -307,6 +314,42 @@ def _lint_variety(scenes: list[dict[str, Any]], skills) -> list[str]:
                 problems.append(f"scenes {', '.join(ids)} draw the same objects from scratch {len(ids)} times (limit {most}). "
                                 "Keep one overview, use \"continue\" for changes, and give the other ideas their own "
                                 "picture: a close-up of one part, a before/after, or a non-diagram scene.")
+    return problems
+
+
+def _timed(node: Any) -> tuple[int, int]:
+    """(cued, guessed) timed items in a scene's props: dicts with a word cue vs a numeric "at"."""
+    cued = guessed = 0
+    if isinstance(node, list):
+        for item in node:
+            c, g = _timed(item)
+            cued, guessed = cued + c, guessed + g
+    elif isinstance(node, dict):
+        if "cue" in node or "appearCue" in node:
+            cued += 1
+        elif isinstance(node.get("at"), (int, float)) and not isinstance(node.get("at"), bool):
+            guessed += 1
+        for value in node.values():
+            if isinstance(value, (list, dict)):
+                c, g = _timed(value)
+                cued, guessed = cued + c, guessed + g
+    return cued, guessed
+
+
+def _lint_cues(spec: dict[str, Any]) -> list[str]:
+    """Changes must land on the words that name them: cues that are not in the narration, and
+    scenes with several steps timed by guessed fractions."""
+    problems = []
+    _, missing = cues.resolve(spec)
+    if missing:
+        problems.append("these cues are not words of their scene's narration: " + "; ".join(
+            f"'{sid}': {', '.join(repr(c) for c in lost)}" for sid, lost in missing.items())
+            + ". Use a word the narrator actually says in that scene (or add it to the narration).")
+    guessed = [s.get("id", "") for s in spec.get("scenes", []) if s.get("component") in cues.timing_paths()
+               and (t := _timed(s.get("props")))[1] >= 3 and t[0] < t[1]]
+    if guessed:
+        problems.append(f"scenes {', '.join(guessed)} time most steps with a guessed \"at\", so the picture changes "
+                        "before or after the narrator mentions it. Give each step \"cue\": \"<the word that names it>\".")
     return problems
 
 
@@ -408,6 +451,10 @@ def get_scene(name: str) -> str:
     text = catalog.scene_text(name)
     if "<iso kind>" in text:  # 179 objects: described in the iso-diagrams guide; search instead of listing them
         text += "\n<iso kind> = an object kind from the iso-diagrams guide; call find_iso_objects(\"idea\") to look one up."
+    if name in cues.timing_paths():
+        fields = ", ".join(sorted(p.lstrip(".") for p in cues.timing_paths()[name]))
+        text += (f"\nTiming ({fields}): instead of guessing the fraction, write \"cue\": \"<word from this scene's "
+                 "narration>\" (\"appearCue\" for appearAt); it lands exactly when that word is spoken.")
     return text
 
 
