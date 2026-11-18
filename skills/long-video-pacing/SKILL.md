@@ -12,7 +12,7 @@ metadata:
 
 Give every chapter a purpose appropriate to the video format and reserve its time for achieving that purpose. Treat the assigned narration word budget as a real constraint: deepen examples, reasoning, and useful edge cases instead of padding with repeated introductions.
 
-Use one running example and a shared terminology. Refer briefly to earlier results instead of reteaching them. End nonfinal chapters with a specific bridge to what follows, spoken in the last scene's narration (no separate "Next: ..." card: the next chapter opens with its own title); reserve the whole-video conclusion for the final chapter; include a learning check only when the format calls for it.
+Use one running example and a shared terminology. Refer briefly to earlier results instead of reteaching them. Define a glossary term only in the chapter that introduces it; later chapters simply use it. End nonfinal chapters with a specific bridge to what follows, spoken in the last scene's narration (no separate "Next: ..." card: the next chapter opens with its own title); reserve the whole-video conclusion for the final chapter; include a learning check only when the format calls for it.
 
 Alternate explanation with demonstration when the material benefits from it. Avoid consecutive stretches of text-heavy definitions when a trace, diagram, worked example, or relevant demonstration would make the mechanism visible. Variety should serve understanding rather than a scene quota.
 

@@ -123,4 +123,8 @@ await mkdir(path.join(root,'../library'), {recursive:true});
 await writeFile(path.join(root,'../library/registry.json'),JSON.stringify(entries,null,2)+'\n');
 const overlays=overlaySchema.options.map((o)=>{const s=z.toJSONSchema(o,{io:'input'});const type=s.properties.type.const;delete s.properties.type;s.required=(s.required??[]).filter((k)=>k!=='type');return {type,propsSchema:s};});
 await writeFile(path.join(root,'../library/overlays.json'),JSON.stringify(overlays,null,2)+'\n');
+// Lucide icon names for the backend (icon-first lookup before designing new iso art).
+const lucide=await import('lucide-react');
+const iconNames=[...new Set(Object.keys(lucide.icons).map((k)=>k.replace(/([a-z0-9])([A-Z])/g,'$1-$2').replace(/([A-Za-z])([0-9])/g,'$1-$2').toLowerCase()))].sort();
+await writeFile(path.join(root,'../library/lucide-icons.json'),JSON.stringify(iconNames)+'\n');
 console.log(`Checked ${entries.length} scene contracts, topology wiring, and invalid-input handling. Exported library/registry.json + ${overlays.length} overlays to library/overlays.json.`);

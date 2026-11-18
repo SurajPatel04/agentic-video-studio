@@ -35,6 +35,38 @@ const {sceneCatalog, overlaysSchema, brandSchema, audioSettingsSchema, narration
 
 const fmtPath = (parts) => parts.map((p) => (typeof p === 'number' ? `[${p}]` : `.${p}`)).join('');
 
+// --- "did you mean": short, precise errors instead of dumping every allowed value -----------------
+const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+const pairs = (s) => { const out = []; for (let i = 0; i < s.length - 1; i++) out.push(s.slice(i, i + 2)); return out; };
+/** Similarity 0..1: containment counts most ("radiostudio" ~ "radio"), else shared letter pairs. */
+const similar = (a, b) => {
+  a = norm(a); b = norm(b);
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (a.includes(b) || b.includes(a)) return 0.6 + 0.4 * Math.min(a.length, b.length) / Math.max(a.length, b.length);
+  const pa = pairs(a), pb = pairs(b), left = [...pb];
+  let hit = 0;
+  for (const x of pa) { const k = left.indexOf(x); if (k >= 0) { hit++; left.splice(k, 1); } }
+  return (2 * hit) / (pa.length + pb.length || 1);
+};
+const closest = (value, options, n = 3) => [...options].map((o) => [o, similar(value, o)]).filter(([, s]) => s > 0.25)
+  .sort((x, y) => y[1] - x[1]).slice(0, n).map(([o]) => `"${o}"`);
+const lucideNames = await import('lucide-react').then((m) => Object.keys(m.icons).map((k) => k.replace(/([a-z0-9])([A-Z])/g, '$1-$2').replace(/([A-Za-z])([0-9])/g, '$1-$2').toLowerCase()), () => []);
+const valueAt = (obj, parts) => parts.reduce((o, k) => (o == null ? undefined : o[k]), obj);
+/** A long list of allowed values or an unknown icon: name the wrong value and suggest the closest ones. */
+const explain = (issue, data) => {
+  const value = valueAt(data, issue.path);
+  if (issue.code === 'invalid_value' && Array.isArray(issue.values) && issue.values.length > 12) {
+    const near = closest(value, issue.values);
+    return `unknown value ${JSON.stringify(value)}` + (near.length ? `; did you mean ${near.join(', ')}?` : '') + ` (${issue.values.length} allowed values)`;
+  }
+  if (typeof issue.message === 'string' && issue.message.startsWith('unknown icon name')) {
+    const near = closest(value, lucideNames, 4);
+    return `unknown icon ${JSON.stringify(value)}` + (near.length ? `; did you mean ${near.join(', ')}?` : '; use a Lucide icon name such as "megaphone" or "users"');
+  }
+  return issue.message;
+};
+
 /** Returns a list of human-readable errors for one composition object. */
 export const validateComposition = (spec) => {
   const errors = [];
@@ -74,19 +106,20 @@ export const validateComposition = (spec) => {
     if (scene?.overlays !== undefined) {
       const o = overlaysSchema.safeParse(scene.overlays);
       if (!o.success) {
-        for (const issue of o.error.issues) errors.push(`${where}.overlays${fmtPath(issue.path)}: ${issue.message}`);
+        for (const issue of o.error.issues) errors.push(`${where}.overlays${fmtPath(issue.path)}: ${explain(issue, scene.overlays)}`);
       }
     }
     const entry = sceneCatalog[scene?.component];
     if (!entry) {
-      errors.push(`${where}.component: unknown "${scene?.component}". Known: ${Object.keys(sceneCatalog).join(', ')}`);
+      const near = closest(scene?.component, Object.keys(sceneCatalog));
+      errors.push(`${where}.component: unknown "${scene?.component}"` + (near.length ? `; did you mean ${near.join(', ')}?` : `. Known: ${Object.keys(sceneCatalog).join(', ')}`));
       return;
     }
     const result = entry.schema.safeParse(scene.props ?? {});
     if (!result.success) {
       for (const issue of result.error.issues) {
         const keys = issue.keys ? ` (${issue.keys.join(', ')})` : '';
-        errors.push(`${where}.props${fmtPath(issue.path)}: ${issue.message}${keys}`);
+        errors.push(`${where}.props${fmtPath(issue.path)}: ${explain(issue, scene.props ?? {})}${keys}`);
       }
     }
   });

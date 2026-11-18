@@ -6944,6 +6944,77 @@
                 "default": false,
                 "type": "boolean"
               },
+              "design": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "faces": {
+                "minItems": 2,
+                "maxItems": 48,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fill": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "lavender",
+                            "peach",
+                            "mint",
+                            "sky",
+                            "butter",
+                            "rose",
+                            "teal",
+                            "coral",
+                            "slate",
+                            "cream"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "const": "ink"
+                        }
+                      ]
+                    },
+                    "shade": {
+                      "default": 0,
+                      "type": "number",
+                      "minimum": -0.5,
+                      "maximum": 0.6
+                    },
+                    "points": {
+                      "minItems": 3,
+                      "maxItems": 32,
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "type": "integer",
+                            "minimum": 2,
+                            "maximum": 98
+                          },
+                          {
+                            "type": "integer",
+                            "minimum": 2,
+                            "maximum": 98
+                          }
+                        ],
+                        "items": false,
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    }
+                  },
+                  "required": [
+                    "fill",
+                    "points"
+                  ]
+                }
+              },
               "icon": {
                 "type": "string",
                 "maxLength": 40
@@ -8779,6 +8850,77 @@
                   "highlight": {
                     "default": false,
                     "type": "boolean"
+                  },
+                  "design": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                  },
+                  "faces": {
+                    "minItems": 2,
+                    "maxItems": 48,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "fill": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "lavender",
+                                "peach",
+                                "mint",
+                                "sky",
+                                "butter",
+                                "rose",
+                                "teal",
+                                "coral",
+                                "slate",
+                                "cream"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "const": "ink"
+                            }
+                          ]
+                        },
+                        "shade": {
+                          "default": 0,
+                          "type": "number",
+                          "minimum": -0.5,
+                          "maximum": 0.6
+                        },
+                        "points": {
+                          "minItems": 3,
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "array",
+                            "prefixItems": [
+                              {
+                                "type": "integer",
+                                "minimum": 2,
+                                "maximum": 98
+                              },
+                              {
+                                "type": "integer",
+                                "minimum": 2,
+                                "maximum": 98
+                              }
+                            ],
+                            "items": false,
+                            "minItems": 2,
+                            "maxItems": 2
+                          }
+                        }
+                      },
+                      "required": [
+                        "fill",
+                        "points"
+                      ]
+                    }
                   },
                   "icon": {
                     "type": "string",

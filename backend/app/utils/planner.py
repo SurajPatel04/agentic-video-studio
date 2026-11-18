@@ -28,6 +28,8 @@ from app.utils import catalog, skill_router, skills as teaching_skills
 from app.utils.console import step
 from app.utils.iso import expand_continuations, paper_code_scenes
 from app.utils.llm import get_llm, get_tool_llm, text_of, usage_of
+from app.utils import iso_design
+from app.utils.plan_repair import Repair, scoped_repair, update_plan_fields
 from app.utils.render import RenderError, validate
 
 log = logging.getLogger(__name__)
@@ -66,8 +68,19 @@ class Plan:
     skills: list[str] = field(default_factory=list)
 
 
+BRIEF_GUIDANCE = """Read the full brief in its language and context. Identify the requested action,
+the subject it applies to, and the outcome the viewer should get. Resolve ambiguous words using the
+surrounding phrase and supplied material. If several readings still fit, plan around their shared
+meaning and keep the user's terminology. Preserve the stated audience, purpose, format, scope and
+chapter outline. For a sparse brief, infer a focused viewer outcome and an appropriate sequence.
+Choose an example from the subject when it helps explain a point. Introduce invented scenarios as
+illustrations and keep the title and learning goals grounded in the user's subject."""
+
+
 RULES = """You are the planner for a narrated video generator (React/Remotion), for any subject or purpose.
 You turn a topic into ONE composition JSON.
+Match each visual to the point being narrated at that moment. During a comparison, make both sides
+and the relevant difference visible. During a process, show the change as the narrator describes it.
 
 Shape:
 {
@@ -96,6 +109,10 @@ Rules:
 - Scene ids: unique, lowercase, kebab-case. durationInFrames: 90-300 (it is stretched to fit the narration).
 - Follow the user's audience, language, purpose and format. A lecture develops understanding; an explainer answers a question; an ad communicates a benefit and next action. Do not force quizzes or a lecture structure into other formats.
 - Choose visuals that support the meaning: examples, steps, comparisons, timelines, images or diagrams as appropriate. Avoid unrelated technical imagery and repetitive text slides.
+- Show the REAL thing the narration talks about, readable on screen, not only a diagram about it: the code, the
+  request and its JSON, the terminal output (tech); the headline, post, quote, document or ad (media); the date on a
+  timeline or the place on a map (history, geography); the number on a chart (business, science); the equation and a
+  worked value (maths). Mix scene types: never more than 5 of the same scene in a row (checked).
 - Optional "overlays" are drawn on top of any scene; positions {"x": 0-100, "y": 0-100} or "top-left" ... "bottom-right".
   Overlay types: OVERLAYS. Use them sparingly and only with fields you are sure of.
 - Show, don't just tell: at most TEXTSHARE of the scenes may be text-only (DefinitionScene / ExplainScene /
@@ -142,7 +159,7 @@ def _normalize(spec: dict[str, Any]) -> dict[str, Any]:
     return spec
 
 
-async def _check(reply: str) -> tuple[dict[str, Any] | None, str]:
+async def _check(reply: str, code_demo: str | None = None) -> tuple[dict[str, Any] | None, str]:
     """Parse + validate a reply. Returns (spec, "") or (None, problem to send back)."""
     try:
         spec = _normalize(_extract_json(reply))
@@ -156,6 +173,9 @@ async def _check(reply: str) -> tuple[dict[str, Any] | None, str]:
         await validate(path)
     except RenderError as exc:
         return None, f"The JSON has these errors:\n{exc.details}\nFix them and reply with ONLY the full corrected JSON."
+    if code_demo and not any(scene.get("component") in CODE_SCENES for scene in spec.get("scenes", [])):
+        return None, (f"Show this chapter's required code demonstration in an EditorScene: {code_demo}\n"
+                      "Explain the relevant code in the narration. Reply with ONLY the full corrected JSON.")
     return spec, ""
 
 
@@ -163,7 +183,7 @@ TEXT_SCENES = {"DefinitionScene", "ExplainScene", "BulletListScene"}
 
 
 def _rules() -> str:
-    return (RULES.replace("OVERLAYS", catalog.overlay_list()).replace("PANELS", ", ".join(sorted(PANEL_OVERLAYS)))
+    return (BRIEF_GUIDANCE + "\n" + RULES.replace("OVERLAYS", catalog.overlay_list()).replace("PANELS", ", ".join(sorted(PANEL_OVERLAYS)))
             .replace("TEXTSHARE", f"{settings.PLANNER_MAX_TEXT_SHARE:.0%}").replace("TEXTRUN", str(settings.PLANNER_MAX_TEXT_RUN)))
 
 
@@ -188,7 +208,8 @@ def _visual_hint(topic: str, skills: list[str] | tuple[str, ...]) -> str:
             + "\n".join(f'- "{hit}": {" or ".join(scenes)}' for hit, scenes in need) + "\n")
 
 
-def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic: str = "") -> str:
+def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic: str = "",
+          *, code_demo: str | None = None) -> str:
     """Style problems in a VALID plan (one retry is spent on them; a valid plan is never lost)."""
     problems = []
     scenes = spec.get("scenes", [])
@@ -203,7 +224,7 @@ def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic:
         problems.append(f"{texts} of {len(scenes)} scenes are text-only (Definition/Explain/BulletList); the most allowed is "
                         f"{cap}. Turn {texts - cap} of them into scenes that SHOW the idea (code, flowchart, cycle, comparison, "
                         "chart, timeline, devices, connection).")
-    if settings.PLANNER_CODE_EVERY and CODE_SKILLS & set(skills):
+    if code_demo is None and settings.PLANNER_CODE_EVERY and CODE_SKILLS & set(skills):
         need = -(-len(scenes) // settings.PLANNER_CODE_EVERY)  # ceil
         have = sum(s.get("component") in CODE_SCENES for s in scenes)
         if have < need:
@@ -225,10 +246,92 @@ def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic:
     if covered:
         problems.append("panel overlays would cover the scene's content in " + "; ".join(covered) + ". Move each panel "
                         "into its own BlankScene (short title, panel at \"center\", the narration about it) right after.")
+    problems += _lint_variety(scenes, skills)
+    problems += _lint_narration(scenes)
     problems += _lint_iso(scenes)
     if not problems:
         return ""
     return "The plan is valid, but:\n- " + "\n- ".join(problems) + "\nReply with ONLY the full corrected JSON."
+
+
+def _alternatives(skills, used: str) -> str:
+    """Scenes the selected guides recommend other than ``used``: tech guides name code, terminal and
+    trace scenes; media, history or business guides name front pages, timelines, maps and charts."""
+    available, names = teaching_skills.discover(), set(catalog.scene_names())
+    out = []
+    for name in skills:
+        for scene in available[name].metadata.scenes if name in available else []:
+            if scene != used and scene in names and scene not in out and scene not in TEXT_SCENES:
+                out.append(scene)
+    return ", ".join(out[:8]) or "a chart, timeline, comparison, map, quote or worked example"
+
+
+def _lint_variety(scenes: list[dict[str, Any]], skills) -> list[str]:
+    """The same scene type over and over (any subject): a long run, most of the plan, or the same
+    IsoScene picture drawn again and again. Viewers stop seeing a picture they have seen 10 times."""
+    problems = []
+    limit = settings.PLANNER_MAX_SAME_RUN
+    run, start = 0, 0
+    for i, s in enumerate(scenes + [{}]):
+        if i and s.get("component") == scenes[i - 1].get("component"):
+            run += 1
+            continue
+        if limit and run + 1 > limit and i:
+            comp = scenes[i - 1].get("component")
+            problems.append(f"{run + 1} {comp}s in a row ('{scenes[start].get('id')}' to '{scenes[i - 1].get('id')}'); "
+                            f"the limit is {limit}. Show the REAL thing the narration talks about in some of them "
+                            f"(the code, request, document, headline, number or place itself) with: {_alternatives(skills, comp)}.")
+        run, start = 0, i
+    share = settings.PLANNER_MAX_SAME_SHARE
+    if share and len(scenes) >= 8:
+        counts: dict[str, int] = {}
+        for s in scenes:
+            counts[s.get("component", "")] = counts.get(s.get("component", ""), 0) + 1
+        comp, n = max(counts.items(), key=lambda kv: kv[1])
+        if n > len(scenes) * share and not any(p.startswith(f"{n} {comp}s in a row") for p in problems):
+            problems.append(f"{n} of {len(scenes)} scenes are {comp}; at most {share:.0%}. Replace some with scenes that show "
+                            f"the real thing: {_alternatives(skills, comp)}.")
+    most = settings.PLANNER_MAX_SAME_PICTURE
+    if most:
+        seen: dict[tuple, list[str]] = {}
+        for s in scenes:
+            props = s.get("props") or {}
+            if s.get("component") != "IsoScene" or props.get("continue") or props.get("continued"):
+                continue
+            picture = tuple(sorted(f"{o.get('kind')}:{o.get('design') or o.get('icon') or ''}"
+                                   for o in props.get("objects") or [] if isinstance(o, dict)))
+            if len(picture) >= 2:
+                seen.setdefault(picture, []).append(s.get("id", ""))
+        for ids in seen.values():
+            if len(ids) > most:
+                problems.append(f"scenes {', '.join(ids)} draw the same objects from scratch {len(ids)} times (limit {most}). "
+                                "Keep one overview, use \"continue\" for changes, and give the other ideas their own "
+                                "picture: a close-up of one part, a before/after, or a non-diagram scene.")
+    return problems
+
+
+GLOSSARY_LINE = re.compile(r"(?:^|[.!?]\s+)[A-Z][\w /'-]{1,40}\s=\s")
+
+
+def _lint_narration(scenes: list[dict[str, Any]]) -> list[str]:
+    """Narration that reads like notes, not a teacher talking: "Term = meaning" glossary lines, and
+    the same phrase in many scenes."""
+    problems = []
+    texts = [(s.get("id", ""), str((s.get("narration") or {}).get("text", ""))) for s in scenes]
+    glossary = [i for i, t in texts if GLOSSARY_LINE.search(t)]
+    if glossary:
+        problems.append(f"narration in {', '.join(glossary)} reads a definition like a note (\"Term = meaning\"). Say it as a "
+                        "teacher would, in a sentence tied to what is on screen: \"A resource is simply ...\".")
+    shingles: dict[str, set[str]] = {}
+    for sid, text in texts:
+        words = re.findall(r"[a-z0-9{}/']+", text.lower())
+        for k in range(len(words) - 5):
+            shingles.setdefault(" ".join(words[k:k + 6]), set()).add(sid)
+    repeated = sorted((p for p, ids in shingles.items() if len(ids) >= 3), key=lambda p: -len(shingles[p]))
+    if repeated:
+        problems.append(f"the narration repeats \"{repeated[0]}\" in {len(shingles[repeated[0]])} scenes. Say each point once, "
+                        "then move forward: a new example, a question to the viewer, or what goes wrong without it.")
+    return problems
 
 
 class _Best:
@@ -302,7 +405,25 @@ def search_scenes(query: str) -> str:
 @tool
 def get_scene(name: str) -> str:
     """Get one scene's description, every field it accepts (? = optional, a|b = allowed values) and example props."""
-    return catalog.scene_text(name)
+    text = catalog.scene_text(name)
+    if "<iso kind>" in text:  # 179 objects: described in the iso-diagrams guide; search instead of listing them
+        text += "\n<iso kind> = an object kind from the iso-diagrams guide; call find_iso_objects(\"idea\") to look one up."
+    return text
+
+
+@tool
+def find_iso_objects(query: str) -> str:
+    """IsoScene object kinds for an idea, e.g. "radio studio", "money", "election", "hospital". Best match first."""
+    # Same order the planner should choose in: built-in kinds, then Lucide icons, then saved designs.
+    hits = catalog.find_iso_objects(query)
+    rows = [f"- {k}" + (f": {d}" if d else "") for k, d in hits]
+    rows += [f'- kind="tile", icon="{name}"' for name in iso_design.find_icons(query)]
+    words = set(re.findall(r"[a-z0-9]+", query.lower()))
+    for key, art in iso_design.inventory().items():
+        if not art.icon and words.intersection(re.findall(r"[a-z0-9]+", " ".join([key, *art.aliases]).lower())):
+            rows.append(f'- kind="tile", design="{key}" ({", ".join(art.aliases)})')
+    return "\n".join(rows) or ('No match: use kind="tile" with a Lucide icon you know, or design="<thing>" '
+                               'for a concrete object no icon shows.')
 
 
 @tool
@@ -317,41 +438,77 @@ def get_overlay(kind: str) -> str:
     return catalog.overlay_text(kind)
 
 
-LOOKUP_TOOLS = {t.name: t for t in (search_scenes, get_scene, list_device_kinds, get_overlay)}
+LOOKUP_TOOLS = {t.name: t for t in (search_scenes, get_scene, list_device_kinds, find_iso_objects, get_overlay)}
 
 
 # --------------------------------------------------------------------------- modes
 
 
-async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[str] | tuple[str, ...] = ()) -> Plan:
-    system = _rules() + hint + "\nOutput ONLY the JSON object, no prose, no code fences.\n\nScene library:\n" + catalog.catalog_text(topic)
+def _repair_for(reply: str, spec: dict | None, problem: str) -> Repair | None:
+    if spec is None:
+        if not problem.startswith("The JSON has these errors:"):
+            return None
+        spec = _normalize(_extract_json(reply))
+    return scoped_repair(spec, problem)
+
+
+async def _edit(repair: Repair, llm, *, use_tool: bool = False):
+    if use_tool:
+        llm = llm.bind_tools([update_plan_fields], tool_choice="update_plan_fields")
+    msg = await llm.ainvoke(repair.messages())
+    try:
+        if use_tool:
+            call, = msg.tool_calls
+            if call["name"] != "update_plan_fields":
+                raise ValueError("Unexpected repair tool")
+            updates = update_plan_fields.invoke(call["args"])
+        else:
+            updates = _extract_json(text_of(msg))["updates"]
+        return repair.apply(updates), usage_of(msg)
+    except (ValueError, TypeError, KeyError) as exc:
+        log.warning("planner.repair rejected: %s", exc)
+        return None, usage_of(msg)
+
+
+async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[str] | tuple[str, ...] = (),
+                        *, code_demo: str | None = None) -> Plan:
+    known = teaching_skills.guidance(list(skills)) if skills else ""  # iso objects the guides already describe are not repeated
+    system = _rules() + hint + "\nOutput ONLY the JSON object, no prose, no code fences.\n\nScene library:\n" + catalog.catalog_text(topic, known=known)
     messages: list[Any] = [SystemMessage(system), HumanMessage(f"Topic: {topic}")]
     llm = get_llm(model or settings.PLANNER_MODEL or None)
     tin = tout = calls = 0
     problem = ""
     best = _Best()  # valid plans with style problems: the one with the fewest is kept
+    repair = None
     for attempt in range(1, settings.PLANNER_MAX_ATTEMPTS + 1):
-        msg = await llm.ainvoke(messages)
+        if repair:
+            reply, (i, o) = await _edit(repair, llm)
+        else:
+            msg = await llm.ainvoke(messages)
+            reply, (i, o) = text_of(msg), usage_of(msg)
         calls += 1
-        i, o = usage_of(msg)
         tin, tout = tin + i, tout + o
-        reply = text_of(msg)
-        spec, problem = await _check(reply)
+        if reply is None:
+            repair = None
+            continue
+        spec, problem = await _check(reply, code_demo)
         if spec:
-            style = _lint(spec, skills, topic)
+            style = _lint(spec, skills, topic, code_demo=code_demo)
             if not style:
                 return Plan(spec, attempt, "catalog", calls, tin, tout)
             if best.add(spec, attempt, style):
                 return Plan(best.spec, best.attempt, "catalog", calls, tin, tout)
             problem = style
         log.warning("planner.retry mode=catalog attempt=%d problem=%s", attempt, problem[:300])
-        messages += [AIMessage(reply), HumanMessage(problem)]
+        repair = _repair_for(reply, spec, problem)
+        messages = [*messages[:2], AIMessage(reply), HumanMessage(problem)]
     if best.spec:
         return Plan(best.spec, best.attempt, "catalog", calls, tin, tout)
     raise PlanError(f"planner gave invalid JSON {settings.PLANNER_MAX_ATTEMPTS} times", problem)
 
 
-async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[str], allowed: list[str] | None) -> Plan:
+async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[str], allowed: list[str] | None,
+                      *, code_demo: str | None = None) -> Plan:
     skills = selected
     system = (
         _rules()
@@ -370,11 +527,24 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
     tin = tout = calls = attempts = 0
     problem = ""
     best = _Best()
+    repair = None
     for _ in range(settings.PLANNER_MAX_STEPS):
-        msg = await llm.ainvoke(messages)
-        calls += 1
-        i, o = usage_of(msg)
-        tin, tout = tin + i, tout + o
+        if repair:
+            reply, (i, o) = await _edit(repair, get_tool_llm(model or settings.PLANNER_MODEL or None), use_tool=True)
+            calls += 1
+            tin, tout = tin + i, tout + o
+            if reply is None:
+                repair = None
+                attempts += 1
+                if attempts >= settings.PLANNER_MAX_ATTEMPTS:
+                    break
+                continue
+            msg = AIMessage(reply)
+        else:
+            msg = await llm.ainvoke(messages)
+            calls += 1
+            i, o = usage_of(msg)
+            tin, tout = tin + i, tout + o
         messages.append(msg)
         if msg.tool_calls:
             for call in msg.tool_calls:
@@ -388,9 +558,9 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
             messages.append(HumanMessage("Before planning, call load_skill for: " + ", ".join(sorted(missing))))
             continue
         attempts += 1
-        spec, problem = await _check(text_of(msg))
+        spec, problem = await _check(text_of(msg), code_demo)
         if spec:
-            style = _lint(spec, skills, topic)
+            style = _lint(spec, skills, topic, code_demo=code_demo)
             if not style:
                 return Plan(spec, attempts, "tools", calls, tin, tout, sorted(loaded))
             if best.add(spec, attempts, style):
@@ -399,6 +569,7 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
         log.warning("planner.retry mode=tools attempt=%d problem=%s", attempts, problem[:300])
         if attempts >= settings.PLANNER_MAX_ATTEMPTS:
             break
+        repair = _repair_for(text_of(msg), spec, problem)
         messages.append(HumanMessage(problem + " Use get_scene to check fields if unsure."))
     if best.spec:
         return Plan(best.spec, best.attempt, "tools", calls, tin, tout, sorted(loaded))
@@ -406,12 +577,15 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
 
 
 async def plan_video(topic: str, *, scenes: int | None = None, model: str | None = None, mode: Mode | None = None,
-                     context: str = "", skills: list[str] | None = None, layout: Layout = "desktop") -> Plan:
+                     context: str = "", skills: list[str] | None = None, layout: Layout = "desktop",
+                     code_demo: str | None = None) -> Plan:
     """Ask the LLM for a valid composition about ``topic`` (printed as one step with its result).
     ``layout``: desktop 1920x1080 (default) | mobile 1080x1920 | square 1080x1080."""
     with step("plan", topic=topic, scenes=scenes, mode=mode or settings.PLANNER_MODE, layout=layout) as s:
         context = LAYOUT_HINT.get(layout, "") + context
-        plan = await _plan_video(topic, scenes=scenes, model=model, mode=mode, context=context, skills=skills)
+        plan = await _plan_video(topic, scenes=scenes, model=model, mode=mode, context=context, skills=skills,
+                                 code_demo=code_demo)
+        await iso_design.materialize(plan, model)
         apply_layout(plan.spec, layout)
         s.update(mode=plan.mode, skills=",".join(plan.skills), scenes=len(plan.spec.get("scenes", [])),
                  attempts=plan.attempts, llm_calls=plan.llm_calls, tokens_in=plan.input_tokens, tokens_out=plan.output_tokens)
@@ -419,7 +593,7 @@ async def plan_video(topic: str, *, scenes: int | None = None, model: str | None
 
 
 async def _plan_video(topic: str, *, scenes: int | None = None, model: str | None = None, mode: Mode | None = None,
-                      context: str = "", skills: list[str] | None = None) -> Plan:
+                      context: str = "", skills: list[str] | None = None, code_demo: str | None = None) -> Plan:
     """Ask the LLM for a valid composition about ``topic``.
 
     ``context``: extra instructions added to the rules, e.g. a long video's outline and what earlier
@@ -427,11 +601,18 @@ async def _plan_video(topic: str, *, scenes: int | None = None, model: str | Non
     hint = f"- Make about {scenes} scenes.\n" if scenes else "- Make 6-10 scenes.\n"
     if context:
         hint += "\n" + context.strip() + "\n"
+    # None selects the standalone policy. An empty string is a chapter with no required demo.
+    if code_demo:
+        hint += f"\nUse an EditorScene to demonstrate this chapter's required source code: {code_demo}\n"
+    elif code_demo == "":
+        hint += "\nUse code only if it directly helps teach this chapter's goal.\n"
     mode = mode or settings.PLANNER_MODE
     if mode == "auto":
         mode = "tools" if len(catalog.scene_names()) > settings.PLANNER_TOOLS_THRESHOLD else "catalog"
     chosen = await skill_router.route(topic, skills, model=model)
     selected = chosen.skills
+    if "iso-diagrams" in selected:
+        hint += iso_design.planner_hint()
     hint += _visual_hint(topic, selected)
     allowed = selected if skills is not None else None
     if skills != []:
@@ -439,16 +620,17 @@ async def _plan_video(topic: str, *, scenes: int | None = None, model: str | Non
     if mode == "tools":
         if selected:
             hint += "\nLoad these guides before planning: " + ", ".join(selected) + ". Use load_skill(name).\n"
-        plan = await _plan_tools(topic, hint, model, selected, allowed)
+        plan = await _plan_tools(topic, hint, model, selected, allowed, code_demo=code_demo)
     else:
         hint += teaching_skills.guidance(selected)
         available = teaching_skills.discover()
         scene_names = set(catalog.scene_names())
         extra_scenes = dict.fromkeys(n for name in selected for n in available[name].metadata.scenes)
         extra_overlays = dict.fromkeys(n for name in selected for n in available[name].metadata.overlays)
-        hint += "\n" + "\n".join(catalog.scene_text(n) for n in extra_scenes if n in scene_names)
+        extra = [catalog.scene_text(n) for n in extra_scenes if n in scene_names]
+        hint += "\n" + catalog.kind_legend(*extra, known=teaching_skills.guidance(selected)) + "\n".join(extra)
         hint += "\n" + "\n".join(catalog.overlay_text(n) for n in extra_overlays)
-        plan = await _plan_catalog(topic, hint, model, selected)
+        plan = await _plan_catalog(topic, hint, model, selected, code_demo=code_demo)
         plan.skills = selected
     plan.llm_calls += chosen.calls  # the skill router's call counts towards the plan
     plan.input_tokens += chosen.input_tokens

@@ -28,11 +28,11 @@ metadata:
   long_video: false
 ---
 
-Hard rules (they override softer advice, including scene suggestions from other guides):
-- Build EVERY scene with IsoScene (tech, media, business, science, history) for one paper look. Exceptions: paper scenes another guide names (EditorScene, TerminalScene, screen, data, DSA, EventLoop, graph scenes) and EquationScene.
+Hard rules (they override softer advice):
+- IsoScene is the paper look for every DIAGRAM (tech, media, business, science, history). Between diagrams, show the real thing with the scenes other guides name (editor, terminal, front page, feed, chart, timeline, map, equation). Never more than 5 IsoScenes in a row.
 - Show THINGS, not tables or text cards: every idea becomes objects on the paper. A comparison is two labelled groups side by side; a definition is a title + subtitle over a small scene that shows it.
 - Title and chapter cards are IsoScene too, with "objects": [], "links": [], "steps": [] (ALWAYS write the three empty lists: when left out, an example diagram appears) plus eyebrow, title, subtitle and up to 4 short "points". Use at most one such card per chapter.
-- Diagram scenes: a short eyebrow and title at the top; 2-7 objects; links for what goes where; steps that follow the narration.
+- Diagram scenes: a short eyebrow and title at the top; 3-5 objects (fewer objects are drawn bigger); links for what goes where; steps that follow the narration.
 
 Objects (kinds are drawn as what they are; pick the real thing):
 - Tech: server, database, storage, cache, cloud, loadbalancer, router, api, queue, client (monitor), laptop, phone, cpu, memory, globe, lock, file, code, box.
@@ -45,13 +45,14 @@ Objects (kinds are drawn as what they are; pick the real thing):
 - Print and publishing: printingpress, newspaperbundle, magazine, printingplates, newsstand, deliverystack.
 - Communication: envelope (message), sender, receiver, encoder, decoder (message <-> signal, not encryption), feedback, noise.
 - AI media: aigeneratedlabel, aivoice, alteredimage, recommendation, verified.
-- Radio, audio and podcasts: headphones, mixingconsole (sound board with knobs and faders), boommic (articulated arm and hanging capsule), speaker (studio monitor), audiorecorder (REC screen and XLR inputs), podcastbooth (foam walls, ON AIR sign, table and mics).
+- Radio, audio and podcasts: headphones, mixingconsole (sound board), boommic (arm mic), speaker (studio monitor), audiorecorder, podcastbooth (ON AIR booth).
 - General: house, tree, clock (moving hands), chart (growing bars), piechart, chatbubble, sun, weather (sun and cloud), trophy, flag, lightbulb, gear (turning), magnifier, warning, checkmark, cross.
 - Roads (ground slabs; vehicles on them at z: 0.12, highway 0.18): road, singlelane, twolane, fourlane, highway. Use size to lengthen or widen.
 - Roles: doctor, teacher, chef, worker (hard hat), police.
 - People: user (one person), people (a crowd, "count": 6-20), platform (a stage they stand on).
-- Anything else: "tile" with an "icon" - an upright card showing any Lucide icon ("megaphone", "message-circle", "thumbs-up", "share-2", "funnel", "eye", "briefcase", "heart", "scale", "gavel", "leaf", "bell", "target"). Give tiles different colors.
-- Labels are 1-2 words ("Server A", "Editor") under the object.
+- For distinct concepts that built-in art would depict misleadingly, use kind "tile" with "design" set to a reusable concept ID. The designer supplies the faces and registers the artwork automatically.
+- Anything else: "tile" with an "icon" - an upright card showing any Lucide icon ("megaphone", "thumbs-up", "share-2", "scale", "leaf"). Give tiles different colors.
+- Labels: 1-2 words under the object.
 
 Layout on the grid (the scene centres and scales everything itself; you only choose relative positions):
 - Screen-horizontal row, left to right: [0,0], [3.5,-3.5], [7,-7], [10.5,-10.5].
@@ -76,9 +77,9 @@ Links must say how things really work:
 Same picture, small change -> "continue" (cheaper and smoother):
 - When the next scene shows the SAME picture with a change (a server fails, a channel joins, feedback comes back), write "continue": true and list ONLY what is new: objects, links, steps, and "remove": ["id"]. The rest carries over as the previous scene ENDED, without animating in again.
 - Example: {"continue": true, "objects": [{"id": "d", "kind": "phone", "label": "Phone", "at": [10.5, -3.5]}], "links": [{"from": "tower", "to": "d"}], "steps": [{"at": 0.4, "target": "d", "note": "A new channel joins"}]}
-- Use chains of 2-5 continued scenes for one idea, then start a fresh picture for the next idea (a close-up, a crowd, a comparison). Writing the same layout again from scratch is rejected: use continue instead.
+- Use chains of 2-4 continued scenes for one idea, then start a fresh picture for the next idea (a close-up, a crowd, a comparison). Writing the same layout again from scratch is rejected: use continue instead.
 - Labels name the object ("Server A", "Editor"), never an event ("Request 3"): events go in step notes.
 
-Vary the pictures: a crowd, a left-to-right path, a before/after of two groups, a hub sending to many, a failure (one object turns coral and is hidden).
+Vary the pictures: a crowd, a path, a before/after, a hub sending to many, a failure (one object turns coral and hides).
 
-More media kinds: studiocamera, teleprompter, studiolights, controlmonitors, obvan, newsdesk (anchor desk); clapperboard, cinemaprojector, cinemascreen, filmreel, storyboard, editingtimeline, theatrestage; socialpost, scrollingfeed, videoplayer, livestream, comments, repost, notification, hashtag; productdisplay, campaignboard, sponsoredpost, adplacement, paywall, adpayment. PR: pressrelease, podium, pressconference, spokesperson, mediakit, crisiscentre. Politics: parliament, ballotbox, campaignrally, publicmeeting, protestplacard, governmentoffice. Hyphenated names (press-release, ballot-box) also work.
+More media kinds: studiocamera, teleprompter, studiolights, controlmonitors, obvan, newsdesk (anchor desk); clapperboard, cinemaprojector, cinemascreen, filmreel, storyboard, editingtimeline, theatrestage; socialpost, scrollingfeed, videoplayer, livestream, comments, repost, notification, hashtag; productdisplay, campaignboard, sponsoredpost, adplacement, paywall, adpayment. PR: pressrelease, podium, pressconference, spokesperson, mediakit, crisiscentre. Politics: parliament, ballotbox, campaignrally, publicmeeting, protestplacard, governmentoffice. Hyphenated names work. Newsroom: reporter, interview, presspass, recorder, newshub, sourcedocs.

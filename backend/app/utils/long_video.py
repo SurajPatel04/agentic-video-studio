@@ -39,7 +39,7 @@ from app.config import settings
 from app.utils import skill_router, skills as teaching_skills
 from app.utils.console import step
 from app.utils.llm import get_llm, text_of, usage_of
-from app.utils.planner import PlanError, _extract_json, apply_layout, plan_video
+from app.utils.planner import BRIEF_GUIDANCE, PlanError, _extract_json, apply_layout, plan_video
 from app.utils import subtitles
 from app.utils.render import RenderError, captions_enabled, default_caption_mode, render_video, validate, without_intro
 
@@ -60,6 +60,7 @@ class ChapterOutline(BaseModel):
     title: str = Field(min_length=2, max_length=120)
     goal: str = Field(min_length=5)  # intended viewer outcome for this chapter
     key_points: list[str] = Field(min_length=1, max_length=8)
+    code_demo: str = ""  # required source-code demonstration, empty when optional
     minutes: float = Field(gt=0, le=20)
     words: int = 0  # narration budget, set by us from minutes
 
@@ -211,7 +212,8 @@ Reply with ONLY one JSON object, no prose, no code fences:
   "glossary": [{{"term": "...", "meaning": "one line"}}],
   "examples": ["running example followed through the whole video"],
   "chapters": [{{"title": "...", "goal": "one sentence: the intended viewer outcome, appropriate to the format",
-                 "key_points": ["3-6 concrete things to explain, show or demonstrate"], "minutes": 5}}]
+                 "key_points": ["3-6 concrete things to explain, show or demonstrate"],
+                 "code_demo": "", "minutes": 5}}]
 }}
 Rules:
 {length_rule}
@@ -221,6 +223,10 @@ Rules:
 - Open with relevant context and end by delivering the promised outcome. Use a quiz only when it helps learning.
 - glossary: shared terms when terminology matters (otherwise empty). examples: recurring examples or situations
   when relevant, reused across chapters for continuity. Use examples from the requested subject, not automatically software.
+- Decide code_demo for each chapter from its viewer outcome. If viewers need to read, write, trace
+  or debug source code to meet that goal, describe the specific code demonstration in one short
+  sentence. Use an empty string when source code is optional, including when interfaces, sample
+  inputs and outputs, or diagrams can teach the goal. Apply this rule regardless of subject or guide.
 - No chapter overlaps another; no filler.
 """
 
@@ -246,7 +252,7 @@ async def make_outline(topic: str, minutes: float, *, chapters: int | None = Non
     selected = teaching_skills.select(topic, skills, long_video=True)
     rule = length_rule(minutes, chapters, fixed_length)
     messages: list[Any] = [
-        SystemMessage(OUTLINE_RULES.format(length_rule=rule) + teaching_skills.guidance(selected)),
+        SystemMessage(BRIEF_GUIDANCE + "\n" + OUTLINE_RULES.format(length_rule=rule) + teaching_skills.guidance(selected)),
         HumanMessage(f"Topic: {topic}\nTotal length: {'exactly' if fixed_length else 'up to'} {minutes:g} minutes."),
     ]
     llm = get_llm(model or settings.LONG_MODEL or settings.PLANNER_MODEL or None)
@@ -388,7 +394,10 @@ async def plan_chapter(state: LongState, n: int) -> dict[str, Any]:
     note = ""
     for _ in range(2):
         topic = f"{state.outline.title}: chapter {n}, {ch.title}"
-        plan = await plan_video(topic, scenes=scenes, mode=state.mode, model=state.model, context=chapter_context(state, n, note), skills=state.skills, layout=state.layout)  # type: ignore[arg-type]
+        plan = await plan_video(
+            topic, scenes=scenes, mode=state.mode, model=state.model, context=chapter_context(state, n, note),
+            skills=state.skills, layout=state.layout, code_demo=ch.code_demo.strip(),  # type: ignore[arg-type]
+        )
         cs.llm_calls += plan.llm_calls
         cs.input_tokens += plan.input_tokens
         cs.output_tokens += plan.output_tokens

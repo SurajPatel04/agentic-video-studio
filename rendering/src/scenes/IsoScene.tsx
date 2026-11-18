@@ -3,7 +3,7 @@ import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from
 import {z} from 'zod';
 import {Sfx, sfxNames} from '../audio';
 import {useSceneLength, useUnit} from '../theme';
-import {ISO_COLORS, isoColorNames, mix, PAPER, project, type IsoColor, type Pt, C30, S30} from '../iso/iso';
+import {ISO_COLORS, isoColorNames, mix, PAPER, project, shade, type IsoColor, type Pt, C30, S30} from '../iso/iso';
 import {IsoBox, IsoPerson, IsoShadow, Note, noteSize, StatusPill, Tag} from '../iso/shapes';
 import {cueFields, newsCycleRemaining, ObjectCues} from '../iso/ObjectCues';
 import {TableCard, tableSchema, users} from '../database/table';
@@ -158,9 +158,15 @@ const objectSchema = z.object({
   enter: z.enum(['drop', 'none']).default('drop'), // none: already on screen (carried over from the previous scene)
   ghost: z.boolean().default(false), // keeps its place in the layout but is not drawn (continuations)
   highlight: z.boolean().default(false), // starts highlighted (carried over from the previous scene)
+  design: z.string().max(64).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
+  faces: z.array(z.object({
+    fill: z.union([z.enum(isoColorNames), z.literal('ink')]),
+    shade: z.number().min(-0.5).max(0.6).default(0), // lighter (> 0) or darker (< 0), like built-in faces
+    points: z.array(z.tuple([z.number().int().min(2).max(98), z.number().int().min(2).max(98)])).min(3).max(32),
+  })).min(2).max(48).optional(),
   // icon shown by kind "tile" (any Lucide icon name: "megaphone", "graduation-cap", "thumbs-up", ...)
   icon: z.string().max(40).refine((n) => iconByName(n) !== undefined, {message: 'unknown icon name; use a Lucide icon such as "megaphone", "users", "message-circle", "graduation-cap"'}).optional(),
-}).strict();
+}).strict().refine(ob => !ob.design || ob.kind === 'tile', {path: ['kind'], message: 'custom designs use kind tile'});
 
 const linkSchema = z.object({
   from: z.string(),
@@ -704,7 +710,13 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
           : <IsoBox id={`${ob.id}-${i}`} x={g.x} y={g.y} z={zz} w={g.w} d={g.d} h={g.h} color={color} T={T} o={o} sw={sw} radius={T * 0.45} />
         : <IsoArt kind={ob.kind as ArtKind} id={`${ob.id}-${i}`} g={g} zz={zz} color={color} T={T} o={o} sw={sw} icon={ob.icon} time={Math.max(0, f - Math.max(0, startOf[i])) / fps} highlight={s.hl} />;
       const r = rectOf(outline({...g, z: zz}, T, o));
-      if (ob.kind === 'table') {
+      if (ob.faces?.length && ob.design) {
+        body = <svg x={r.l} y={r.t} width={r.r-r.l} height={r.b-r.t} viewBox="0 0 100 100">
+          {ob.faces.map((face, j) => <polygon key={j} points={face.points.map(pt => pt.join(',')).join(' ')}
+            fill={face.fill === 'ink' ? PAPER.ink : shade(ISO_COLORS[face.fill], face.shade)}
+            stroke={PAPER.ink} strokeWidth={1.8} strokeLinejoin="round" />)}
+        </svg>;
+      } else if (ob.kind === 'table') {
         const data = ob.table ?? users;
         body = <TableCard table={data} x={r.l} y={r.t} w={r.r-r.l} h={r.b-r.t}/>;
       }

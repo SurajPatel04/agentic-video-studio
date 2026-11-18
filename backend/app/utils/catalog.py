@@ -49,7 +49,7 @@ def _type_of(schema: Any, defs: dict[str, Any], depth: int = 0) -> str:
             return " or ".join(dict.fromkeys(_type_of(s, defs, depth) for s in schema[key]))
     if "enum" in schema:
         values = schema["enum"]
-        return "<device kind>" if len(values) > 30 else "|".join(map(str, values))
+        return _long_enum_label(values) if len(values) > 30 else "|".join(map(str, values))
     if "const" in schema:
         return json.dumps(schema["const"])
     t = schema.get("type")
@@ -81,13 +81,13 @@ def _load() -> dict[str, Any]:
         return _cache
     scenes = {e["name"]: e for e in json.loads(REGISTRY.read_text())}
     overlays = {o["type"]: o for o in json.loads(OVERLAYS.read_text())} if OVERLAYS.exists() else {}
-    kinds: list[str] = []
+    long_enums: list[list[str]] = []
 
     def find(node: Any) -> None:
-        nonlocal kinds
         if isinstance(node, dict):
-            if len(node.get("enum", [])) > 30 and not kinds:
-                kinds = node["enum"]
+            values = node.get("enum", [])
+            if len(values) > 30 and values not in long_enums:
+                long_enums.append(values)
             for v in node.values():
                 find(v)
         elif isinstance(node, list):
@@ -96,7 +96,10 @@ def _load() -> dict[str, Any]:
 
     for e in scenes.values():
         find(e["propsSchema"])
-    _cache.update(mtime=mtime, scenes=scenes, overlays=overlays, kinds=kinds)
+    # two different long lists: 2D/3D devices (DeviceGridScene, ConnectionScene ...) and paper iso objects (IsoScene)
+    kinds = next((v for v in long_enums if "smartwatch" in v), [])
+    iso = next((v for v in long_enums if "tile" in v and v is not kinds), [])
+    _cache.update(mtime=mtime, scenes=scenes, overlays=overlays, kinds=kinds, iso=iso)
     return _cache
 
 
@@ -106,6 +109,90 @@ def scene_names() -> list[str]:
 
 def device_kinds() -> list[str]:
     return list(_load()["kinds"])
+
+
+def iso_kinds() -> list[str]:
+    """Object kinds of IsoScene (paper iso objects: server, tv, podcastbooth, tile ...)."""
+    return list(_load()["iso"])
+
+
+def _long_enum_label(values: list) -> str:
+    c = _load()
+    if values == c["kinds"]:
+        return "<device kind>"
+    if values == c["iso"]:
+        return "<iso kind>"
+    return "|".join(map(str, values))  # any other long list is shown in full
+
+
+def _mentions(text: str, kind: str) -> bool:
+    return re.search(rf"(?<![a-z]){re.escape(kind)}(?![a-z])", text) is not None
+
+
+def kind_legend(*texts: str, known: str = "") -> str:
+    """What <device kind> / <iso kind> mean, for the scene texts that use them (once each).
+
+    ``known``: the teaching guides already in the prompt. Iso objects they describe are not listed again
+    (the iso-diagrams guide explains ~all of them with their meaning); only the ones they miss are named,
+    and without any guide the whole list is given. Wrong names get "did you mean" from the validator."""
+    joined = "\n".join(texts)
+    out = []
+    if "<device kind>" in joined:
+        out.append(f"<device kind> = one of: {', '.join(device_kinds())}")
+    if "<iso kind>" in joined:
+        known = known.lower()
+        missing = [k for k in iso_kinds() if not _mentions(known, k)]
+        if len(missing) == len(iso_kinds()):
+            out.append(f"<iso kind> = one of: {', '.join(missing)}")
+        else:
+            out.append("<iso kind> = an object kind named in the iso-diagrams guide" + (f"; also: {', '.join(missing)}" if missing else ""))
+    return "\n".join(out) + "\n\n" if out else ""
+
+
+# everyday words -> the section names used in the iso-diagrams guide
+ISO_SYNONYMS = {
+    "money": "finance", "pay": "finance", "payment": "finance", "bank": "finance", "price": "retail",
+    "election": "politics", "vote": "politics", "voting": "politics", "government": "politics", "policy": "politics",
+    "news": "media newsroom", "journalism": "newsroom", "journalist": "newsroom", "press": "pr newsroom",
+    "broadcast": "media tower", "music": "audio", "sound": "audio", "podcast": "audio podcasts",
+    "school": "education", "class": "education", "learn": "education", "student": "education",
+    "health": "health", "medicine": "health", "doctor": "health", "emergency": "ambulance health", "shopping": "retail", "store": "retail",
+    "travel": "transport", "delivery": "transport", "network": "tech", "internet": "tech", "data": "tech",
+    "ai": "ai", "social": "socialpost scrollingfeed", "video": "videoplayer livestream", "film": "cinema",
+}
+
+
+def find_iso_objects(query: str, limit: int = 8) -> list[tuple[str, str]]:
+    """IsoScene object kinds for an idea ("radio studio", "money", "election"): [(kind, meaning)].
+    Matches the kind name, its meaning in the iso-diagrams guide ("tower (broadcast)") and its section
+    ("Finance", "Politics"), plus a few everyday synonyms."""
+    guide_path = PROJECT_ROOT / "skills" / "iso-diagrams" / "SKILL.md"
+    guide = guide_path.read_text().lower() if guide_path.exists() else ""
+    words = [w for w in re.findall(r"[a-z0-9]+", query.lower()) if len(w) > 1]
+    words += [x for w in list(words) for x in ISO_SYNONYMS.get(w, "").split()]
+    out = []
+    for kind in iso_kinds():
+        meaning = section = ""
+        for line in guide.splitlines():
+            m = re.search(rf"(?<![a-z]){re.escape(kind)}(?![a-z])\s*(\(([^)]*)\))?", line)
+            if m:
+                meaning = m.group(2) or ""
+                labels = re.findall(r"([a-z][a-z ,]*):", line[:m.start()])  # nearest "Section:" before the kind
+                section = labels[-1].strip(" -,") if labels else ""
+                break
+        hay = re.findall(r"[a-z0-9]+", f"{meaning} {section}")
+        score = 0
+        for w in words:
+            if w == kind:
+                score += 4
+            elif kind.startswith(w) or w.startswith(kind) or w in kind.split("-"):
+                score += 2
+            elif any(h.startswith(w) or w.startswith(h) for h in hay if len(h) > 2):
+                score += 1
+        if score:
+            out.append((score, kind, ", ".join(x for x in (meaning, section) if x)))
+    out.sort(key=lambda x: (-x[0], x[1]))
+    return [(k, d) for _, k, d in out[:limit]]
 
 
 FILLER_FIELDS = ("footer", "caption")
@@ -154,7 +241,7 @@ def search_scenes(query: str, limit: int = 10) -> list[tuple[str, str, float]]:
     return ranked[:limit]
 
 
-def catalog_text(topic: str | None = None, extra: int = 12) -> str:
+def catalog_text(topic: str | None = None, extra: int = 12, known: str = "") -> str:
     """Scene catalog for the prompt. With a topic: core teaching scenes + the best matches only."""
     names = scene_names()
     if topic:
@@ -166,8 +253,7 @@ def catalog_text(topic: str | None = None, extra: int = 12) -> str:
                 break
         names = chosen
     blocks = [scene_text(n) for n in names]
-    head = f"<device kind> = one of: {', '.join(device_kinds())}\n\n" if any("<device kind>" in b for b in blocks) else ""
-    return head + "\n\n".join(blocks)
+    return kind_legend(*blocks, known=known) + "\n\n".join(blocks)
 
 
 def overlay_list() -> str:

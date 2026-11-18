@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     PLANNER_DEFAULT_STYLE: str = "iso-diagrams"  # visual style skill used when no style matches the topic ("" = none)
     PLANNER_MAX_SAME_LAYOUT: int = 2  # IsoScene: the same objects in the same places in at most 2 scenes in a row
     PLANNER_MAX_TEXT_RUN: int = 3  # max Definition/Explain/BulletList scenes in a row (1 style retry, then accepted)
+    PLANNER_MAX_SAME_RUN: int = 5  # any one scene component at most 5 times in a row (0 = off)
+    PLANNER_MAX_SAME_SHARE: float = 0.7  # plans of 8+ scenes: one component in at most 70% of them (0 = off)
+    PLANNER_MAX_SAME_PICTURE: int = 3  # IsoScene: the same set of objects drawn fresh at most 3 times per plan (0 = off)
 
     # Component agent (writes new scenes when nothing in the library fits).
     AGENT_MODEL: str = ""  # MLflow gateway route; empty = DEFAULT_MODEL

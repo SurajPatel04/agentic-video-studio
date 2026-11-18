@@ -12,6 +12,19 @@ metadata:
   - TimelineScene
   - ComparisonTableScene
   - ImageScene
+  visuals:
+  - when: [history, historical, century, centuries, ancient, empire, dynasty, revolution, world war, civil war]
+    scenes: [TimelineScene, MapScene]
+  - when: [geography, continent, continents, trade route, trade routes, border, borders, migration]
+    scenes: [MapScene, GlobeScene, MapTrackingScene]
+  - when: [newspaper, newspapers, headline, headlines, front page, journalism, journalist]
+    scenes: [FrontPageScene, NewsCycleScene]
+  - when: [social media, instagram, tiktok, influencer, influencers, viral, hashtag, hashtags]
+    scenes: [FeedScene, PhoneScene, SpreadScene]
+  - when: [statistics, survey, market share, revenue, profit, gdp, inflation, budget, percentage, growth rate]
+    scenes: [ChartScene, LiveChartScene, StatScene]
+  - when: [speech, famous quote, quotation, manifesto]
+    scenes: [QuoteScene]
 ---
 
 Apply to any subject and genre: education, science, history, art, language, practical skills, business, advertising, storytelling, or an unfamiliar topic. Subject guides are optional supplements, not a prerequisite.
@@ -21,6 +34,10 @@ Read the full brief first. Identify the intended audience, prior knowledge, lang
 Choose structure by purpose. A lecture develops understanding with reasoning, examples, and opportunities to apply it. An explainer resolves a question through a visible mechanism. An ad communicates a relevant benefit and an honest next action. A story follows motivated events and consequences; a tutorial follows usable steps and checks. Adapt mixed formats deliberately. Do not force a quiz, sales pitch, technical diagram, or dramatic hook into every video.
 
 Give each scene one main job and a reason to follow the preceding scene. Write narration as connected spoken explanation, not slide headings read aloud. Explain new terms in context. Match depth to the audience; do not confuse simplifying language with removing the reasoning. Use transitions that express relationships such as cause, contrast, consequence, or a change of scale.
+
+Sound like a good teacher on YouTube, in any subject: open with a hook the viewer cares about (a problem, a question, a surprising fact), talk to the viewer ("you"), ask a question and let the next scene answer it, and follow one concrete example with real names and numbers. Say each point once, then move forward. Define a term once, in a natural sentence while it is on screen; never read "Term = meaning" aloud. Avoid hedge words ("illustrative", "conceptually") and stock phrases repeated scene after scene. Close each part with a one-line recap.
+
+Show the real thing at least once per idea, readable on screen: the code, request and JSON (tech); the headline, post, quote or ad (media); the date and place (history); the number on a chart (business, science); the equation with a worked value (maths). A diagram explains how parts relate; the real thing proves it.
 
 Show, don't tell: most scenes must SHOW the idea happening, not describe it in text. If the library has a scene that animates the mechanism (an algorithm, a calculation, a query, a packet, the event loop, a broadcast), use it instead of a text card or a generic diagram, and let it compute the steps. Text cards are for a definition, a quote or the closing summary only.
 

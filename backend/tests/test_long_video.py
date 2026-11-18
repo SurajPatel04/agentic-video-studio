@@ -26,7 +26,8 @@ OUTLINE = {
     "chapters": [
         {"title": "What is Node.js", "goal": "know what Node is", "key_points": ["runtime", "V8"], "minutes": 2},
         {"title": "Event loop", "goal": "understand the loop", "key_points": ["stack", "queue"], "minutes": 4},
-        {"title": "Streams", "goal": "use streams", "key_points": ["readable", "pipe"], "minutes": 2},
+        {"title": "Streams", "goal": "use streams", "key_points": ["readable", "pipe"], "minutes": 2,
+         "code_demo": "Show how to pipe a readable stream into a writable stream."},
     ],
 }
 
@@ -54,10 +55,11 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         self.contexts: list[str] = []
         self.rendered: list[str] = []
 
-    async def fake_plan(self, topic, *, scenes, mode, model, context, skills=None, layout="desktop"):
+    async def fake_plan(self, topic, *, scenes, mode, model, context, skills=None, layout="desktop", code_demo=None):
         self.contexts.append(context)
         n = int(topic.split("chapter ")[1].split(",")[0])
         budget = self.state.outline.chapters[n - 1].words
+        self.assertEqual(code_demo, OUTLINE["chapters"][n - 1].get("code_demo", ""))
         return Plan(spec_with(budget, f"ch{n}"), 1, "catalog", 1, 1000, 500)
 
     async def fake_render(self, spec, *, captions, job_id, scale, concurrency=None):
