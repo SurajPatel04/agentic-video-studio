@@ -1,0 +1,326 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "brand": false,
+  "scenes": [
+    {
+      "id": "media-0",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Media object library",
+        "objects": [
+          {
+            "id": "studiocamera",
+            "kind": "studiocamera",
+            "label": "studiocamera",
+            "at": [
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "id": "teleprompter",
+            "kind": "teleprompter",
+            "label": "teleprompter",
+            "at": [
+              4.5,
+              -4.5
+            ]
+          },
+          {
+            "id": "studiolights",
+            "kind": "studiolights",
+            "label": "studiolights",
+            "at": [
+              9.0,
+              -9.0
+            ]
+          },
+          {
+            "id": "controlmonitors",
+            "kind": "controlmonitors",
+            "label": "controlmonitors",
+            "at": [
+              13.5,
+              -13.5
+            ]
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "media-4",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Media object library",
+        "objects": [
+          {
+            "id": "obvan",
+            "kind": "obvan",
+            "label": "obvan",
+            "at": [
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "id": "clapperboard",
+            "kind": "clapperboard",
+            "label": "clapperboard",
+            "at": [
+              4.5,
+              -4.5
+            ]
+          },
+          {
+            "id": "cinemaprojector",
+            "kind": "cinemaprojector",
+            "label": "cinemaprojector",
+            "at": [
+              9.0,
+              -9.0
+            ]
+          },
+          {
+            "id": "cinemascreen",
+            "kind": "cinemascreen",
+            "label": "cinemascreen",
+            "at": [
+              13.5,
+              -13.5
+            ]
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "media-8",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Media object library",
+        "objects": [
+          {
+            "id": "filmreel",
+            "kind": "filmreel",
+            "label": "filmreel",
+            "at": [
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "id": "storyboard",
+            "kind": "storyboard",
+            "label": "storyboard",
+            "at": [
+              4.5,
+              -4.5
+            ]
+          },
+          {
+            "id": "editingtimeline",
+            "kind": "editingtimeline",
+            "label": "editingtimeline",
+            "at": [
+              9.0,
+              -9.0
+            ]
+          },
+          {
+            "id": "theatrestage",
+            "kind": "theatrestage",
+            "label": "theatrestage",
+            "at": [
+              13.5,
+              -13.5
+            ]
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "media-12",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Media object library",
+        "objects": [
+          {
+            "id": "socialpost",
+            "kind": "socialpost",
+            "label": "socialpost",
+            "at": [
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "id": "scrollingfeed",
+            "kind": "scrollingfeed",
+            "label": "scrollingfeed",
+            "at": [
+              4.5,
+              -4.5
+            ]
+          },
+          {
+            "id": "videoplayer",
+            "kind": "videoplayer",
+            "label": "videoplayer",
+            "at": [
+              9.0,
+              -9.0
+            ]
+          },
+          {
+            "id": "livestream",
+            "kind": "livestream",
+            "label": "livestream",
+            "at": [
+              13.5,
+              -13.5
+            ]
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "media-16",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Media object library",
+        "objects": [
+          {
+            "id": "comments",
+            "kind": "comments",
+            "label": "comments",
+            "at": [
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "id": "repost",
+            "kind": "repost",
+            "label": "repost",
+            "at": [
+              4.5,
+              -4.5
+            ]
+          },
+          {
+            "id": "notification",
+            "kind": "notification",
+            "label": "notification",
+            "at": [
+              9.0,
+              -9.0
+            ]
+          },
+          {
+            "id": "hashtag",
+            "kind": "hashtag",
+            "label": "hashtag",
+            "at": [
+              13.5,
+              -13.5
+            ]
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "media-20",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Media object library",
+        "objects": [
+          {
+            "id": "productdisplay",
+            "kind": "productdisplay",
+            "label": "productdisplay",
+            "at": [
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "id": "campaignboard",
+            "kind": "campaignboard",
+            "label": "campaignboard",
+            "at": [
+              4.5,
+              -4.5
+            ]
+          },
+          {
+            "id": "sponsoredpost",
+            "kind": "sponsoredpost",
+            "label": "sponsoredpost",
+            "at": [
+              9.0,
+              -9.0
+            ]
+          },
+          {
+            "id": "adplacement",
+            "kind": "adplacement",
+            "label": "adplacement",
+            "at": [
+              13.5,
+              -13.5
+            ]
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    },
+    {
+      "id": "media-24",
+      "component": "IsoScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Media object library",
+        "objects": [
+          {
+            "id": "paywall",
+            "kind": "paywall",
+            "label": "paywall",
+            "at": [
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "id": "adpayment",
+            "kind": "adpayment",
+            "label": "adpayment",
+            "at": [
+              4.5,
+              -4.5
+            ]
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    }
+  ]
+}

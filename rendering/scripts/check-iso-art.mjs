@@ -6,9 +6,9 @@ import {pathToFileURL} from 'node:url';
 const root=path.resolve(import.meta.dirname,'..');
 await mkdir(path.join(root,'out'),{recursive:true});
 const file=path.join(root,'out','iso-art-check.mjs');
-await build({stdin:{resolveDir:root,loader:'tsx',contents:`export {createElement} from 'react'; export {renderToStaticMarkup} from 'react-dom/server'; export {IsoArt} from './src/iso/objects'; export {GENERAL_KINDS} from './src/iso/general'; export {ROAD_KINDS} from './src/iso/roads'; export {COMMUNICATION_KINDS} from './src/iso/communication'; export {isoSceneSchema} from './src/scenes/IsoScene'; export {IsoLink} from './src/iso/link'; export {curve} from './src/iso/curve';`},outfile:file,bundle:true,platform:'node',format:'esm',packages:'external',jsx:'automatic'});
-const {createElement:h,renderToStaticMarkup:render,IsoArt,GENERAL_KINDS,ROAD_KINDS,COMMUNICATION_KINDS,isoSceneSchema,IsoLink,curve}=await import(pathToFileURL(file));
-function art(kind,time=0,highlight=0){const [w,d,height]=(GENERAL_KINDS[kind]??ROAD_KINDS[kind]??COMMUNICATION_KINDS[kind])?.size??[2.8,1.5,2];return render(h('svg',{},h(IsoArt,{kind,id:kind,g:{x:0,y:0,z:0,w,d,h:height},zz:0,T:50,o:{x:150,y:200},sw:2,color:'#b8d6f3',time,highlight})));}
+await build({stdin:{resolveDir:root,loader:'tsx',contents:`export {createElement} from 'react'; export {renderToStaticMarkup} from 'react-dom/server'; export {IsoArt} from './src/iso/objects'; export {GENERAL_KINDS} from './src/iso/general'; export {ROAD_KINDS} from './src/iso/roads'; export {COMMUNICATION_KINDS} from './src/iso/communication'; export {AI_KINDS} from './src/iso/ai'; export {AUDIO_KINDS} from './src/iso/audio'; export {MEDIA_KINDS} from './src/iso/media'; export {isoSceneSchema} from './src/scenes/IsoScene'; export {IsoLink} from './src/iso/link'; export {curve} from './src/iso/curve';`},outfile:file,bundle:true,platform:'node',format:'esm',packages:'external',jsx:'automatic'});
+const {createElement:h,renderToStaticMarkup:render,IsoArt,GENERAL_KINDS,ROAD_KINDS,COMMUNICATION_KINDS,AI_KINDS,MEDIA_KINDS,AUDIO_KINDS,isoSceneSchema,IsoLink,curve}=await import(pathToFileURL(file));
+function art(kind,time=0,highlight=0){const [w,d,height]=(GENERAL_KINDS[kind]??ROAD_KINDS[kind]??COMMUNICATION_KINDS[kind]??AI_KINDS[kind]??MEDIA_KINDS[kind]??AUDIO_KINDS[kind])?.size??[2.8,1.5,2];return render(h('svg',{},h(IsoArt,{kind,id:kind,g:{x:0,y:0,z:0,w,d,h:height},zz:0,T:50,o:{x:150,y:200},sw:2,color:'#b8d6f3',time,highlight})));}
 for(const kind of Object.keys(GENERAL_KINDS)){
  assert(isoSceneSchema.safeParse({objects:[{id:'a',kind,at:[0,0]}],links:[],steps:[]}).success,kind+' accepted by scene');
  for(const t of [0,.3,2,30]){const svg=art(kind,t);assert(!/NaN|Infinity|undefined/.test(svg),kind+' finite SVG');assert.equal(svg,art(kind,t),kind+' deterministic');}
@@ -45,3 +45,32 @@ for(const kind of ['sender','receiver','feedback','noise']) assert.notEqual(art(
 assert.notEqual(art('encoder'),art('decoder'),'encoding and decoding are distinct');
 for(const [alias,kind] of [['message-envelope','envelope'],['sender-station','sender'],['receiver-station','receiver'],['feedback-loop','feedback'],['noise-interference','noise']]) assert.equal(isoSceneSchema.parse({objects:[{id:'c',kind:alias,at:[0,0]}],links:[],steps:[]}).objects[0].kind,kind);
 console.log('Checked seven communication kinds, aliases and animated states.');
+
+for(const kind of Object.keys(AI_KINDS)){
+ assert(isoSceneSchema.safeParse({objects:[{id:'m',kind,at:[0,0]}],links:[],steps:[]}).success,kind+' accepted by scene');
+ for(const t of [0,.3,2]){const svg=art(kind,t);assert(!/NaN|Infinity|undefined/.test(svg),kind+' finite SVG');assert.equal(svg,art(kind,t),kind+' deterministic');}
+}
+assert.notEqual(art('alteredimage'),art('verified'),'altered image and verified are distinct');
+for(const [alias,kind] of [['ai-label','aigeneratedlabel'],['synthetic-voice','aivoice'],['provenance','verified'],['deepfake','alteredimage'],['recommendation-system','recommendation'],['verification-panel','verified']]) assert.equal(isoSceneSchema.parse({objects:[{id:'m',kind:alias,at:[0,0]}],links:[],steps:[]}).objects[0].kind,kind);
+console.log('Checked five AI and emerging-media kinds and aliases.');
+
+for(const kind of Object.keys(AUDIO_KINDS)){
+ assert(isoSceneSchema.safeParse({objects:[{id:'s',kind,at:[0,0]}],links:[],steps:[]}).success,kind+' accepted by scene');
+ for(const t of [0,.3,2]){const svg=art(kind,t);assert(!/NaN|Infinity|undefined/.test(svg),kind+' finite SVG');assert.equal(svg,art(kind,t),kind+' deterministic');}
+}
+assert.notEqual(art('mixingconsole'),art('audiorecorder'),'mixing console and recorder are distinct');
+assert.notEqual(art('speaker'),art('headphones'),'speaker and headphones are distinct');
+for(const [alias,kind] of [['headset','headphones'],['mixer','mixingconsole'],['sound-board','mixingconsole'],['boom-mic','boommic'],['studio-monitor','speaker'],['field-recorder','audiorecorder'],['podcast-studio','podcastbooth']]) assert.equal(isoSceneSchema.parse({objects:[{id:'s',kind:alias,at:[0,0]}],links:[],steps:[]}).objects[0].kind,kind);
+console.log('Checked six radio, audio and podcast kinds and aliases.');
+
+for(const kind of Object.keys(MEDIA_KINDS)){
+ assert(isoSceneSchema.safeParse({objects:[{id:'m',kind,at:[0,0]}],links:[],steps:[]}).success,kind);
+ for(const t of [0,.3,2]){assert(!/NaN|Infinity|undefined/.test(art(kind,t)),kind);assert.equal(art(kind,t),art(kind,t));}
+}
+assert.equal(isoSceneSchema.parse({objects:[{id:'a',kind:'tripod-camera',at:[0,0]}],links:[],steps:[]}).objects[0].kind,'studiocamera');
+assert.equal(isoSceneSchema.parse({objects:[{id:'a',kind:'anchor-desk',at:[0,0]}],links:[],steps:[]}).objects[0].kind,'newsdesk');
+console.log(`Checked ${Object.keys(MEDIA_KINDS).length} media objects and broadcast aliases.`);
+
+for(const [alias,kind] of [['press-release','pressrelease'],['press-conference','pressconference'],['media-kit','mediakit'],['crisis-response-center','crisiscentre']]) assert.equal(isoSceneSchema.parse({objects:[{id:'a',kind:alias,at:[0,0]}],links:[],steps:[]}).objects[0].kind,kind);
+
+for(const [alias,kind] of [['ballot-box','ballotbox'],['campaign-rally','campaignrally'],['public-meeting','publicmeeting'],['protest-placard','protestplacard'],['government-information-office','governmentoffice']]) assert.equal(isoSceneSchema.parse({objects:[{id:'a',kind:alias,at:[0,0]}],links:[],steps:[]}).objects[0].kind,kind);

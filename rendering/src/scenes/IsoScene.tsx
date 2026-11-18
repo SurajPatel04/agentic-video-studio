@@ -10,6 +10,9 @@ import {along, bendPoint, curve, sample} from '../iso/curve';
 import {IsoArt, Road, iconByName, type ArtKind} from '../iso/objects';
 import {GENERAL_KINDS} from '../iso/general';
 import {COMMUNICATION_KINDS} from '../iso/communication';
+import {AI_KINDS} from '../iso/ai';
+import {MEDIA_KINDS} from '../iso/media';
+import {AUDIO_KINDS} from '../iso/audio';
 import {ROAD_KINDS, isRoadKind} from '../iso/roads';
 
 /* ----------------------------------------------------------------------------- kinds */
@@ -18,8 +21,13 @@ type Kind = {shape: 'art' | 'people' | 'slab' | 'person'; size: [number, number,
 const GENERAL_PRESETS = Object.fromEntries(Object.entries(GENERAL_KINDS).map(([kind, value]) => [kind, {shape: 'art', size: [...value.size], color: value.color}])) as Record<keyof typeof GENERAL_KINDS, Kind>;
 const ROAD_PRESETS = Object.fromEntries(Object.entries(ROAD_KINDS).map(([kind, value]) => [kind, {shape: 'slab', size: [...value.size], color: value.color}])) as Record<keyof typeof ROAD_KINDS, Kind>;
 const COMMUNICATION_PRESETS = Object.fromEntries(Object.entries(COMMUNICATION_KINDS).map(([kind, value]) => [kind, {shape: 'art', size: [...value.size], color: value.color}])) as Record<keyof typeof COMMUNICATION_KINDS, Kind>;
+const AI_PRESETS = Object.fromEntries(Object.entries(AI_KINDS).map(([kind, value]) => [kind, {shape: 'art', size: [...value.size], color: value.color}])) as Record<keyof typeof AI_KINDS, Kind>;
+const AUDIO_PRESETS = Object.fromEntries(Object.entries(AUDIO_KINDS).map(([kind, value]) => [kind, {shape: 'art', size: [...value.size], color: value.color}])) as Record<keyof typeof AUDIO_KINDS, Kind>;
 export const KINDS = {
   ...COMMUNICATION_PRESETS,
+  ...AI_PRESETS,
+  ...AUDIO_PRESETS,
+  ...Object.fromEntries(Object.entries(MEDIA_KINDS).map(([kind,v])=>[kind,{shape:'art',size:[...v.size],color:v.color}])) as Record<keyof typeof MEDIA_KINDS,Kind>,
   ...ROAD_PRESETS,
   ...GENERAL_PRESETS,
   server: {shape: 'art', size: [1.5, 1.5, 2.3], color: 'lavender'},
@@ -159,6 +167,39 @@ const linkSchema = z.object({
 // Planners often write a synonym or an icon name as the kind ("users", "microphone", "printer"):
 // map synonyms to the real kind, and any other Lucide icon name to a tile showing that icon.
 const KIND_ALIASES: Record<string, string> = {
+  'parliament-building':'parliament','ballot-box':'ballotbox','campaign-rally':'campaignrally','public-meeting':'publicmeeting','protest-placard':'protestplacard','government-information-office':'governmentoffice','government-office':'governmentoffice',
+
+  'press-release':'pressrelease','press-release-document':'pressrelease','podium-with-microphones':'podium','press-conference':'pressconference','media-kit':'mediakit','crisis-response-centre':'crisiscentre','crisis-response-center':'crisiscentre',crisiscenter:'crisiscentre',
+
+  'studio-camera': 'studiocamera',
+  'tripod-camera': 'studiocamera',
+  'anchor-desk': 'newsdesk',
+  'anchordesk': 'newsdesk',
+  'studio-lights': 'studiolights',
+  'control-room-monitors': 'controlmonitors',
+  'outside-broadcast-van': 'obvan',
+  'ob-van': 'obvan',
+  'cinema-projector': 'cinemaprojector',
+  'cinema-screen': 'cinemascreen',
+  'film-reel': 'filmreel',
+  'editing-timeline': 'editingtimeline',
+  'theatre-stage': 'theatrestage',
+  'theater-stage': 'theatrestage',
+  'social-post': 'socialpost',
+  'scrolling-feed': 'scrollingfeed',
+  'video-player': 'videoplayer',
+  'livestream-window': 'livestream',
+  'share': 'repost',
+  'share-repost': 'repost',
+  'product-display': 'productdisplay',
+  'campaign-board': 'campaignboard',
+  'sponsored-post': 'sponsoredpost',
+  'ad-placement': 'adplacement',
+  'subscription': 'paywall',
+  'subscription-paywall': 'paywall',
+  'advertiser-publisher-payment-flow': 'adpayment',
+  'payment-flow': 'adpayment',
+
   message: 'envelope', 'message-envelope': 'envelope', 'sender-station': 'sender', 'receiver-station': 'receiver',
   'feedback-loop': 'feedback', feedbackloop: 'feedback', interference: 'noise', 'noise-interference': 'noise',
   home: 'house', 'bar-chart': 'chart', 'chart-bar': 'chart', barchart: 'chart',
@@ -223,6 +264,27 @@ const KIND_ALIASES: Record<string, string> = {
   'newsroom-desk': 'newsdesk', 'news-desk': 'newsdesk',
   'news-agency': 'newshub', 'agency-hub': 'newshub', 'press-agency': 'newshub',
   'source-documents': 'sourcedocs', 'source-docs': 'sourcedocs', documents: 'sourcedocs', dossier: 'sourcedocs',
+  // AI and emerging-media synonyms
+  'ai-label': 'aigeneratedlabel', 'ai-generated': 'aigeneratedlabel', aigenerated: 'aigeneratedlabel',
+  'ai-content-label': 'aigeneratedlabel', 'ai-generated-content': 'aigeneratedlabel', 'content-label': 'aigeneratedlabel',
+  'synthetic-voice': 'aivoice', syntheticvoice: 'aivoice', voiceclone: 'aivoice', 'voice-clone': 'aivoice', 'cloned-voice': 'aivoice',
+  'ai-voice': 'aivoice', 'speech-synthesis': 'aivoice', tts: 'aivoice', 'text-to-speech': 'aivoice', 'voice-ai': 'aivoice',
+  'altered-image': 'alteredimage', 'altered-image-comparison': 'alteredimage', 'image-comparison': 'alteredimage', imagecompare: 'alteredimage',
+  'edited-photo': 'alteredimage', 'photo-edit': 'alteredimage', deepfake: 'alteredimage', 'before-after-photo': 'alteredimage',
+  'recommendation-system': 'recommendation', recommendations: 'recommendation', recommender: 'recommendation',
+  'algorithm-feed': 'recommendation', feed: 'recommendation', 'suggested-content': 'recommendation',
+  'verification-panel': 'verified', verification: 'verified', provenance: 'verified', 'provenance-panel': 'verified', authenticity: 'verified',
+  'fact-check': 'verified', 'fact-checked': 'verified', 'content-credentials': 'verified', 'metadata-panel': 'verified', verify: 'verified',
+  // radio, audio and podcast synonyms
+  headphone: 'headphones', headset: 'headphones', 'ear-cups': 'headphones', 'over-ear-headphones': 'headphones',
+  mixer: 'mixingconsole', 'mixing-desk': 'mixingconsole', 'mixer-console': 'mixingconsole', 'sound-board': 'mixingconsole',
+  soundboard: 'mixingconsole', 'audio-console': 'mixingconsole', 'audio-mixer': 'mixingconsole',
+  'boom-mic': 'boommic', 'boom-microphone': 'boommic', 'mic-boom': 'boommic', 'shotgun-mic': 'boommic', 'boom-arm': 'boommic',
+  loudspeaker: 'speaker', 'studio-monitor': 'speaker', 'monitor-speaker': 'speaker', 'audio-speaker': 'speaker', hifi: 'speaker',
+  'audio-recorder': 'audiorecorder', 'field-recorder': 'audiorecorder', 'digital-recorder': 'audiorecorder',
+  'sound-recorder': 'audiorecorder', dictaphone: 'audiorecorder',
+  podcast: 'podcastbooth', 'podcast-studio': 'podcastbooth', 'podcast-room': 'podcastbooth',
+  'recording-booth': 'podcastbooth', 'studio-booth': 'podcastbooth', booth: 'podcastbooth',
   smartphone: 'phone', mobile: 'phone', 'cell-tower': 'tower', 'radio-tower': 'tower', antenna: 'tower', mast: 'tower',
   document: 'file', paper: 'newspaper', news: 'newspaper', magazine: 'newspaper', office: 'building', company: 'building',
   studio: 'building', newsroom: 'building', advert: 'billboard', ad: 'billboard', poster: 'billboard',
@@ -318,13 +380,19 @@ export const description =
   'conveyor, cash register, warehouse, price tag, shopping bag, factory, office desk, handshake, meeting table) and ' +
   'transport objects (car, truck, road, bus, train, airplane, ship, bicycle, traffic light, fuel pump, map pin), all ' +
   'plus everyday objects (house, tree, clock, animated bar and pie charts, chat bubble, sun, weather, trophy, flag, ' +
-  'lightbulb, gear, magnifier, warning, checkmark, cross) and role figures (chef, worker, police). Clocks and gears ' +
-  'turn, charts grow, ECG traces pulse, ambulance lights flash, and links support car flow. All objects are ' +
-  'dropping in and animating on a paper grid. Communication fundamentals include envelope, sender, receiver, ' +
-  'encoder, decoder, feedback loop and noise interference.  Steps (timed as a fraction of the narration) change loads (⚙ 59% pills), ' +
-  'highlight, add notes and move the camera. Use for systems, architecture, flows, networking, scaling, ' +
-  'how-things-work, healthcare, education, finance, retail, logistics, journalism and newsrooms. With no objects it is ' +
-  'a paper title card (title, subtitle, points).';
+  'lightbulb, gear, magnifier, warning, checkmark, cross) and role figures (chef, worker, police). AI and emerging ' +
+  'media objects include an AI-generated-content label, synthetic voice, altered-image comparison, recommendation ' +
+  'Politics and public affairs: parliament, ballotbox, campaignrally, publicmeeting, protestplacard, governmentoffice. ' +
+  'Public relations: pressrelease, podium, pressconference, spokesperson, mediakit, crisiscentre. ' +
+  'TV and film: studiocamera, teleprompter, studiolights, controlmonitors, obvan, clapperboard, cinemaprojector, cinemascreen, filmreel, storyboard, editingtimeline, theatrestage. Digital: socialpost, scrollingfeed, videoplayer, livestream, comments, repost, notification, hashtag. Advertising: productdisplay, campaignboard, sponsoredpost, adplacement, paywall, adpayment. ' +
+  'system and verified-content panel. Radio, audio and podcast objects include headphones, a mixing console, a boom ' +
+  'microphone, a studio speaker, a field recorder and a podcast booth. Clocks and gears turn, charts grow, ECG traces pulse, ambulance lights ' +
+  'flash, and links support car flow. All objects are dropping in and animating on a paper grid. Communication ' +
+  'fundamentals include envelope, sender, receiver, encoder, decoder, feedback loop and noise interference. Steps ' +
+  '(timed as a fraction of the narration) change loads (⚙ 59% pills), highlight, add notes and move the camera. Use for ' +
+  'systems, architecture, flows, networking, scaling, how-things-work, healthcare, education, finance, retail, logistics, ' +
+  'journalism, newsrooms, AI, synthetic media, misinformation and media literacy. With no objects it is a paper title ' +
+  'card (title, subtitle, points).';
 export const tags = ['isometric', 'iso', 'diagram', 'architecture', 'system design', 'server', 'database', 'cache',
   'load balancer', 'scaling', 'cloud', 'users', 'flow', 'paper', '3d', 'infographic',
   'medical', 'healthcare', 'hospital', 'doctor', 'patient', 'ambulance', 'medicine', 'dna', 'science',
@@ -332,7 +400,11 @@ export const tags = ['isometric', 'iso', 'diagram', 'architecture', 'system desi
   'finance', 'money', 'bank', 'coins', 'wallet', 'credit card', 'atm', 'safe', 'piggy bank', 'cash', 'stocks', 'chart',
   'retail', 'business', 'shop', 'cart', 'conveyor', 'warehouse', 'factory', 'office', 'meeting', 'handshake',
   'transport', 'logistics', 'car', 'truck', 'road', 'bus', 'train', 'airplane', 'ship', 'bicycle', 'map pin',
-  'journalism', 'news', 'newsroom', 'reporter', 'editor', 'interview', 'press pass', 'recorder', 'documents'];
+  'journalism', 'news', 'newsroom', 'reporter', 'editor', 'interview', 'press pass', 'recorder', 'documents',
+  'ai', 'artificial intelligence', 'generated content', 'synthetic media', 'deepfake', 'synthetic voice',
+  'recommendation', 'algorithm', 'verification', 'verified', 'provenance', 'ai voice', 'misinformation', 'media literacy',
+  'radio', 'audio', 'podcast', 'podcasting', 'headphones', 'mixing console', 'mixer', 'boom mic', 'microphone',
+  'speaker', 'loudspeaker', 'audio recorder', 'field recorder', 'recording studio', 'booth', 'on air'];
 
 type Props = z.infer<typeof isoSceneSchema>;
 type Obj = Props['objects'][number];

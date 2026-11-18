@@ -29,7 +29,7 @@ metadata:
 ---
 
 Hard rules (they override softer advice, including scene suggestions from other guides):
-- Build EVERY scene with IsoScene, whatever the subject (tech, media, business, science, history), so the whole video keeps one paper look. Only exceptions: real code uses CodeScene (and its output a BlankScene terminal, when a code guide asks for it); a real equation uses EquationScene.
+- Build EVERY scene with IsoScene (tech, media, business, science, history) for one paper look. Exceptions: paper scenes another guide names (EditorScene, TerminalScene, screen, data, DSA and graph scenes) and EquationScene.
 - Show THINGS, not tables or text cards: every idea becomes objects on the paper (a TV, a newspaper, a crowd, an editor's desk, a tile with an icon). A comparison is two groups side by side with labels, not a table. A definition is a title + subtitle over a small scene that shows it.
 - Title and chapter cards are IsoScene too, with "objects": [], "links": [], "steps": [] (ALWAYS write the three empty lists: when left out, an example diagram appears) plus eyebrow, title, subtitle and up to 4 short "points". Use at most one such card per chapter.
 - Diagram scenes: a short eyebrow and title at the top; 2-7 objects; links for what goes where; steps that follow the narration.
@@ -44,6 +44,8 @@ Objects (kinds are drawn as what they are; pick the real thing):
 - Transport: car, truck, bus, train, airplane, ship, bicycle, trafficlight, fuelpump, mappin. Vehicles drive on a road (below); a link with "flow": "car" sends a car along a route.
 - Print and publishing: printingpress, newspaperbundle, magazine, printingplates, newsstand, deliverystack.
 - Communication: envelope (message), sender, receiver, encoder, decoder (message <-> signal, not encryption), feedback, noise.
+- AI media: aigeneratedlabel, aivoice, alteredimage, recommendation, verified.
+- Radio, audio and podcasts: headphones, mixingconsole (sound board with knobs and faders), boommic (articulated arm and hanging capsule), speaker (studio monitor), audiorecorder (REC screen and XLR inputs), podcastbooth (foam walls, ON AIR sign, table and mics).
 - General: house, tree, clock (moving hands), chart (growing bars), piechart, chatbubble, sun, weather (sun and cloud), trophy, flag, lightbulb, gear (turning), magnifier, warning, checkmark, cross.
 - Roads (ground slabs; vehicles on them at z: 0.12, highway 0.18): road, singlelane, twolane, fourlane, highway. Use size to lengthen or widen.
 - Roles: doctor, teacher, chef, worker (hard hat), police.
@@ -79,3 +81,9 @@ Same picture, small change -> "continue" (cheaper and smoother):
 - Labels name the object ("Server A", "Editor"), never an event ("Request 3"): events go in step notes.
 
 Show change over time: the same objects and ids return, and each scene adds one idea. Vary the pictures: a crowd scene, a left-to-right path, a before/after comparison of two groups, a hub sending to many receivers, a failure where one object turns coral and is hidden.
+
+Media collections also support `studiocamera`, `teleprompter`, `studiolights`, `controlmonitors`, `obvan`; `clapperboard`, `cinemaprojector`, `cinemascreen`, `filmreel`, `storyboard`, `editingtimeline`, `theatrestage`; `socialpost`, `scrollingfeed`, `videoplayer`, `livestream`, `comments`, `repost`, `notification`, `hashtag`; `productdisplay`, `campaignboard`, `sponsoredpost`, `adplacement`, `paywall`, `adpayment`. Reuse `newsdesk` for anchor desks. The existing audio collection remains `headphones`, `mixingconsole`, `boommic`, `speaker`, `audiorecorder`, `podcastbooth`.
+
+Public-relations props: `pressrelease`, `podium`, `pressconference`, `spokesperson`, `mediakit`, `crisiscentre`. Common hyphenated names (`press-release`, `press-conference`, `media-kit`, `crisis-response-centre`) are accepted aliases.
+
+Politics/public-affairs props: `parliament`, `ballotbox`, `campaignrally`, `publicmeeting`, `protestplacard`, `governmentoffice`. Aliases include `ballot-box`, `campaign-rally`, `public-meeting`, `protest-placard`, and `government-information-office`.

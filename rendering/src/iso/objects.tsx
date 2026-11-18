@@ -12,6 +12,9 @@ import {IsoBox, IsoCylinder, IsoShadow} from './shapes';
 import {GeneralArt, GENERAL_KINDS, type GeneralKind} from './general';
 import {RoadArt, isRoadKind, type RoadKind} from './roads';
 import {CommunicationArt, COMMUNICATION_KINDS, type CommunicationKind} from './communication';
+import {AIArt, AI_KINDS, type AiKind} from './ai';
+import {MediaArt,MEDIA_KINDS,type MediaKind} from './media';
+import {AudioArt, AUDIO_KINDS, type AudioKind} from './audio';
 export {RoadArt as Road} from './roads';
 
 export type Space = {T: number; o: Pt; sw: number};
@@ -2240,7 +2243,7 @@ const SourceDocs: FC<ArtProps> = (p) => {
 
 /* ---------------------------------------------------------------------------- dispatch */
 
-export type ArtKind = CommunicationKind | RoadKind | GeneralKind | 'server' | 'database' | 'storage' | 'cache' | 'cloud' | 'loadbalancer' | 'router' | 'api' | 'queue' | 'client' |
+export type ArtKind = MediaKind | CommunicationKind | AiKind | AudioKind | RoadKind | GeneralKind | 'server' | 'database' | 'storage' | 'cache' | 'cloud' | 'loadbalancer' | 'router' | 'api' | 'queue' | 'client' |
   'laptop' | 'phone' | 'cpu' | 'memory' | 'globe' | 'lock' | 'file' | 'code' | 'box' |
   'tile' | 'tv' | 'radio' | 'newspaper' | 'tower' | 'satellite' | 'building' | 'book' | 'mic' | 'camera' | 'billboard' |
   'hospital' | 'doctor' | 'bed' | 'ambulance' | 'pill' | 'syringe' | 'heartmonitor' | 'microscope' | 'testtubes' | 'dna' |
@@ -2255,6 +2258,9 @@ export const IsoArt: FC<ArtProps & {kind: ArtKind}> = (props) => {
   const {kind, g, zz, color, T, sw} = props;
   if (Object.prototype.hasOwnProperty.call(GENERAL_KINDS, kind)) return <GeneralArt {...props} kind={kind as GeneralKind} />;
   if (Object.prototype.hasOwnProperty.call(COMMUNICATION_KINDS, kind)) return <CommunicationArt {...props} kind={kind as CommunicationKind} />;
+  if (Object.prototype.hasOwnProperty.call(AI_KINDS, kind)) return <AIArt {...props} kind={kind as AiKind} />;
+  if (Object.prototype.hasOwnProperty.call(MEDIA_KINDS, kind)) return <MediaArt {...props} kind={kind as MediaKind} />;
+  if (Object.prototype.hasOwnProperty.call(AUDIO_KINDS, kind)) return <AudioArt {...props} kind={kind as AudioKind} />;
   if (isRoadKind(kind)) return <RoadArt {...props} kind={kind} />;
   switch (kind) {
     case 'server': return <ServerRack {...props} />;

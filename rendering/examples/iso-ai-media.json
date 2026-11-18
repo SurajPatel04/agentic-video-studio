@@ -1,0 +1,34 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {"background": "#f4ede2", "accent": "#ff5500"},
+  "defaultTransition": {"type": "fade", "durationInFrames": 12},
+  "scenes": [
+    {
+      "id": "ai-media",
+      "component": "IsoScene",
+      "durationInFrames": 240,
+      "props": {
+        "eyebrow": "MEDIA LITERACY",
+        "title": "AI and emerging media",
+        "subtitle": "Labels, AI voice, altered images, recommendations and verified content",
+        "objects": [
+          {"id": "label", "kind": "aigeneratedlabel", "label": "AI label", "at": [0, 0]},
+          {"id": "voice", "kind": "aivoice", "label": "AI voice", "at": [4, -4]},
+          {"id": "image", "kind": "alteredimage", "label": "Altered image", "at": [8, -8]},
+          {"id": "feed", "kind": "recommendation", "label": "Recommendation", "at": [12, -12]},
+          {"id": "proof", "kind": "verified", "label": "Verified", "at": [16, -16]}
+        ],
+        "links": [],
+        "steps": [
+          {"at": 0.18, "target": "label", "highlight": true, "note": "Look for an AI-generated label"},
+          {"at": 0.36, "target": "voice", "highlight": true, "note": "A voice can be synthetic"},
+          {"at": 0.54, "target": "image", "highlight": true, "note": "Compare the original and the edit"},
+          {"at": 0.72, "target": "feed", "highlight": true, "note": "Recommendations shape what you see"},
+          {"at": 0.88, "target": "proof", "highlight": true, "note": "Check provenance and the source trail"}
+        ]
+      }
+    }
+  ]
+}

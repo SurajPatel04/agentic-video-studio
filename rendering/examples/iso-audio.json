@@ -1,0 +1,36 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {"background": "#f4ede2", "accent": "#ff5500"},
+  "defaultTransition": {"type": "fade", "durationInFrames": 12},
+  "scenes": [
+    {
+      "id": "audio",
+      "component": "IsoScene",
+      "durationInFrames": 240,
+      "props": {
+        "eyebrow": "MEDIA PRODUCTION",
+        "title": "Radio, audio and podcasts",
+        "subtitle": "Record, mix, listen and go on air",
+        "objects": [
+          {"id": "booth", "kind": "podcastbooth", "label": "Podcast booth", "at": [5, 5]},
+          {"id": "boom", "kind": "boommic", "label": "Boom mic", "at": [11.5, -1.5]},
+          {"id": "headphones", "kind": "headphones", "label": "Headphones", "at": [18, -8]},
+          {"id": "recorder", "kind": "audiorecorder", "label": "Audio recorder", "at": [0, 0]},
+          {"id": "mixer", "kind": "mixingconsole", "label": "Mixing console", "at": [6.5, -6.5]},
+          {"id": "speaker", "kind": "speaker", "label": "Speaker", "at": [13, -13]}
+        ],
+        "links": [],
+        "steps": [
+          {"at": 0.16, "target": "booth", "highlight": true, "note": "A quiet booth for recording"},
+          {"at": 0.32, "target": "boom", "highlight": true, "note": "Boom mic over the table"},
+          {"at": 0.48, "target": "recorder", "highlight": true, "note": "Capture clean audio"},
+          {"at": 0.64, "target": "mixer", "highlight": true, "note": "Balance levels and edit"},
+          {"at": 0.8, "target": "speaker", "highlight": true, "note": "Listen back to the mix"},
+          {"at": 0.92, "target": "headphones", "highlight": true, "note": "Check it on headphones"}
+        ]
+      }
+    }
+  ]
+}

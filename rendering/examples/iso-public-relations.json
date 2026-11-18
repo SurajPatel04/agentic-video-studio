@@ -1,0 +1,74 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "brand": false,
+  "scenes": [
+    {
+      "id": "public-relations",
+      "component": "IsoScene",
+      "durationInFrames": 240,
+      "props": {
+        "title": "Public relations and organisations",
+        "objects": [
+          {
+            "id": "pressrelease",
+            "kind": "pressrelease",
+            "label": "pressrelease",
+            "at": [
+              -10.75,
+              10.75
+            ]
+          },
+          {
+            "id": "podium",
+            "kind": "podium",
+            "label": "podium",
+            "at": [
+              -6.449999999999999,
+              6.449999999999999
+            ]
+          },
+          {
+            "id": "pressconference",
+            "kind": "pressconference",
+            "label": "pressconference",
+            "at": [
+              -2.15,
+              2.15
+            ]
+          },
+          {
+            "id": "spokesperson",
+            "kind": "spokesperson",
+            "label": "spokesperson",
+            "at": [
+              2.15,
+              -2.15
+            ]
+          },
+          {
+            "id": "mediakit",
+            "kind": "mediakit",
+            "label": "mediakit",
+            "at": [
+              6.449999999999999,
+              -6.449999999999999
+            ]
+          },
+          {
+            "id": "crisiscentre",
+            "kind": "crisiscentre",
+            "label": "crisiscentre",
+            "at": [
+              10.75,
+              -10.75
+            ]
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    }
+  ]
+}

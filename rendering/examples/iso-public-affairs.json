@@ -1,0 +1,74 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "brand": false,
+  "scenes": [
+    {
+      "id": "public-affairs",
+      "component": "IsoScene",
+      "durationInFrames": 240,
+      "props": {
+        "title": "Politics and public affairs",
+        "objects": [
+          {
+            "id": "parliament",
+            "kind": "parliament",
+            "label": "parliament",
+            "at": [
+              -10.75,
+              10.75
+            ]
+          },
+          {
+            "id": "ballotbox",
+            "kind": "ballotbox",
+            "label": "ballotbox",
+            "at": [
+              -6.449999999999999,
+              6.449999999999999
+            ]
+          },
+          {
+            "id": "campaignrally",
+            "kind": "campaignrally",
+            "label": "campaignrally",
+            "at": [
+              -2.15,
+              2.15
+            ]
+          },
+          {
+            "id": "publicmeeting",
+            "kind": "publicmeeting",
+            "label": "publicmeeting",
+            "at": [
+              2.15,
+              -2.15
+            ]
+          },
+          {
+            "id": "protestplacard",
+            "kind": "protestplacard",
+            "label": "protestplacard",
+            "at": [
+              6.449999999999999,
+              -6.449999999999999
+            ]
+          },
+          {
+            "id": "governmentoffice",
+            "kind": "governmentoffice",
+            "label": "governmentoffice",
+            "at": [
+              10.75,
+              -10.75
+            ]
+          }
+        ],
+        "links": [],
+        "steps": []
+      }
+    }
+  ]
+}
