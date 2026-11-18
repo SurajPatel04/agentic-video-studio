@@ -43,6 +43,11 @@ metadata:
   - QuizScene
   overlays:
   - terminal
+  visuals:
+  - when: [event loop, async, await, promise, promises, callback, callbacks, settimeout, concurrency, call stack, non blocking]
+    scenes: [EventLoopScene]
+  - when: [heap, garbage collection, memory leak]
+    scenes: [EventLoopScene]
   long_video: false
 ---
 
@@ -60,6 +65,8 @@ Teach observable behavior before introducing terminology. For executable concept
 Terminal and editor output is supplied text; nothing is executed. Never claim an example was run or verified unless execution evidence is supplied. Prefer deterministic examples; identify scheduling assumptions rather than inventing a guaranteed ordering.
 
 Build one small running application across chapters. State what changed and why; show enough context for the snippet to be understood. Avoid repeatedly restarting the application from scratch.
+
+HARD RULE: async, the event loop, callbacks, promises, concurrency or the call stack (also in comparisons with Python) MUST be shown with an EventLoopScene; an IsoScene diagram does not replace it. A trace of the same running example beats "preset": "event-loop".
 
 For runtime mechanisms use EventLoopScene (paper style): code with the running line, call stack frames with local vars, heap objects (a var with value "@id" draws a reference arrow), Node/Web APIs, microtask and task queues, console. It is a trace YOU write step by step: call, return, log, api {id, callback}, done {id}, queue {to: micro|task}, tick (stack must be empty; microtasks all run before the next task), alloc {id, fields, var}, set, free; give "line" on steps. Pair it with the EditorScene of the same code. Each "log" must match the real output order (e.g. A D C B for log / setTimeout 0 / Promise.then / log). Without steps, "preset": "event-loop" or "memory" (stack vs heap, GC) plays a ready example. Keep names consistent; simplify honestly (Node has more phases than one task queue).
 

@@ -29,6 +29,11 @@ metadata:
   - PacketJourneyScene
   - FlowchartScene
   overlays: []
+  visuals:
+  - when: [packet, packets, router, routing, dns, nat, firewall, ip address, ttl, port]
+    scenes: [PacketScene, PacketJourneyScene]
+  - when: [topology, lan, star topology, mesh, bus topology, ring topology]
+    scenes: [NetworkScene, IsoScene]
   long_video: false
 ---
 
