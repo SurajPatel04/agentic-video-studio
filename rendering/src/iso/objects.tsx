@@ -6,6 +6,7 @@
  * x to the right, y down) onto one face of a box, so slots, screens and icons sit ON the surface.
  */
 import type {FC, ReactNode} from 'react';
+import * as Lucide from 'lucide-react';
 import {Cpu, icons, Plug, Split, Star, Zap, type LucideIcon} from 'lucide-react';
 import {C30, faces, PAPER, poly, project, S30, shade, type Pt} from './iso';
 import {IsoBox, IsoCylinder, IsoShadow} from './shapes';
@@ -42,14 +43,29 @@ export type ArtProps = Space & {id: string; g: Geo; zz: number; color: string; i
 // common names the planner may use that Lucide calls differently
 const ICON_ALIASES: Record<string, string> = {filter: 'funnel', 'bar-chart': 'chart-bar', chart: 'chart-bar', 'pie-chart': 'chart-pie',
   money: 'banknote', dollar: 'dollar-sign', chat: 'message-circle', message: 'message-circle', speech: 'message-circle',
-  tv: 'tv', television: 'tv', news: 'newspaper', podcast: 'mic', video: 'video', person: 'user', team: 'users', idea: 'lightbulb'};
+  tv: 'tv', television: 'tv', news: 'newspaper', podcast: 'mic', video: 'video', person: 'user', team: 'users', idea: 'lightbulb',
+  waves: 'waves-horizontal', wave: 'waves-horizontal', water: 'waves-horizontal', sea: 'waves-horizontal'}; // renamed in lucide 1.7x
 
-/** Lucide icon by name: "radio-tower", "RadioTower" or "radio tower". */
-export const iconByName = (name: string | undefined): LucideIcon | undefined => {
-  if (!name) return undefined;
+const exactIcon = (name: string): LucideIcon | undefined => {
   name = ICON_ALIASES[name.toLowerCase()] ?? name;
   const pascal = name.trim().split(/[-_\s]+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
-  return (icons as Record<string, LucideIcon>)[pascal] ?? (icons as Record<string, LucideIcon>)[name];
+  // current names first, then the ~300 old names Lucide still exports as aliases (Edit -> SquarePen, Home -> House)
+  return (icons as Record<string, LucideIcon>)[pascal] ?? (icons as Record<string, LucideIcon>)[name] ?? LUCIDE_ALIASES[pascal];
+};
+const LUCIDE_ALIASES = Lucide as unknown as Record<string, LucideIcon | undefined>;
+
+/** Lucide icon by name: "radio-tower", "RadioTower" or "radio tower". Names from other Lucide versions
+ *  resolve to the closest one we ship ("layers-3" -> "layers", "lucide-user-icon" -> "user", "users-2" ->
+ *  "users"), so one renamed icon does not fail a whole plan. */
+export const iconByName = (name: string | undefined): LucideIcon | undefined => {
+  if (!name) return undefined;
+  const base = name.trim().toLowerCase().replace(/^lucide[-_\s]?/, '').replace(/[-_\s]?icon$/, '');
+  const tries = [name, base, base.replace(/[-_\s]?\d+$/, ''), base.replace(/s$/, ''), base.replace(/-(?:outline|filled|solid|alt)$/, '')];
+  for (const t of tries) {
+    const hit = t && exactIcon(t);
+    if (hit) return hit;
+  }
+  return undefined;
 };
 
 /** Lucide icon lying on a face, centred at (cx, cy) in face units. */

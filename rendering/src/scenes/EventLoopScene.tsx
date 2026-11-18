@@ -108,6 +108,7 @@ export const eventLoopSceneSchema = z.preprocess(flexLoop, z.object({
   });
 }));
 type Props = z.output<typeof eventLoopSceneSchema>;
+const LOG_H = 40; // console line height (design px)
 
 export const description =
   'How JavaScript / Node.js runs code (paper style): code with the running line, the CALL STACK (frames with local vars), the ' +
@@ -213,15 +214,31 @@ export const EventLoopScene: FC<z.input<typeof eventLoopSceneSchema>> = (input) 
   const leftCol = used.has('code') || used.has('console');
   const cols = [leftCol && 'left', 'stack', used.has('heap') && 'heap', asyncCol && 'async'].filter(Boolean) as string[];
   const weight: Record<string, number> = {left: 1.3, stack: 0.95, heap: 0.95, async: 1.25};
-  const top = 205 * u, bottom = H - 250 * u, gapC = 34 * u;
+  const top = 205 * u, bottom = H - (H > W ? 390 : 250) * u, gapC = 34 * u;
   const avail = W - 160 * u - gapC * (cols.length - 1);
   const totalW = cols.reduce((a, b) => a + weight[b], 0);
   const colX: Record<string, Rect> = {};
   let x = 80 * u;
-  for (const col of cols) { const w = (avail * weight[col]) / totalW; colX[col] = {x, y: top, w, h: bottom - top}; x += w + gapC; }
+  if (H > W && cols[0] === 'left' && cols.length > 1) {
+    // portrait: code + console across the top, the other columns side by side below (4 columns would be too narrow)
+    const side = 60 * u, pTop = top + 40 * u, topH = (bottom - pTop) * 0.42; // titles often wrap to 2 lines here
+    colX.left = {x: side, y: pTop, w: W - 2 * side, h: topH};
+    const rest = cols.slice(1), restW = W - 2 * side - gapC * (rest.length - 1), restTotal = rest.reduce((a, b) => a + weight[b], 0);
+    x = side;
+    for (const col of rest) { const w = (restW * weight[col]) / restTotal; colX[col] = {x, y: pTop + topH + 60 * u, w, h: bottom - pTop - topH - 60 * u}; x += w + gapC; }
+  } else for (const col of cols) { const w = (avail * weight[col]) / totalW; colX[col] = {x, y: top, w, h: bottom - top}; x += w + gapC; }
   const L = colX.left, S = colX.stack, HP = colX.heap, A = colX.async;
-  const codeR = L && used.has('code') ? {x: L.x, y: L.y, w: L.w, h: used.has('console') ? L.h * 0.6 : L.h} : undefined;
-  const consR = L && used.has('console') ? {x: L.x, y: codeR ? L.y + L.h * 0.6 + 20 * u : L.y, w: L.w, h: codeR ? L.h * 0.4 - 20 * u : L.h} : undefined;
+  // code card as tall as its lines (CodeCard: 44 head + 20 padding + 46 per line); the console gets the rest
+  const logs = steps.filter((s) => s.do === 'log').length;
+  let codeShare = 1;
+  if (L && code && used.has('console')) {
+    const codeNeed = (84 * u + code.length * 46 * u) / L.h, consNeed = (84 * u + Math.max(3, logs) * LOG_H * u) / L.h; // 20 gap + 60 head/padding
+    // both fit: the console takes what it needs and the code the rest; too little room: share in proportion
+    codeShare = codeNeed + consNeed <= 1 ? 1 - consNeed : codeNeed / (codeNeed + consNeed);
+    codeShare = Math.min(0.75, Math.max(0.35, codeShare));
+  }
+  const codeR = L && used.has('code') ? {x: L.x, y: L.y, w: L.w, h: used.has('console') ? L.h * codeShare : L.h} : undefined;
+  const consR = L && used.has('console') ? {x: L.x, y: codeR ? L.y + L.h * codeShare + 20 * u : L.y, w: L.w, h: codeR ? L.h * (1 - codeShare) - 20 * u : L.h} : undefined;
   const apisR = A && used.has('apis') ? {x: A.x, y: A.y, w: A.w, h: A.h * 0.36} : undefined;
   const qTop = A ? (apisR ? A.y + A.h * 0.36 + 70 * u : A.y + 70 * u) : 0;
   const qH = A ? (A.y + A.h - qTop - 20 * u) / 2 : 0;
@@ -240,7 +257,12 @@ export const EventLoopScene: FC<z.input<typeof eventLoopSceneSchema>> = (input) 
       const w = Math.min(230 * u, (R0.w - 28 * u) / Math.max(2, q.length) - 10 * u);
       if (i >= 0) return {r: {x: R0.x + 14 * u + i * (w + 10 * u), y: R0.y + 56 * u, w, h: R0.h - 72 * u}, kind};
     }
-    if (consR) { const i = s.out.findIndex((t) => t.id === id); if (i >= 0) { const rows = Math.max(1, Math.floor((consR.h - 60 * u) / (44 * u))); const shift = Math.max(0, s.out.length - rows); return {r: {x: consR.x + 18 * u, y: consR.y + 54 * u + (i - shift) * 44 * u, w: consR.w - 36 * u, h: 40 * u}, kind: 'log'}; } }
+    if (consR) {
+      const i = s.out.findIndex((t) => t.id === id);
+      const rows = Math.max(1, Math.floor((consR.h - 60 * u) / (LOG_H * u))), shift = Math.max(0, s.out.length - rows);
+      // a line scrolled off the top is gone (it fades out) instead of drawing over the header
+      if (i >= shift) return {r: {x: consR.x + 18 * u, y: consR.y + 52 * u + (i - shift) * LOG_H * u, w: consR.w - 36 * u, h: (LOG_H - 4) * u}, kind: 'log'};
+    }
     if (HP) {
       const i = s.heap.findIndex((o) => o.id === id);
       if (i >= 0) { const two = HP.w > 440 * u; const cw = two ? (HP.w - 42 * u) / 2 : HP.w - 28 * u; let yy = HP.y + 58 * u; const colI = two ? i % 2 : 0; for (let j = colI; j < i; j += two ? 2 : 1) yy += 70 * u + s.heap[j].fields.length * 30 * u + 14 * u; return {r: {x: HP.x + 14 * u + colI * (cw + 14 * u), y: yy, w: cw, h: 70 * u + s.heap[i].fields.length * 30 * u}, kind: 'obj'}; }
@@ -322,12 +344,13 @@ export const EventLoopScene: FC<z.input<typeof eventLoopSceneSchema>> = (input) 
         {taskR ? <Panel x={taskR.x} y={taskR.y} w={taskR.w} h={taskR.h} u={u} label={p.runtime === 'node' ? 'Task queue (timers, I/O)' : 'Task queue (timers, events)'} tint="#cfe2f7" /> : null}
         {/* event loop badge */}
         {A && (microR || taskR) ? (
-          <div style={{position: 'absolute', left: A.x - gapC / 2 - 46 * u, top: (apisR ? apisR.y + apisR.h : A.y) + 2 * u, width: 92 * u, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-            <svg width={64 * u} height={64 * u} viewBox="-32 -32 64 64" style={{transform: `rotate(${loopSpin}deg)`}}>
+          // in the free strip above the queues (inside the async column), so it never touches the call stack
+          <div style={{position: 'absolute', left: A.x, width: A.w, top: qTop - 70 * u, height: 70 * u, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 * u}}>
+            <svg width={44 * u} height={44 * u} viewBox="-32 -32 64 64" style={{transform: `rotate(${loopSpin}deg)`, flex: 'none'}}>
               <path d="M 0 -22 A 22 22 0 1 1 -21 7" fill="none" stroke={cur?.do === 'tick' ? FILL.accent : PAPER.ink} strokeWidth={5} strokeLinecap="round" />
               <path d="M -29 0 L -21 12 L -12 2 Z" fill={cur?.do === 'tick' ? FILL.accent : PAPER.ink} />
             </svg>
-            <div style={{marginTop: 2 * u, fontSize: 15 * u, fontWeight: 800, color: PAPER.inkSoft, textAlign: 'center', lineHeight: 1.1, background: PAPER.bg, padding: `${2 * u}px ${4 * u}px`, borderRadius: 6 * u}}>event<br />loop</div>
+            <div style={{fontSize: 19 * u, fontWeight: 800, color: cur?.do === 'tick' ? FILL.accent : PAPER.inkSoft, whiteSpace: 'nowrap'}}>event loop</div>
           </div>
         ) : null}
         {tokens}

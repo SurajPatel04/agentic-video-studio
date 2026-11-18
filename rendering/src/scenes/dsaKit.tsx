@@ -9,6 +9,7 @@
  */
 import type {FC, ReactNode} from 'react';
 import {z} from 'zod';
+import {useVideoConfig} from 'remotion';
 import {PAPER} from '../iso/iso';
 import {MONO, clamp01, ease, flexList} from './paperStage';
 
@@ -95,12 +96,16 @@ export const CodeCard: FC<{lines: string[]; active?: number; x: number; y: numbe
 };
 
 /** The current step's note, as a pill centred at (cx, y). */
-export const NoteBar: FC<{text?: string; cx: number; y: number; u: number; maxW: number; k?: number}> = ({text, cx, y, u, maxW, k = 1}) =>
-  text ? (
-    <div style={{position: 'absolute', left: cx - maxW / 2, top: y, width: maxW, display: 'flex', justifyContent: 'center', opacity: clamp01(k * 3)}}>
-      <div style={{padding: `${10 * u}px ${24 * u}px`, borderRadius: 999, background: PAPER.ink, color: '#fffaf1', fontSize: 25 * u, fontWeight: 700, maxWidth: maxW, textAlign: 'center', lineHeight: 1.25}}>{text}</div>
+export const NoteBar: FC<{text?: string; cx: number; y: number; u: number; maxW: number; k?: number}> = ({text, cx, y, u, maxW, k = 1}) => {
+  const {width: W, height: H} = useVideoConfig();
+  // portrait captions wrap to two lines: keep the note above them
+  const top = H > W ? Math.min(y, H - 340 * u) : y;
+  return text ? (
+    <div style={{position: 'absolute', left: cx - maxW / 2, top, width: maxW, display: 'flex', justifyContent: 'center', opacity: clamp01(k * 3)}}>
+      <div style={{padding: `${10 * u}px ${24 * u}px`, borderRadius: 999, background: PAPER.ink, color: '#fffaf1', fontSize: 25 * u, fontWeight: 700, maxWidth: maxW, boxSizing: 'border-box', overflowWrap: 'anywhere', textAlign: 'center', lineHeight: 1.25}}>{text}</div>
     </div>
   ) : null;
+};
 
 /** Small counter chips ("comparisons: 4"). */
 export const Counters: FC<{items: [string, string | number, string?][]; x: number; y: number; u: number; align?: 'left' | 'right'}> = ({items, x, y, u, align = 'right'}) => (
