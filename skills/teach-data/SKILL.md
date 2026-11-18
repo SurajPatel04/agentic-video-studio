@@ -27,6 +27,7 @@ metadata:
   scenes:
   - QueryScene
   - PipelineScene
+  - LiveChartScene
   - IsoScene
   overlays: []
   long_video: false
@@ -37,5 +38,7 @@ Show data as a real small table the viewer can read (4-8 rows, 3-5 columns, ever
 QueryScene - how a database answers a query: "query" (real SQL; WHERE and SELECT are read from it), "table" {"name", "columns", "rows"}, "mode": "scan" (every row is read, the counter climbs) or "index" (the sorted index finds the rows in a few steps). To teach indexes, make two scenes with the same query and table: first "scan", then "index", and say how many rows each one read.
 
 PipelineScene - data moving through steps (ETL, pandas, cleaning, joins): "source" table, then "stages" (1-5), each {"label", "op": filter|map|join|group|sort|select|clean|load, "detail": the rule ("price > 10", "total = price * qty"), "columns" + "rows": the table AFTER that stage}. Compute every output yourself and keep the first column as a stable id so rows can be followed. A join stage can show the other table with "with".
+
+LiveChartScene - a result as a chart whose numbers change: "data" {"label": value} or "series", kind bar | line | race; steps set {label, value}, add, sort, highlight. Use the same numbers as the table.
 
 Use IsoScene for where data lives and moves (app -> server -> database -> warehouse). Do not invent benchmark numbers; say "reads every row" rather than a made-up time.
