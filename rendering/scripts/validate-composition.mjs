@@ -60,6 +60,7 @@ const similar = (a, b) => {
 const closest = (value, options, n = 3) => [...options].map((o) => [o, similar(value, o)]).filter(([, s]) => s > 0.25)
   .sort((x, y) => y[1] - x[1]).slice(0, n).map(([o]) => `"${o}"`);
 const lucideNames = await import('lucide-react').then((m) => Object.keys(m.icons).map((k) => k.replace(/([a-z0-9])([A-Z])/g, '$1-$2').replace(/([A-Za-z])([0-9])/g, '$1-$2').toLowerCase()), () => []);
+const reactIconNames = JSON.parse(await readFile(new URL('../../library/react-icons.json', import.meta.url), 'utf8'));
 const valueAt = (obj, parts) => parts.reduce((o, k) => (o == null ? undefined : o[k]), obj);
 /** A long list of allowed values or an unknown icon: name the wrong value and suggest the closest ones. */
 const explain = (issue, data) => {
@@ -69,8 +70,9 @@ const explain = (issue, data) => {
     return `unknown value ${JSON.stringify(value)}` + (near.length ? `; did you mean ${near.join(', ')}?` : '') + ` (${issue.values.length} allowed values)`;
   }
   if (typeof issue.message === 'string' && issue.message.startsWith('unknown icon name')) {
-    const near = closest(value, lucideNames, 4);
-    return `unknown icon ${JSON.stringify(value)}` + (near.length ? `; did you mean ${near.join(', ')}?` : '; use a Lucide icon name such as "megaphone" or "users"');
+    const source = String(value).startsWith('react-icons/') ? reactIconNames : lucideNames;
+    const near = closest(value, source, 4);
+    return `unknown icon ${JSON.stringify(value)}` + (near.length ? `; did you mean ${near.join(', ')}?` : '; use a Lucide name or a qualified React Icons reference');
   }
   return issue.message;
 };

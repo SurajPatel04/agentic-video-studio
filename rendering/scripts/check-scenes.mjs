@@ -3,6 +3,7 @@ import {writeFile, mkdir} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import './export-react-icons.mjs';
 const root = path.resolve(import.meta.dirname, '..');
 await mkdir(path.join(root, 'out'), {recursive: true});
 const output = path.join(root, 'out', 'catalog-check.mjs');
@@ -38,6 +39,11 @@ assert.equal(crowded.success, false);
 assert.match(crowded.error.issues[0].message, /covers "a" on screen/);
 assert.equal(iso.safeParse({objects: [{id: 'a', kind: 'server', at: [0, 0]}, {id: 'b', kind: 'database', at: [3.5, -3.5]}], links: [{from: 'a', to: 'b'}], steps: [{at: 0.5, target: 'b', highlight: true}]}).success, true);
 assert.equal(iso.safeParse({objects: [{id: 'a', kind: 'server', at: [0, 0]}], links: [{from: 'a', to: 'x'}], steps: []}).success, false);
+const reactTile = icon => ({objects: [{id: 'icon', kind: 'tile', icon, at: [0, 0]}], links: [], steps: []});
+for (const icon of ['react-icons/fa6/FaReact', 'react-icons/vsc/VscVscode', 'react-icons/gi/GiCoffeeCup']) {
+  assert(iso.safeParse(reactTile(icon)).success, icon);
+}
+assert(!iso.safeParse(reactTile('react-icons/fa6/FaInventedIcon')).success);
 assert.equal(iso.parse({objects: [], links: [], steps: [], title: 'Card'}).objects.length, 0);
 assert(!sceneCatalog.ComparisonTableScene.schema.safeParse({columns:['A','B'],rows:[['one']]}).success);
 assert(!sceneCatalog.QuizScene.schema.safeParse({correctIndex:4}).success);

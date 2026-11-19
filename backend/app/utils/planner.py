@@ -559,16 +559,17 @@ def get_scene(name: str) -> str:
 
 @tool
 def find_iso_objects(query: str) -> str:
-    """IsoScene object kinds for an idea, e.g. "radio studio", "money", "election", "hospital". Best match first."""
-    # Same order the planner should choose in: built-in kinds, then Lucide icons, then saved designs.
+    """Find IsoScene objects, Lucide icons, and React Icons by concept or brand name."""
+    # Built-in kinds, then Lucide and React Icons, then saved designs.
     hits = catalog.find_iso_objects(query)
     rows = [f"- {k}" + (f": {d}" if d else "") for k, d in hits]
     rows += [f'- kind="tile", icon="{name}"' for name in iso_design.find_icons(query)]
+    rows += [f'- kind="tile", icon="{name}"' for name in iso_design.find_react_icons(query)]
     words = set(re.findall(r"[a-z0-9]+", query.lower()))
     for key, art in iso_design.inventory().items():
         if not art.icon and words.intersection(re.findall(r"[a-z0-9]+", " ".join([key, *art.aliases]).lower())):
             rows.append(f'- kind="tile", design="{key}" ({", ".join(art.aliases)})')
-    return "\n".join(rows) or ('No match: use kind="tile" with a Lucide icon you know, or design="<thing>" '
+    return "\n".join(rows) or ('No match: try a synonym to search both icon libraries, or use design="<thing>" '
                                'for a concrete object no icon shows.')
 
 

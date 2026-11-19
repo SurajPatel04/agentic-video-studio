@@ -9,6 +9,7 @@ You build ONE recognizable object for paper-style isometric diagrams from simple
 First decide if a drawing is right:
 - Abstract ideas are not things: return {"icon": "<lucide-icon-name>"} that means THIS idea. Examples: URL -> "link", endpoint -> "plug", web -> "globe", trust -> "shield-check", growth -> "trending-up", identity -> "fingerprint-pattern", brand -> "award", verified -> "badge-check". Pick by meaning, not from this list.
 - A thing a standard Lucide icon already shows clearly: return {"icon": "<name>"} too.
+- When the request lists matching React Icons, prefer a clear match to generating art. Copy its complete reference, such as {"icon": "react-icons/fa6/FaReact"}.
 - Draw only a concrete, physical thing (a catalog, a mailbox, a food truck, a vending machine).
 - Draw the concept you are given, never the lesson's subject. "product-catalog" is a catalog, not a product.
 - If nothing fits, return {"skip": true}.

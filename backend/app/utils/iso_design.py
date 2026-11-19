@@ -1,7 +1,7 @@
 """Design missing IsoScene artwork and publish validated, immutable assets for reuse.
 
-Order for a tile with ``design``: a built-in iso kind, then a Lucide icon, then a saved design,
-and only then the designer. The designer describes 3D shapes (boxes, cylinders, spheres, flat
+Order for new tiles: built-in iso art, Lucide or React Icons, then saved or custom designs.
+The designer can select a matching icon or describe 3D shapes (boxes, cylinders, spheres, flat
 polygons); this module projects them at the house 30-degree angle, shades them like the built-in
 objects and fits them into the 100 x 100 ``faces`` the renderer draws.
 """
@@ -24,6 +24,7 @@ from app.utils.llm import get_llm, text_of, usage_of
 
 ROOT = PROJECT_ROOT / "library/iso/ai-designed"
 ICONS = PROJECT_ROOT / "library/lucide-icons.json"
+REACT_ICONS = PROJECT_ROOT / "library/react-icons.json"
 HINT_LIMIT = 20  # saved designs named in the prompt; find_iso_objects finds the rest
 MAX_FACES = 48
 log = logging.getLogger(__name__)
@@ -92,7 +93,7 @@ class Drawing(BaseModel):
 
 
 class Reply(BaseModel):
-    """What the designer returns: shapes to draw, a Lucide icon to use instead, or skip."""
+    """What the designer returns: shapes to draw, a catalog icon, or skip."""
     aliases: list[Name] = Field(default_factory=list, max_length=5)
     parts: list[Part] = Field(default_factory=list, max_length=24)
     icon: str | None = None
@@ -102,9 +103,10 @@ class Reply(BaseModel):
     def one_answer(self):
         if not (self.parts or self.icon or self.skip):
             raise ValueError('Return "parts", or "icon", or "skip": true')
-        if self.icon and self.icon not in icon_names():
-            near = difflib.get_close_matches(self.icon, icon_names(), n=4, cutoff=0.6)
-            raise ValueError(f'unknown Lucide icon "{self.icon}"' + (f"; did you mean {', '.join(near)}?" if near else ""))
+        if self.icon and self.icon not in icon_names() and self.icon not in react_icon_names():
+            near = find_react_icons(self.icon, 4) if self.icon.startswith("react-icons/") else \
+                difflib.get_close_matches(self.icon, icon_names(), n=4, cutoff=0.6)
+            raise ValueError(f'unknown icon "{self.icon}"' + (f"; did you mean {', '.join(near)}?" if near else ""))
         return self
 
 
@@ -282,6 +284,42 @@ def icon_names() -> frozenset[str]:
         return frozenset()
 
 
+@cache
+def react_icon_names() -> frozenset[str]:
+    try:
+        return frozenset(json.loads(REACT_ICONS.read_text()))
+    except (OSError, ValueError):
+        return frozenset()
+
+
+@cache
+def _react_icon_terms() -> tuple[tuple[str, tuple[str, ...]], ...]:
+    entries = []
+    for reference in sorted(react_icon_names()):
+        _, pack, export = reference.split("/")
+        # FaReact, IoLogoReact and SiReact all tokenize to a searchable React name.
+        stem = export[len(pack.rstrip("0123456789")):]
+        words = re.sub(r"([a-z0-9])([A-Z])|([A-Z])([A-Z][a-z])", r"\1\3 \2\4", stem)
+        entries.append((reference, tuple(re.findall(r"[a-z0-9]+", words.lower()))))
+    return tuple(entries)
+
+
+def find_react_icons(query: str, limit: int = 5) -> list[str]:
+    if query in react_icon_names():
+        return [query]
+    words = re.findall(r"[a-z0-9]+", query.lower())
+    if not words:
+        return []
+    joined = "".join(words)
+    matches = []
+    for reference, terms in _react_icon_terms():
+        matched = sum(word in terms for word in words)
+        exact = joined == "".join(terms)
+        if exact or matched:
+            matches.append((not exact, -matched, len(terms), len(reference), reference))
+    return [reference for *_, reference in sorted(matches)[:limit]]
+
+
 def _norm(name: str) -> str:
     return name.strip().lower().replace(" ", "-").replace("_", "-")
 
@@ -339,8 +377,9 @@ def planner_hint():
     entries = [f"{key} ({', '.join(art.aliases)})" for key, art in list(assets.items())[:HINT_LIMIT]]
     if len(assets) > HINT_LIMIT:
         entries.append(f"{len(assets) - HINT_LIMIT} more (find_iso_objects finds them)")
-    return ("\nIsoScene objects, in this order: a built-in kind; else kind=tile with a Lucide icon; only when no "
-            "icon shows the thing clearly (or two different ideas would look the same), kind=tile with design="
+    return ("\nIsoScene objects, in this order: a built-in kind; else kind=tile with a Lucide icon or a React Icons "
+            "reference such as react-icons/fa6/FaReact. Use find_iso_objects to search both libraries by concept. "
+            "When Lucide has no clear match, try React Icons before requesting kind=tile with design="
             "<lowercase-hyphenated-thing> - a designer draws it once for every video. Designs are for concrete "
             "THINGS, never abstract ideas (endpoint, URL, method): those get an icon."
             + (" Saved designs: " + ", ".join(entries) + "." if entries else "") + "\n")
@@ -353,8 +392,10 @@ async def _design(key, obj, plan, model, assets) -> Drawing | None:
     if not ID.fullmatch(key) or len(key) > 64:
         raise ValueError("Invalid iso design ID")
     # Only the thing itself: the scene title once made the designer draw the lesson's subject.
-    messages = [SystemMessage(skills.load("design-iso-object", "component")),
-                HumanMessage(json.dumps({"concept": key, "label": obj.get("label")}))]
+    context = {"concept": key, "label": obj.get("label")}
+    if alternatives := find_react_icons(key):
+        context["react_icons"] = alternatives
+    messages = [SystemMessage(skills.load("design-iso-object", "component")), HumanMessage(json.dumps(context))]
     llm = get_llm(model or settings.PLANNER_MODEL or None)
     for attempt in range(3):
         msg = await llm.ainvoke(messages)

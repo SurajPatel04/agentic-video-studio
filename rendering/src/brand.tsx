@@ -11,12 +11,13 @@
  * The intro ends with the icon flying into the corner, exactly where the corner logo stays,
  * while the first scene fades in under it (HANDOFF frames of overlap).
  */
-import type {FC} from 'react';
-import {AbsoluteFill, Easing, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {useEffect, useState, type FC} from 'react';
+import {AbsoluteFill, Easing, Img, interpolate, spring, staticFile, useCurrentFrame, useDelayRender, useVideoConfig} from 'remotion';
 import {z} from 'zod';
 import {Sfx} from './audio';
 
 const CORNERS = ['top-right', 'top-left', 'bottom-right', 'bottom-left'] as const;
+const BRAND_NAME = 'LandNextRole';
 
 export const brandObjectSchema = z.strictObject({
   intro: z.boolean().default(true),
@@ -27,7 +28,7 @@ export const brandObjectSchema = z.strictObject({
   margin: z.number().min(0).max(200).default(34),
   opacity: z.number().min(0.1).max(1).default(0.95),
   icon: z.string().default('brand/lnr-icon.png'), // file in public/ or https URL
-  wordmark: z.string().default('brand/lnr-wordmark.png'), // "" = icon only
+  wordmark: z.string().default(BRAND_NAME), // brand name, custom image path or URL, or "" for icon only
   wordmarkAspect: z.number().positive().default(1700 / 220), // width / height of the wordmark image
   iconAspect: z.number().positive().default(1100 / 1080),
   background: z.string().default('#fbf8f3'),
@@ -56,6 +57,25 @@ export const brandTiming = (raw: unknown, fps: number) => {
 };
 
 const src = (s: string) => (/^https?:\/\//.test(s) ? s : staticFile(s.replace(/^\//, '')));
+
+const BrandName: FC<{scale: number; height: number}> = ({scale, height}) => {
+  const {delayRender, continueRender, cancelRender} = useDelayRender();
+  const [handle] = useState(() => delayRender('Loading the Outfit wordmark font'));
+
+  useEffect(() => {
+    const font = new FontFace('Outfit Wordmark', `url(${staticFile('brand/outfit.ttf')})`, {weight: '700'});
+    font.load().then(() => {
+      document.fonts.add(font);
+      continueRender(handle);
+    }).catch(cancelRender);
+  }, [handle, continueRender, cancelRender]);
+
+  return <span style={{
+    display: 'block', whiteSpace: 'nowrap', color: '#1a222d',
+    fontFamily: '"Outfit Wordmark", sans-serif', fontWeight: 700,
+    fontSize: 141 * scale, letterSpacing: -1.45 * scale, lineHeight: `${height}px`,
+  }}>{BRAND_NAME}</span>;
+};
 
 /** Centre of the corner logo (px) and its width. */
 const cornerBox = (b: Brand, width: number, height: number) => {
@@ -93,6 +113,7 @@ export const BrandIntro: FC<{brand: Brand; frames: number}> = ({brand: b, frames
   const pop = spring({frame: f, fps, config: {damping: 11, stiffness: 140, mass: 0.8}});
   const iconW = 250 * k;
   const hasWord = b.wordmark !== '';
+  const isBrandText = b.wordmark === BRAND_NAME || b.wordmark.replace(/^\//, '') === 'brand/lnr-wordmark.png';
   const wordH = 118 * k, wordW = wordH * b.wordmarkAspect, gap = 46 * k;
   const groupW = hasWord ? iconW + gap + wordW : iconW;
 
@@ -143,7 +164,8 @@ export const BrandIntro: FC<{brand: Brand; frames: number}> = ({brand: b, frames
           clipPath: `inset(0 ${(1 - reveal) * 100}% 0 0)`, opacity: wordOut,
           transform: `translateX(${(1 - reveal) * -40 * k + (1 - wordOut) * -30 * k}px)`,
         }}>
-          <Img src={src(b.wordmark)} style={{width: wordW, height: wordH, display: 'block'}} />
+          {isBrandText ? <BrandName scale={k} height={wordH} /> :
+            <Img src={src(b.wordmark)} style={{width: wordW, height: wordH, display: 'block'}} />}
         </div>
       ) : null}
       <div style={{

@@ -7,7 +7,7 @@
  */
 import type {FC, ReactNode} from 'react';
 import * as Lucide from 'lucide-react';
-import {Cpu, icons, Plug, Split, Star, Zap, type LucideIcon} from 'lucide-react';
+import {Cpu, icons, Plug, Split, Star, Zap, type LucideIcon, type LucideProps} from 'lucide-react';
 import {C30, faces, PAPER, poly, project, S30, shade, type Pt} from './iso';
 import {IsoBox, IsoCylinder, IsoShadow} from './shapes';
 import {GeneralArt, GENERAL_KINDS, type GeneralKind} from './general';
@@ -16,6 +16,7 @@ import {CommunicationArt, COMMUNICATION_KINDS, type CommunicationKind} from './c
 import {AIArt, AI_KINDS, type AiKind} from './ai';
 import {MediaArt,MEDIA_KINDS,type MediaKind} from './media';
 import {AudioArt, AUDIO_KINDS, type AudioKind} from './audio';
+import {reactIconByName} from './reactIcons';
 export {RoadArt as Road} from './roads';
 
 export type Space = {T: number; o: Pt; sw: number};
@@ -57,8 +58,11 @@ const LUCIDE_ALIASES = Lucide as unknown as Record<string, LucideIcon | undefine
 /** Lucide icon by name: "radio-tower", "RadioTower" or "radio tower". Names from other Lucide versions
  *  resolve to the closest one we ship ("layers-3" -> "layers", "lucide-user-icon" -> "user", "users-2" ->
  *  "users"), so one renamed icon does not fail a whole plan. */
-export const iconByName = (name: string | undefined): LucideIcon | undefined => {
+type SceneIcon = React.ComponentType<LucideProps>;
+
+export const iconByName = (name: string | undefined): SceneIcon | undefined => {
   if (!name) return undefined;
+  if (name.startsWith('react-icons/')) return reactIconByName(name);
   const base = name.trim().toLowerCase().replace(/^lucide[-_\s]?/, '').replace(/[-_\s]?icon$/, '');
   const tries = [name, base, base.replace(/[-_\s]?\d+$/, ''), base.replace(/s$/, ''), base.replace(/-(?:outline|filled|solid|alt)$/, '')];
   for (const t of tries) {
@@ -69,7 +73,7 @@ export const iconByName = (name: string | undefined): LucideIcon | undefined => 
 };
 
 /** Lucide icon lying on a face, centred at (cx, cy) in face units. */
-const FaceIcon: FC<{icon: LucideIcon; cx: number; cy: number; size: number}> = ({icon: Icon, cx, cy, size}) => (
+const FaceIcon: FC<{icon: SceneIcon; cx: number; cy: number; size: number}> = ({icon: Icon, cx, cy, size}) => (
   <Icon x={cx - size / 2} y={cy - size / 2} width={size} height={size} color={PAPER.ink} strokeWidth={2.4} absoluteStrokeWidth={false} />
 );
 

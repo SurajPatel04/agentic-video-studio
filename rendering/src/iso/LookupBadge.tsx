@@ -31,7 +31,7 @@ const presets = {...statusPresets, ...mediaPresets};
 const statusNames = z.enum([...(Object.keys(statusPresets) as (keyof typeof statusPresets)[]), 'none' as const]);
 const mediaNames = z.enum(Object.keys(mediaPresets) as (keyof typeof mediaPresets)[]);
 export const badgeSchema = z.union([statusNames, mediaNames, z.object({
-  icon: z.string().min(1).max(40).refine(name => !!iconByName(name), 'Use a Lucide icon name'),
+  icon: z.string().min(1).max(120).refine(name => !!iconByName(name), 'unknown icon name'),
   text: z.string().trim().min(1).max(30), tone: tone.default('neutral'),
 }).strict()]);
 

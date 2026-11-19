@@ -165,7 +165,7 @@ const objectSchema = z.object({
     points: z.array(z.tuple([z.number().int().min(2).max(98), z.number().int().min(2).max(98)])).min(3).max(32),
   })).min(2).max(48).optional(),
   // icon shown by kind "tile" (any Lucide icon name: "megaphone", "graduation-cap", "thumbs-up", ...)
-  icon: z.string().max(40).refine((n) => iconByName(n) !== undefined, {message: 'unknown icon name; use a Lucide icon such as "megaphone", "users", "message-circle", "graduation-cap"'}).optional(),
+  icon: z.string().max(120).refine((n) => iconByName(n) !== undefined, {message: 'unknown icon name; use a Lucide name or a React Icons reference such as "react-icons/fa6/FaReact"'}).optional(),
 }).strict().refine(ob => !ob.design || ob.kind === 'tile', {path: ['kind'], message: 'custom designs use kind tile'});
 
 const linkSchema = z.object({

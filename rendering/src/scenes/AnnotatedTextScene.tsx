@@ -4,6 +4,7 @@ import {z} from 'zod';
 import {formatJsonExample, JsonExampleCode} from '../components/JsonExample';
 import {PAPER} from '../iso/iso';
 import {useSceneLength, useTheme, useUnit} from '../theme';
+import {IsoRegion, IsoScene, isoSceneSchema} from './IsoScene';
 import {DARK, MONO, MONO_W, fraction} from './paperStage';
 
 const annotationSchema = z.object({
@@ -26,7 +27,9 @@ export const annotatedTextSceneSchema = z.object({
   layout: z.enum(['editor', 'text']).default('text'),
   label: z.string().max(40).optional(),
   text: z.string().min(1).max(220).default('GET /watches'),
+  appearAt: fraction.optional(),
   steps: z.array(annotationSchema).max(8).default([]),
+  diagram: isoSceneSchema.optional(),
 }).strict().superRefine((p, ctx) => {
   const json = p.layout === 'editor' ? formatJsonExample(p.text) : null;
   const rows = p.text.split('\n').length;
@@ -43,7 +46,7 @@ export const annotatedTextSceneSchema = z.object({
   });
 });
 
-export const description = 'Show a complete request, expression, sentence or short excerpt from the start. Use layout "editor" for commands or code and "text" for prose and equations. A valid JSON body is indented and syntax colored, with the HTTP request or response line and headers shown above it. Cue each step to highlight the exact substring in focus and show a short explanation. If the substring repeats, occurrence counts matches from 1. Omit focus to explain the whole example.';
+export const description = 'Show a complete request, expression, sentence or short excerpt. Use layout "editor" for code and "text" for prose and equations. A valid JSON body is indented and syntax colored beneath the HTTP line and headers. Cue each step to highlight the exact substring and show a short explanation. If the substring repeats, occurrence counts matches from 1. Omit focus to explain the whole example. Supply diagram (IsoScene objects, links and steps) to show the flow beside the example. Set appearAt to bring in the example on cue.';
 export const tags = ['annotation', 'walkthrough', 'reading', 'sentence', 'grammar', 'request', 'excerpt', 'formula', 'parts'];
 
 export function AnnotatedTextScene(input: z.input<typeof annotatedTextSceneSchema>) {
@@ -52,16 +55,21 @@ export function AnnotatedTextScene(input: z.input<typeof annotatedTextSceneSchem
   const len = useSceneLength();
   const theme = useTheme();
   const u = useUnit();
-  const {width} = useVideoConfig();
+  const {width, height} = useVideoConfig();
+  const stacked = !!p.diagram && width <= height;
+  const panelWidth = p.diagram && !stacked ? width * 0.4 : width - 144 * u;
   const editor = p.layout === 'editor';
+  const opacity = p.appearAt === undefined ? 1 : Math.max(0, Math.min(1, (frame - Math.round(p.appearAt * len) + 1) / 6));
   const json = useMemo(() => editor ? formatJsonExample(p.text) : null, [editor, p.text]);
   const step = p.steps.filter((s) => frame >= Math.round(s.at * len)).at(-1);
   const focus = step?.focus;
   const start = step && focus ? findFocus(p.text, focus, step.occurrence) : -1;
   const lines = p.text.split('\n');
   const maxLine = Math.max(...lines.map((line) => line.length));
-  const size = Math.min(editor ? 90 : 72, 240 / lines.length, Math.max(32, (editor ? 2200 : 3400) / maxLine)) * u;
-  const jsonWidth = Math.min(width - 144 * u, 1120 * u);
+  const size = p.diagram
+    ? Math.min(48 * u, (panelWidth - 76 * u) / (maxLine * (editor ? MONO_W : 0.42)))
+    : Math.min(editor ? 90 : 72, 240 / lines.length, Math.max(32, (editor ? 2200 : 3400) / maxLine)) * u;
+  const jsonWidth = Math.min(panelWidth, 1120 * u);
   const headerLines = json?.header?.split(/\r?\n/) ?? [];
   const headerSize = Math.min(38 * u, (jsonWidth - 80 * u) /
     (Math.max(1, ...headerLines.map(line => line.length)) * MONO_W));
@@ -70,11 +78,24 @@ export function AnnotatedTextScene(input: z.input<typeof annotatedTextSceneSchem
 
   return (
     <AbsoluteFill style={{color: theme.text, fontFamily: theme.fontFamily}}>
+      {p.diagram ? (
+        <IsoRegion.Provider value={{
+          left: stacked ? 72 * u : panelWidth + 140 * u,
+          right: width - 90 * u,
+          top: (stacked ? 820 : 200) * u,
+        }}>
+          <IsoScene {...p.diagram} />
+        </IsoRegion.Provider>
+      ) : null}
       <h1 style={{position: 'absolute', top: 72 * u, left: 76 * u, right: 110 * u, margin: 0,
         fontSize: 58 * u, lineHeight: 1.14, letterSpacing: -u}}>{p.title}</h1>
-      <div style={{position: 'absolute', inset: `${240 * u}px ${72 * u}px ${165 * u}px`,
+      <div style={{position: 'absolute', top: (stacked ? 175 : 240) * u, left: 72 * u,
+        right: p.diagram && !stacked ? undefined : 72 * u,
+        width: p.diagram ? panelWidth : undefined,
+        bottom: stacked ? undefined : 165 * u,
+        opacity,
         display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center',
-        maxWidth: (json ? 1120 : 1380) * u, marginInline: 'auto'}}>
+        maxWidth: (json ? 1120 : 1380) * u, marginInline: p.diagram ? undefined : 'auto'}}>
         <div style={{background: editor ? DARK.bg : PAPER.card, color: editor ? DARK.text : theme.text,
           border: `${2 * u}px solid ${PAPER.ink}`, borderRadius: 18 * u, overflow: 'hidden'}}>
           {json?.header ? (
@@ -97,7 +118,7 @@ export function AnnotatedTextScene(input: z.input<typeof annotatedTextSceneSchem
               <JsonExampleCode example={json} dark focusStart={start} focusLength={focus?.length} />
             </div>
           ) : <div dir="auto" style={{whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', padding: `${42 * u}px ${36 * u}px`,
-            textAlign: 'center', fontFamily: editor ? PAPER.font : theme.fontFamily, fontWeight: 600,
+            textAlign: p.diagram ? 'left' : 'center', fontFamily: p.diagram && editor ? MONO : editor ? PAPER.font : theme.fontFamily, fontWeight: 600,
             fontSize: size, lineHeight: 1.28}}>
             {focus && start >= 0 ? (
               <>
@@ -109,7 +130,7 @@ export function AnnotatedTextScene(input: z.input<typeof annotatedTextSceneSchem
           </div>}
         </div>
         <div dir="auto" style={{padding: `${22 * u}px ${12 * u}px 0`, minHeight: 122 * u,
-          fontSize: 32 * u, lineHeight: 1.3, textAlign: 'center', fontWeight: 600}}>
+          fontSize: 32 * u, lineHeight: 1.3, textAlign: p.diagram ? 'left' : 'center', fontWeight: 600}}>
           {step?.explanation}
         </div>
       </div>

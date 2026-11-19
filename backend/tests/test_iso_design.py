@@ -53,7 +53,8 @@ class DesignTests(unittest.IsolatedAsyncioTestCase):
         self.designer.ainvoke.assert_awaited_once()
         self.assertEqual((plan.llm_calls, plan.input_tokens, plan.output_tokens), (1, 50, 80))
         sent = json.loads(self.designer.ainvoke.await_args.args[0][1].content)
-        self.assertEqual(set(sent), {"concept", "label"})  # never the lesson title
+        self.assertEqual(set(sent) - {"react_icons"}, {"concept", "label"})  # never the lesson title
+        self.assertIn("react-icons/gi/GiCoffeeCup", sent["react_icons"])
 
     async def test_builtin_kind_or_icon_wins_without_calling_the_designer(self):
         objects = [{"kind": "tile", "design": "pizza"}, {"kind": "tile", "design": "credit-card", "icon": "box"},
@@ -120,6 +121,9 @@ class ProjectionTests(unittest.TestCase):
     def test_icon_search(self):
         self.assertEqual(iso_design.find_icons("credit card")[0], "credit-card")
         self.assertIn("pizza", iso_design.find_icons("pizza"))
+        self.assertIn("react-icons/fa6/FaReact", iso_design.find_react_icons("react"))
+        self.assertIn("react-icons/vsc/VscVscode", iso_design.find_react_icons("vscode"))
+        self.assertEqual(iso_design.Reply(icon="react-icons/fa6/FaReact").icon, "react-icons/fa6/FaReact")
 
     def test_hint_is_capped_and_states_the_order(self):
         art = iso_design.Drawing(aliases=["x"], faces=iso_design.project(
