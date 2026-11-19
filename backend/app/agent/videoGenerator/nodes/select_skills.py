@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from app.agent.videoGenerator import skills as teaching_skills
 from ..prompts.catalog import PROMPT
 from ..state.video import VideoState
+from ..teaching_patterns import OBJECTIVES, objective_for, pattern_hint
 from app.config import settings
 from app.utils.llm import get_llm, text_of, usage_of
 
@@ -30,6 +31,7 @@ class Route:
     input_tokens: int = 0
     output_tokens: int = 0
     llm_pick: dict = field(default_factory=dict)
+    objective: str = ""
 
 
 def _menu(available: dict) -> str:
@@ -72,26 +74,30 @@ async def route(topic: str, requested: list[str] | None = None, *, long_video: b
                 model: str | None = None) -> Route:
     """Guides for ``topic``. Names given by the caller are used as they are (validated)."""
     if requested is not None:
-        return Route(teaching_skills.select(topic, requested, long_video=long_video), "requested")
+        selected = teaching_skills.select(topic, requested, long_video=long_video)
+        return Route(selected, "requested", objective=objective_for(topic, selected))
     keyword = teaching_skills.select(topic, long_video=long_video)
     if settings.SKILL_ROUTER != "llm" or not topic.strip():
-        return Route(keyword, "keyword")
+        return Route(keyword, "keyword", objective=objective_for(topic, keyword))
     available = teaching_skills.discover()
     try:
         llm = get_llm(settings.SKILL_ROUTER_MODEL or model or settings.PLANNER_MODEL or None)
-        msg = await llm.ainvoke(PROMPT.format(guides=_menu(available)) + f"\n\nTopic: {topic}")
+        objectives = "\n".join(f"- {key}: {pattern['purpose']}" for key, pattern in OBJECTIVES.items())
+        msg = await llm.ainvoke(PROMPT.format(guides=_menu(available), objectives=objectives) + f"\n\nTopic: {topic}")
         tin, tout = usage_of(msg)
         pick = _parse(text_of(msg))
     except Exception as exc:  # never block planning on the router
         log.warning("skill router failed, using keyword match: %s", exc)
-        return Route(keyword, "keyword (llm failed)")
+        return Route(keyword, "keyword (llm failed)", objective=objective_for(topic, keyword))
     chosen = merge(keyword, pick, available, long_video=long_video)
     log.info("skills topic=%r keyword=%s llm=%s -> %s", topic[:80], keyword, pick, chosen)
-    return Route(chosen, "llm", 1, tin, tout, pick)
+    return Route(chosen, "llm", 1, tin, tout, pick, objective_for(topic, chosen, pick.get("objective")))
 
 
 async def select_skills(state: VideoState) -> dict:
     requested = state["skills"]
     chosen = await route(state["topic"], requested, model=state["model"])
-    return {"selected": chosen.skills, "allowed": chosen.skills if requested is not None else None,
+    objective = state.get("objective") or chosen.objective
+    return {"objective": objective, "hint": state["hint"] + pattern_hint(objective),
+            "selected": chosen.skills, "allowed": chosen.skills if requested is not None else None,
             "route_usage": (chosen.calls, chosen.input_tokens, chosen.output_tokens)}

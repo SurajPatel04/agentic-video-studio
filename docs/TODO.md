@@ -151,7 +151,8 @@ The course graphics showcase covers 14 examples in `rendering/examples/course-gr
 - [x] API `POST /long`, `GET /long[/{id}]`, `POST /long/{id}/run`, `PUT /long/{id}/outline`, `GET|PUT /long/{id}/chapters/{n}/plan`, `POST /long/{id}/chapters/{n}/redo`, `GET /long/{id}/video`; CLI `long`, `long-run`, `long-status`, `long-redo`
 - [x] Whole-video captions (`captions.srt` / `.vtt`) and transcript with chapter headings; `GET /long/{id}/captions`, `GET /long/{id}/transcript`
 - [x] Resume endpoint runs on the event loop; per-job file locks prevent overlapping runs and edits, including during plan validation
-- [ ] Background runs are in-process tasks: after a server restart call `/long/{id}/run` to resume (no auto-resume / real queue yet)
+- [x] With `VIDEO_JOB_RUNNER=celery`, new long jobs submitted to `/videos` run in the Redis-backed worker and can reuse saved chapter state on redelivery.
+- [ ] Queue manual resume from `/long/{id}/run`, which still uses an in-process task.
 - [x] Parallel chapter rendering (bounded): `LONG_RENDER_WORKERS`, planning overlaps rendering
 - [x] Planner variety: `teach-code` hard rules (CodeScene per chapter + terminal output), style check `PLANNER_MAX_TEXT_RUN=3` (one retry, valid plan never lost), catalog shows number limits (`width: num 300..1800`)
 - [x] More CodeScenes per chapter: planner check asks for one per concept (`PLANNER_CODE_EVERY`)
@@ -208,8 +209,8 @@ The course graphics showcase covers 14 examples in `rendering/examples/course-gr
 - [x] Configure Celery with a Redis broker, Redis result backend, and a dedicated video queue in `app/config/celery.py`.
 
 - [ ] `POST /jobs`, `GET /jobs/{id}`, `GET /jobs/{id}/artifacts`
-- [ ] Redis + RQ/Celery worker; status in Redis (`queued` → `planning` → … → `done`/`failed`)
-- [ ] Worker calls the renderer with the job's `composition.json`
+- [x] Redis-backed Celery worker for `POST /videos` (short and long). Redis tracks Celery task results and the shared workspace stores API progress and artifacts.
+- [x] The video worker runs the planner and renderer with the job's composition.
 - [ ] Upload MP4 to MinIO/S3, return URL
 - [ ] Delete old `workspace/jobs/*` on a schedule
 

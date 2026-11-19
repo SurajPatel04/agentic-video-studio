@@ -86,7 +86,7 @@ def _repair_for(reply: str, spec: dict | None, problem: str, previous: Repair | 
 FALLBACK_SHARE = 0.25  # at most this share of scenes (and at least 1) may be replaced by a card
 
 
-async def _salvage(reply: str | None, problem: str, code_demo: str | None, *, lecture: bool = False) -> dict | None:
+async def _salvage(reply: str | None, problem: str, code_demo: str | None, *, lecture: bool = False, explainer: bool = False) -> dict | None:
     """Last resort when attempts run out: replace the few scenes that are still invalid with a plain
     title card that keeps their narration, so one stubborn scene does not fail the whole video."""
     if not reply or not problem.startswith("The JSON has these errors:"):
@@ -109,7 +109,7 @@ async def _salvage(reply: str | None, problem: str, code_demo: str | None, *, le
                      else {"title": title, "titleAt": "top"})
             scenes[i] = {k: v for k, v in old.items() if k in ("id", "durationInFrames", "narration", "transition")}
             scenes[i].update(component=card, props=props)
-        fixed, _ = await _check(json.dumps(spec), code_demo, lecture=lecture)
+        fixed, _ = await _check(json.dumps(spec), code_demo, lecture=lecture, explainer=explainer)
         if fixed:
             log.warning("planner.salvage replaced %d invalid scene(s) with a %s card: %s", len(bad), card,
                         ", ".join(str(scenes[i].get("id")) for i in sorted(bad)))
@@ -161,7 +161,7 @@ async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[s
         if reply is None:
             repair = None
             continue
-        spec, problem = await _check(reply, code_demo, lecture="teach-lecture" in skills, script=script)
+        spec, problem = await _check(reply, code_demo, lecture="teach-lecture" in skills, explainer="make-explainer" in skills, script=script)
         if spec:
             style = _lint(spec, skills, topic, code_demo=code_demo)
             if not style:
@@ -175,7 +175,7 @@ async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[s
         messages = [*messages[:2], AIMessage(reply), HumanMessage(problem)]
     if best.spec:
         return Plan(best.spec, best.attempt, "catalog", calls, tin, tout)
-    salvaged = None if script else await _salvage(last, problem, code_demo, lecture="teach-lecture" in skills)
+    salvaged = None if script else await _salvage(last, problem, code_demo, lecture="teach-lecture" in skills, explainer="make-explainer" in skills)
     if salvaged:
         return Plan(salvaged, settings.PLANNER_MAX_ATTEMPTS, "catalog", calls, tin, tout)
     raise PlanError(f"planner gave invalid JSON {settings.PLANNER_MAX_ATTEMPTS} times", problem)
@@ -227,7 +227,7 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
             continue
         attempts += 1
         last = text_of(msg)
-        spec, problem = await _check(last, code_demo, lecture="teach-lecture" in skills, script=script)
+        spec, problem = await _check(last, code_demo, lecture="teach-lecture" in skills, explainer="make-explainer" in skills, script=script)
         if spec:
             style = _lint(spec, skills, topic, code_demo=code_demo)
             if not style:
@@ -242,7 +242,7 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
         messages.append(HumanMessage(problem + " Use get_scene to check fields if unsure."))
     if best.spec:
         return Plan(best.spec, best.attempt, "tools", calls, tin, tout, sorted(loaded))
-    salvaged = None if script else await _salvage(last, problem, code_demo, lecture="teach-lecture" in skills)
+    salvaged = None if script else await _salvage(last, problem, code_demo, lecture="teach-lecture" in skills, explainer="make-explainer" in skills)
     if salvaged:
         return Plan(salvaged, attempts, "tools", calls, tin, tout, sorted(loaded))
     raise PlanError(f"planner did not produce valid JSON (mode=tools, {attempts} attempts, {calls} calls)", problem)
@@ -253,6 +253,8 @@ async def plan_scenes(state: VideoState) -> dict:
     topic, hint, model = state["topic"], state["hint"], state["model"]
     selected, allowed = state["selected"], state["allowed"]
     code_demo, mode, script = state["code_demo"], state["mode"], state.get("script")
+    if code_demo is None and state.get("objective"):
+        code_demo = ""  # A selected subject guide alone does not require source code.
     if script:
         beats = {sid: beat.model_dump() for sid, beat in script.by_id().items()}
         hint += f"\n{SCENE_DIRECTION}\n{json.dumps(beats, ensure_ascii=False)}\n"

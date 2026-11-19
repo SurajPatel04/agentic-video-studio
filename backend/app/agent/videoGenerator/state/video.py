@@ -6,6 +6,7 @@ from ..schemas.plan import Plan
 
 
 class VideoInput(TypedDict):
+    objective: NotRequired[str]
     topic: str
     hint: str
     model: str | None

@@ -34,6 +34,9 @@ class VideosApiTests(unittest.IsolatedAsyncioTestCase):
         patcher = patch.object(settings, "WORKSPACE_DIR", tmp)
         patcher.start()
         self.addCleanup(patcher.stop)
+        runner = patch.object(settings, "VIDEO_JOB_RUNNER", "local")
+        runner.start()
+        self.addCleanup(runner.stop)
         self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
     async def asyncTearDown(self):
@@ -86,6 +89,18 @@ class VideosApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(create.call_args.kwargs["job_id"], job["id"])
         self.assertEqual(create.call_args.args[1], 12)
         self.assertEqual(done["status"], "failed")
+
+    async def test_celery_job_is_pollable_before_the_worker_starts(self):
+        with patch.object(settings, "VIDEO_JOB_RUNNER", "celery"), \
+                patch("app.agent.videoGenerator.jobs.tasks.generate_video.apply_async") as publish:
+            for length in ("short", "long"):
+                response = await self.client.post("/videos", json={"prompt": "Explain DNS", "length": length})
+                self.assertEqual(response.status_code, 202)
+                job = response.json()
+                self.assertEqual(publish.call_args.kwargs["task_id"], job["id"])
+                status = (await self.client.get(job["status_url"])).json()
+                self.assertEqual((status["length"], status["status"], status["progress_percent"]),
+                                 (length, "queued", "0%"))
 
     async def test_bad_input_and_unknown_id(self):
         self.assertEqual((await self.client.post("/videos", json={"prompt": "x y z", "layout": "tv"})).status_code, 422)

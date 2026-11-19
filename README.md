@@ -66,3 +66,13 @@ PYTHONPATH=backend .venv/bin/python -m unittest discover -s backend/tests -p 'te
 The foundation interprets the full brief, including prompts whose language or subject does not match any tags. Format matching is a keyword heuristic, not a semantic classifier: a lecture about advertising and an ad for a course can share words. Guides explicitly defer to the requested purpose; use an explicit skills list when a routing choice is unsuitable. Long-video chapters receive the original user brief so language and format are preserved even when chapter titles omit them.
 
 Current limits: guides improve instructions, not factual verification or guaranteed teaching quality. The pipeline has no automatic research/source-checking stage, and JSON validation checks component compatibility rather than correctness or learner comprehension. Available scenes and supplied assets limit what can be shown; a guide cannot create missing footage or animations. Narration budgets estimate duration, not exact runtime. Inspect a generated plan and preview before treating a lecture or ad as ready to publish. Existing saved plans are not regenerated when guides change, and jobs with saved explicit guide lists keep those lists.
+
+## Local video worker
+
+With Redis running and the backend dependencies installed, set `VIDEO_JOB_RUNNER=celery` in the project-root `.env`. Start the API and the worker from the same checkout so they share the configured workspace and rendering files.
+
+```sh
+PYTHONPATH=backend .venv/bin/celery -A app.config.celery:celery_app worker --loglevel=INFO --concurrency=1
+```
+
+Submit a short or long job with `POST /videos` and poll the returned `status_url`. The worker consumes the configured `CELERY_VIDEO_QUEUE`. The API reads progress and artifacts from the shared workspace. `VIDEO_JOB_RUNNER=local` runs new jobs in the API process.

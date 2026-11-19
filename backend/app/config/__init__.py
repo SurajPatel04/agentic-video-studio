@@ -1,7 +1,10 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.utils.llm_accounting import ModelRates
 
 # Project root: backend/app/config/__init__.py -> parents[3]
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -14,6 +17,8 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://127.0.0.1:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://127.0.0.1:6379/1"
     CELERY_VIDEO_QUEUE: str = "video"
+    VIDEO_JOB_RUNNER: Literal["local", "celery"] = "local"
+    CELERY_VISIBILITY_TIMEOUT: int = Field(default=86400, gt=0)
 
     # Same convention as the discovery service: credentials live in the tracking URI,
     # e.g. https://user:password@dev.landnextrole.com/mlflow
@@ -26,6 +31,7 @@ class Settings(BaseSettings):
     # "gateway" (default): MLflow routes. "test": every call uses the TEST key (OpenAI) with TEST_MODEL,
     # whatever route name the code asks for. For live tests, keeps test traffic off production.
     LLM_PROFILE: str = "gateway"
+    LLM_PRICING_USD_PER_MTOK: dict[str, ModelRates] = Field(default_factory=dict)
     TEST: str = ""  # OpenAI API key for LLM_PROFILE=test (never logged)
     TEST_MODEL: str = "gpt-6-luna"
 

@@ -2263,7 +2263,32 @@ const SourceDocs: FC<ArtProps> = (p) => {
 
 /* ---------------------------------------------------------------------------- dispatch */
 
-export type ArtKind = MediaKind | CommunicationKind | AiKind | AudioKind | RoadKind | GeneralKind | 'server' | 'database' | 'storage' | 'cache' | 'cloud' | 'loadbalancer' | 'router' | 'api' | 'queue' | 'client' |
+export const HTTP_METHODS = {
+  'http-get': 'GET',
+  'http-post': 'POST',
+  'http-put': 'PUT',
+  'http-patch': 'PATCH',
+  'http-delete': 'DELETE',
+  'http-head': 'HEAD',
+  'http-options': 'OPTIONS',
+} as const;
+
+type HttpMethodKind = keyof typeof HTTP_METHODS;
+export const isHttpMethodKind = (kind: string): kind is HttpMethodKind =>
+  Object.prototype.hasOwnProperty.call(HTTP_METHODS, kind);
+
+const HttpMethodTile: FC<ArtProps & {method: string}> = ({method, ...props}) => {
+  const {g, T} = props;
+  const fontSize = Math.min(g.h * 0.57, g.w * 0.87 / (method.length * 0.64));
+  return <Decorated {...props} radius={T * 0.11} front={
+    <text x={g.w / 2} y={g.h / 2} textAnchor="middle" dominantBaseline="central"
+      fontFamily={PAPER.font} fontWeight={800} fontSize={fontSize} fill={PAPER.ink}>
+      {method}
+    </text>
+  } />;
+};
+
+export type ArtKind = HttpMethodKind | MediaKind | CommunicationKind | AiKind | AudioKind | RoadKind | GeneralKind | 'server' | 'database' | 'storage' | 'cache' | 'cloud' | 'loadbalancer' | 'router' | 'api' | 'queue' | 'client' |
   'laptop' | 'phone' | 'cpu' | 'memory' | 'globe' | 'lock' | 'file' | 'code' | 'box' |
   'tile' | 'tv' | 'radio' | 'newspaper' | 'tower' | 'satellite' | 'building' | 'book' | 'mic' | 'camera' | 'billboard' |
   'hospital' | 'doctor' | 'bed' | 'ambulance' | 'pill' | 'syringe' | 'heartmonitor' | 'microscope' | 'testtubes' | 'dna' |
@@ -2282,6 +2307,7 @@ export const IsoArt: FC<ArtProps & {kind: ArtKind}> = (props) => {
   if (Object.prototype.hasOwnProperty.call(MEDIA_KINDS, kind)) return <MediaArt {...props} kind={kind as MediaKind} />;
   if (Object.prototype.hasOwnProperty.call(AUDIO_KINDS, kind)) return <AudioArt {...props} kind={kind as AudioKind} />;
   if (isRoadKind(kind)) return <RoadArt {...props} kind={kind} />;
+  if (isHttpMethodKind(kind)) return <HttpMethodTile {...props} method={HTTP_METHODS[kind]} />;
   switch (kind) {
     case 'server': return <ServerRack {...props} />;
     case 'database': case 'storage': return <DatabaseArt {...props} />;

@@ -1,0 +1,38 @@
+prediction_pause_seconds: 3
+objectives:
+  recognize:
+    purpose: Identify a concept and explain its meaning using one example.
+    beats:
+      - Explain the idea in plain text before introducing an example.
+      - Read one complete example and identify its important parts.
+      - Keep the example visible and show the outcome or evidence.
+      - When useful, ask the learner to recognize the same idea in a small variation.
+    scenes: [ExplainScene, AnnotatedTextScene, WorkedExampleScene]
+  operate:
+    purpose: Perform a task in a tool or follow a procedure.
+    beats:
+      - State the result the learner will produce and what they need to start.
+      - Show the relevant controls or commands in order and reveal their effects.
+      - Show how to confirm the task succeeded.
+    scenes: [ExplainScene, EditorScene, TerminalScene, StepsScene]
+  trace:
+    purpose: Follow how a process changes a value or state.
+    beats:
+      - Explain the mechanism and show the initial input.
+      - Keep the example visible as each meaningful step changes it.
+      - Identify the resulting state and explain why it follows.
+    scenes: [ExplainScene, WorkedExampleScene, StepsScene, FlowchartScene]
+  compare:
+    purpose: Distinguish alternatives using a common criterion.
+    beats:
+      - State what the alternatives have in common and why the distinction matters.
+      - Put comparable evidence side by side early and highlight the relevant difference.
+      - Apply the difference to a decision or new case.
+    scenes: [ExplainScene, OutcomeComparisonScene, ComparisonTableScene]
+  interpret:
+    purpose: Use evidence to support an interpretation.
+    beats:
+      - State the concept or question the evidence will clarify.
+      - Show the actual source, excerpt, image, or data.
+      - Highlight the part that supports the interpretation and explain the connection.
+    scenes: [ExplainScene, AnnotatedTextScene, ImageScene, ChartScene]

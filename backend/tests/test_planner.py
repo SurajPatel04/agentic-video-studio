@@ -28,6 +28,25 @@ GOOD = spec(["TitleScene", "ExplainScene", "CodeScene", "DefinitionScene", "Flow
 
 
 class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
+    async def test_short_explainers_require_text_before_demonstration(self):
+        for topic, meaning in [
+            ("Explain the GET method", "A browser uses GET to ask a server for information."),
+            ("What is a primary source?", "A primary source gives firsthand evidence of an event."),
+        ]:
+            with self.subTest(topic=topic):
+                self.assertIn("make-explainer", skills.select(topic))
+                plan = spec(["ExplainScene", "StepsScene"])
+                plan["scenes"][0].update(durationInFrames=90, props={"heading": topic, "body": meaning})
+                for scene in plan["scenes"]:
+                    scene.setdefault("durationInFrames", 150)
+                checked, error = await planner._check(json.dumps(plan), explainer=True)
+                self.assertFalse(error)
+                self.assertEqual(checked["scenes"][0]["props"]["textAnimation"], "none")
+                plan["scenes"][0]["props"]["points"] = ["A distraction"]
+                self.assertIsNone((await planner._check(json.dumps(plan), explainer=True))[0])
+                plan["scenes"].reverse()
+                self.assertIsNone((await planner._check(json.dumps(plan), explainer=True))[0])
+
     async def test_lectures_open_with_a_readable_concept(self):
         for heading, body in [
             ("What is a collection?", "A collection groups resources a client can request together."),
@@ -98,6 +117,8 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
 
     def test_lint_counts_runs(self):
         self.assertIn("6 text-only scenes in a row", validation._lint(TEXTY))
+        lecture_feedback = validation._lint(TEXTY, ["teach-lecture"])
+        self.assertNotIn("text-only", lecture_feedback)
         self.assertEqual(validation._lint(GOOD), "")
 
     def test_new_lecture_layouts_are_discoverable_and_cueable(self):

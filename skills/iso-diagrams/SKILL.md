@@ -30,10 +30,10 @@ metadata:
 
 Hard rules (they override softer advice):
 - Use IsoScene for paper-style diagrams across subjects. Show concrete artifacts in the scenes named by the other guides. Use at most 5 consecutive IsoScenes.
-- Begin lectures with a concept card. Compare labelled groups side by side. For definitions, put a title and subtitle above a small illustrative diagram.
+- Begin lectures with a concept card. Compare labelled groups side by side. Use a small diagram for a definition when its meaning depends on a relationship.
 - Title and chapter cards use IsoScene with explicit `"objects": [], "links": [], "steps": []` to suppress the example diagram. Include eyebrow, title, subtitle and up to 4 short points. Use at most one such card per chapter.
 - For diagrams, use a short eyebrow and title, usually 3–5 objects, directional links and steps timed to narration.
-- Draw the HTTP participants. Use `kind: "server"` for the handling server, `kind: "api"` for a distinct API interface and `kind: "router"` for a network router. Write HTTP messages in `exampleLines` or link labels, such as `GET /products/42` and `200 OK`. Keep headers and JSON readable, with an editor view for long payloads.
+- When the verb itself needs an isometric tile, use one of `http-get`, `http-post`, `http-put`, `http-patch`, `http-delete`, `http-head`, `http-options`. Draw the HTTP participants. Use `kind: "server"` for the handling server, `kind: "api"` for a distinct API interface and `kind: "router"` for a network router. For a transfer between known participants, put the method on the outgoing arrow. Write HTTP messages in `exampleLines` or link labels, such as `GET /products/42` and `200 OK`. Keep headers and JSON readable, with an editor view for long payloads.
 
 Objects (kinds are drawn as what they are; pick the real thing):
 - Tech: server, database, storage, cache, cloud, loadbalancer, router, api, queue, client (monitor), laptop, phone, cpu, memory, globe, lock, file, code, box.

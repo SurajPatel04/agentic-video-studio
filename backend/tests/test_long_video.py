@@ -56,7 +56,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         self.rendered: list[str] = []
 
     async def fake_plan(self, topic, *, scenes, mode, model, context, skills=None, layout="desktop", code_demo=None,
-                        narration_budget=None):
+                        narration_budget=None, objective=""):
         self.contexts.append(context)
         n = int(topic.split("chapter ")[1].split(",")[0])
         budget = self.state.outline.chapters[n - 1].words

@@ -57,6 +57,7 @@ export const narrationSchema = z
     text: z.string().min(1).max(2000), // what the narrator says in this scene
     voice: z.string().max(60).optional(), // overrides the composition voice
     delay: frame.default(10), // frames after the scene starts
+    pauseAfterSeconds: z.number().min(0).max(15).optional(), // hold after the voice clip
   })
   .strict();
 

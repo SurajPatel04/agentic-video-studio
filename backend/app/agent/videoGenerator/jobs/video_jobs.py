@@ -10,10 +10,12 @@ are served from ``/videos/{id}/video|transcript|captions``.
 """
 
 import asyncio
+import fcntl
 import json
 import logging
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -35,8 +37,12 @@ def _short_dir(job_id: str) -> Path:
     return settings.WORKSPACE_DIR / "jobs" / job_id
 
 
+class QueueUnavailable(RuntimeError):
+    """The worker queue could not accept the request."""
+
+
 def _save(job_id: str, **changes: Any) -> dict[str, Any]:
-    d = _short_dir(job_id)
+    d = settings.WORKSPACE_DIR / ("long" if long_video.ID_RE.fullmatch(job_id) else "jobs") / job_id
     d.mkdir(parents=True, exist_ok=True)
     path = d / "status.json"
     status = json.loads(path.read_text()) if path.exists() else {}
@@ -47,7 +53,57 @@ def _save(job_id: str, **changes: Any) -> dict[str, Any]:
     return status
 
 
-async def _run_short(job_id: str, req: dict[str, Any]) -> None:
+def _enqueue(job_id: str, req: dict[str, Any], length: str) -> None:
+    from kombu.exceptions import OperationalError
+
+    from app.agent.videoGenerator.jobs.tasks import generate_video
+
+    _save(job_id, id=job_id, length=length, layout=req["layout"], prompt=req["prompt"], status="queued",
+          step="queued", progress=0.0, error="", created=time.time(), runner="celery")
+    try:
+        generate_video.apply_async(args=[job_id, req, length], task_id=job_id, retry=False)
+    except OperationalError as exc:
+        _save(job_id, status="failed", step="queue unavailable", error="Could not reach the video queue")
+        raise QueueUnavailable("Could not reach the video queue") from exc
+
+
+@contextmanager
+def _worker_lock(path: Path):
+    with path.open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            yield False
+        else:
+            yield True
+
+
+async def run_queued_video(job_id: str, req: dict[str, Any], length: str) -> None:
+    directory = (settings.WORKSPACE_DIR / "long" / job_id) if length == "long" else _short_dir(job_id)
+    with _worker_lock(directory / ".worker.lock") as owns_job:
+        if not owns_job:
+            return
+        launch = json.loads((directory / "status.json").read_text())
+        if launch["status"] in {"done", "failed"}:
+            return
+        if length == "short":
+            await _run_short(job_id, req, propagate=True)
+            return
+        try:
+            if not (directory / "state.json").exists():
+                _save(job_id, status="running", step="writing the outline", progress=0.02)
+                await _create_outline(job_id, req)
+            _save(job_id, status="running", step="planning and rendering chapters")
+            state = await long_video.run_long_video(job_id)
+            if state.status != "done":
+                raise RuntimeError(state.error or f"Video ended with status {state.status}")
+            _save(job_id, status="done", step=state.step, progress=1.0)
+        except Exception as exc:
+            _save(job_id, status="failed", error=f"{type(exc).__name__}: {exc}"[:2000])
+            raise
+
+
+async def _run_short(job_id: str, req: dict[str, Any], *, propagate: bool = False) -> None:
     try:
         _save(job_id, status="running", step="planning scenes", progress=0.1)
         plan = await plan_video(req["prompt"], scenes=req.get("scenes"), model=req.get("model"), mode=req.get("planner"),
@@ -61,10 +117,15 @@ async def _run_short(job_id: str, req: dict[str, Any]) -> None:
         log.exception("short video %s failed", job_id)
         _save(job_id, status="failed", error=f"{type(exc).__name__}: {exc}"[:2000],
               details=str(getattr(exc, "details", ""))[-3000:])
+        if propagate:
+            raise
 
 
 def start_short(req: dict[str, Any]) -> str:
     job_id = uuid.uuid4().hex[:12]
+    if settings.VIDEO_JOB_RUNNER == "celery":
+        _enqueue(job_id, req, "short")
+        return job_id
     _save(job_id, id=job_id, length="short", layout=req["layout"], prompt=req["prompt"], status="queued", step="queued",
           progress=0.0, error="", created=time.time())
     _tasks[job_id] = asyncio.get_running_loop().create_task(_run_short(job_id, req))
@@ -74,12 +135,16 @@ def start_short(req: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------- long
 
 
+async def _create_outline(job_id: str, req: dict[str, Any]) -> None:
+    await long_video.create_long_video(req["prompt"], req["minutes"], chapters=req.get("chapters"), captions=req.get("captions", True),
+                                       scale=req.get("scale", 1.0), mode=req.get("planner"), model=req.get("model"),
+                                       skills=req.get("skills"), layout=req["layout"], job_id=job_id,
+                                       fixed_length=req.get("fixed_length", False))
+
+
 async def _run_long(job_id: str, req: dict[str, Any]) -> None:
     try:
-        await long_video.create_long_video(req["prompt"], req["minutes"], chapters=req.get("chapters"), captions=req.get("captions", True),
-                                           scale=req.get("scale", 1.0), mode=req.get("planner"), model=req.get("model"),
-                                           skills=req.get("skills"), layout=req["layout"], job_id=job_id,
-                                           fixed_length=req.get("fixed_length", False))
+        await _create_outline(job_id, req)
         _starting.pop(job_id, None)
         long_video.start(job_id, render=True)
     except Exception as exc:
@@ -89,6 +154,9 @@ async def _run_long(job_id: str, req: dict[str, Any]) -> None:
 
 def start_long(req: dict[str, Any]) -> str:
     job_id = long_video.new_id()
+    if settings.VIDEO_JOB_RUNNER == "celery":
+        _enqueue(job_id, req, "long")
+        return job_id
     _starting[job_id] = {"id": job_id, "length": "long", "layout": req["layout"], "prompt": req["prompt"], "status": "running",
                          "step": "writing the outline", "progress": 0.02, "error": "", "created": time.time(), "updated": time.time()}
     _tasks[job_id] = asyncio.get_running_loop().create_task(_run_long(job_id, req))
@@ -107,7 +175,10 @@ def _urls(job_id: str, done: bool) -> dict[str, Any]:
 
 def kind(job_id: str) -> str | None:
     """"long" | "short" | None (unknown id)."""
-    if job_id in _starting or (long_video.ID_RE.fullmatch(job_id) and (settings.WORKSPACE_DIR / "long" / job_id / "state.json").exists()):
+    long_dir = settings.WORKSPACE_DIR / "long" / job_id
+    if job_id in _starting or (long_video.ID_RE.fullmatch(job_id) and any(
+        (long_dir / name).exists() for name in ("state.json", "status.json")
+    )):
         return "long"
     d = _short_dir(job_id)
     if len(job_id) == 12 and ((d / "status.json").exists() or (d / "video.mp4").exists()):
@@ -141,18 +212,33 @@ def _job_status(job_id: str) -> dict[str, Any] | None:
             return {"id": job_id, "length": "short", "layout": layout, "prompt": "", "status": "done", "step": "done",
                     "progress": 1.0, "error": "", "created": created, "updated": created, **_urls(job_id, True)}
         s = json.loads((d / "status.json").read_text())
-        if s.get("status") in ("queued", "running") and not (job_id in _tasks and not _tasks[job_id].done()):
+        if s.get("runner") != "celery" and s.get("status") in ("queued", "running") and not (job_id in _tasks and not _tasks[job_id].done()):
             s.update(status="failed", error=s.get("error") or "the server stopped while this video was being made; send it again")
         s.pop("video", None)
         return {**s, **_urls(job_id, s.get("status") == "done")}
     if job_id in _starting:
         s = dict(_starting[job_id])
         return {**s, **_urls(job_id, False)}
+    directory = settings.WORKSPACE_DIR / "long" / job_id
+    launch = directory / "status.json"
+    queued = json.loads(launch.read_text()) if launch.exists() else {}
+    if not (directory / "state.json").exists():
+        return {**queued, **_urls(job_id, False)}
     st = long_video.load(job_id)
     running = long_video.is_running(job_id)
-    status = "done" if st.status == "done" else "failed" if st.status == "failed" else "running" if running else "paused"
+    if queued.get("status") == "running" and (directory / ".worker.lock").exists():
+        with _worker_lock(directory / ".worker.lock") as free:
+            running = running or not free
+    if st.status == "done":
+        status = "done"
+    elif running:
+        status = "running"
+    elif st.status == "failed" or (queued.get("status") == "failed" and st.status == "running"):
+        status = "failed"
+    else:
+        status = "paused"
     return {"id": st.id, "length": "long", "layout": st.layout, "prompt": st.topic, "status": status, "step": st.step,
-            "progress": round(st.progress, 3), "error": st.error, "minutes": st.minutes, "max_minutes": st.max_minutes or st.minutes, "chapters": len(st.chapters),
+            "progress": round(st.progress, 3), "error": st.error or (queued.get("error", "") if status == "failed" else ""), "minutes": st.minutes, "max_minutes": st.max_minutes or st.minutes, "chapters": len(st.chapters),
             "seconds": st.seconds, "timestamps": st.timestamps, "skills": st.skills, "llm_calls": st.llm_calls,
             "input_tokens": st.input_tokens, "output_tokens": st.output_tokens, "created": st.created, "updated": st.updated,
             **_urls(job_id, status == "done")}
@@ -175,6 +261,7 @@ def file(job_id: str, name: str) -> Path | None:
 def list_jobs(limit: int = 50) -> list[dict[str, Any]]:
     ids = [p.parent.name for p in (settings.WORKSPACE_DIR / "jobs").glob("*/status.json")]
     ids += [p.parent.name for p in (settings.WORKSPACE_DIR / "long").glob("*/state.json")] + list(_starting)
+    ids += [p.parent.name for p in (settings.WORKSPACE_DIR / "long").glob("*/status.json")]
     views = [v for v in (view(i) for i in dict.fromkeys(ids)) if v]
     views.sort(key=lambda v: v.get("created", 0), reverse=True)
     keep = ("id", "length", "layout", "prompt", "status", "step", "progress", "progress_percent", "created")

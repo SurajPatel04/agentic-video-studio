@@ -4,7 +4,17 @@ prompt: |-
   ABOUT that subject (a video about HTTPS is networking; a React video is programming; an Instagram feed is
   media). Do not pick a guide for a word that is only mentioned in passing. Pick none when nothing fits.
 
+  For a request to explain a concept, including short questions and obvious misspellings, select make-explainer
+  unless the user requests a lecture or another specific format. Choose the subject independently.
+  A request for a tool walkthrough or a concrete action in a tool is also an explainer.
+
+  Choose the learning objective by what the viewer should be able to do at the end. Use null for other formats.
+  Separate requests to explain a concept from requests to perform a task in an explicitly named tool.
+
+  Objectives:
+  {objectives}
+
   Guides:
   {guides}
 
-  Reply with ONLY JSON: {{"format": "<format guide or null>", "style": "<style guide or null>", "subjects": ["<up to 2 subject guides, best first>"]}}
+  Reply with ONLY JSON: {{"format": "<format guide or null>", "style": "<style guide or null>", "objective": "<objective or null>", "subjects": ["<up to 2 subject guides, best first>"]}}

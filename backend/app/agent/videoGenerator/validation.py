@@ -56,7 +56,7 @@ def _concept_card(scene: dict[str, Any]) -> bool:
             and all(isinstance(props.get(k), str) and props[k].strip() for k in ("heading", "body")))
 
 
-async def _check(reply: str, code_demo: str | None = None, *, lecture: bool = False,
+async def _check(reply: str, code_demo: str | None = None, *, lecture: bool = False, explainer: bool = False,
                  script: Script | None = None) -> tuple[dict[str, Any] | None, str]:
     """Parse + validate a reply. Returns (spec, "") or (None, problem to send back)."""
     try:
@@ -80,7 +80,7 @@ async def _check(reply: str, code_demo: str | None = None, *, lecture: bool = Fa
         await validate(path)
     except RenderError as exc:
         return None, f"The JSON has these errors:\n{exc.details}\nFix them and reply with ONLY the full corrected JSON."
-    if lecture:
+    if lecture or explainer:
         scenes = spec["scenes"]
         opening = scenes[0]
         props = opening.get("props") or {}
@@ -89,10 +89,14 @@ async def _check(reply: str, code_demo: str | None = None, *, lecture: bool = Fa
         first_lesson = scenes[1:2] if title else scenes[:1]
         if not first_lesson or not _concept_card(first_lesson[0]):
             return None, "Open the lesson with ExplainScene (or place it immediately after the title). Supply heading and body explaining the idea before showing its example."
+        card = first_lesson[0]
+        if card.get("overlays") or any(card["props"].get(k) for k in ("device", "stat", "points", "arrows")):
+            return None, "Keep the opening explanation readable. Use its heading and body, then move demonstrations and animated details to the next scene."
         if evidence := _lecture_evidence(scenes):
             return None, "Fix the lesson's visible examples:\n- " + "\n- ".join(evidence)
-        spec.setdefault("defaultTransition", {"type": "fade", "durationInFrames": 15})
-        for scene in filter(_concept_card, scenes):
+        if lecture:
+            spec.setdefault("defaultTransition", {"type": "fade", "durationInFrames": 15})
+        for scene in filter(_concept_card, scenes if lecture else first_lesson):
             props = scene["props"]
             props.update(textAnimation="none", startAt=0)
             # Allow a quiet reading beat even when the recorded sentence is short.
@@ -141,9 +145,10 @@ def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic:
         if not used & set(need):
             problems.append(f'the topic mentions "{hit}", so the viewer must SEE it: add a {" or ".join(need)} that animates '
                             "it (computed steps, not a text card or a generic diagram), with narration that follows it.")
-    texts = sum(s.get("component") in TEXT_SCENES and not ("teach-lecture" in skills and _concept_card(s)) for s in scenes)
+    lecture = "teach-lecture" in skills
+    texts = sum(s.get("component") in TEXT_SCENES for s in scenes)
     cap = max(2, int(len(scenes) * settings.PLANNER_MAX_TEXT_SHARE))
-    if scenes and texts > cap:
+    if not lecture and texts > cap:
         problems.append(f"{texts} of {len(scenes)} scenes are text-only (Definition/Explain/BulletList); the most allowed is "
                         f"{cap}. Turn {texts - cap} of them into scenes that SHOW the idea (code, flowchart, cycle, comparison, "
                         "chart, timeline, devices, connection).")
@@ -159,7 +164,7 @@ def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic:
         run = run + 1 if s.get("component") in TEXT_SCENES else 0
         if run > worst:
             worst, at = run, s.get("id", "")
-    if worst > settings.PLANNER_MAX_TEXT_RUN:
+    if not lecture and worst > settings.PLANNER_MAX_TEXT_RUN:
         problems.append(f"{worst} text-only scenes in a row (Definition/Explain/BulletList, ending at '{at}'); the limit is "
                         f"{settings.PLANNER_MAX_TEXT_RUN}. Replace some with a visual scene (code, diagram, flowchart, "
                         "comparison, chart, devices) that shows the same idea.")

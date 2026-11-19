@@ -6,12 +6,15 @@ from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from app.utils.tts import MAX_CHARS
 
+from ..teaching_patterns import PREDICTION_PAUSE_SECONDS
+
 Nonempty = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 class Beat(BaseModel):
     narration: Nonempty = Field(max_length=MAX_CHARS)
     visual: Nonempty
+    prediction: bool = False
 
 
 class Script(BaseModel):
@@ -27,7 +30,10 @@ class Script(BaseModel):
         if not isinstance(scenes, list) or [s.get("id") if isinstance(s, dict) else None for s in scenes] != list(beats):
             raise ValueError(f"Use exactly these scene ids in this order: {', '.join(beats)}. Use one scene per beat.")
         for scene in scenes:
-            scene["narration"] = {"text": beats[scene["id"]].narration}
+            beat = beats[scene["id"]]
+            scene["narration"] = {"text": beat.narration}
+            if beat.prediction:
+                scene["narration"]["pauseAfterSeconds"] = PREDICTION_PAUSE_SECONDS
             scene.pop("voice", None)  # Only TTS supplies recorded audio and word timings.
 
 

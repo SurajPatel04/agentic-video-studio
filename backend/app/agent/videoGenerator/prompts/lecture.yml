@@ -1,14 +1,21 @@
 writer: |
   Write the spoken lesson and the evidence a viewer should see. A separate planner will design the slides.
   Write in the language, scope, and format of the brief. Assume a complete beginner unless the brief names other prerequisites.
-  Start with a specific situation that gives the learner a reason to care. The first teaching beat pairs that situation
-  with a short, readable main idea. Explain unfamiliar terms at their first use, in the context of the problem.
+  For a concept lesson, open the first teaching beat with the requested term and a plain-language sentence
+  explaining its meaning and purpose. Put the sentence on screen while the narrator explains it. Introduce
+  the worked example in the following beat. Explain unfamiliar terms at their first use, in the context of the problem.
   Use a coherent example throughout when useful. Progress from the starting state through each meaningful step
   to the outcome, explaining why it follows. Keep names, values, quantities, and terminology consistent with the brief
   and earlier chapters. Reserve time for interpretation, and offer prediction or practice only if it helps the learner.
+  Introduce the rule before the full demonstration. When following a value or interpreting evidence,
+  specify a persistent written example, including the intermediate step and its meaning. Use a diagram
+  for a relationship the learner needs to see. Reuse established participants when that relationship changes.
   Speak naturally, with no stage directions or spoken glossary lists. Check the reasoning, calculations, and examples
   before answering. Label invented examples as illustrative and make factual claims only to the extent supported.
 
+  Give the learner a reason to look: ask a concrete question that the example can answer. In the visual
+  direction, supply the actual short sentence to read alongside the evidence. Explain what a detail means
+  or why it matters. Let each later sentence develop the idea instead of restating the definition.
   Write one focused beat per intended scene, usually one to three short spoken sentences. Each visual direction
   specifies what must be readable and which part changes as the speaker names it. Include the complete request and
   response, actual values, or the excerpt the learner will interpret when that evidence matters. For each highlight or reveal,
@@ -16,7 +23,10 @@ writer: |
   visual field for directions, with no scene names, component props, or animation timings. Include any requested chapter
   title and bridge within the beats so the visual planner can follow them without introducing new narration.
 
+  When asking a prediction question, use a separate beat and mark prediction:true. End that beat with the
+  question and keep the example visible during the quiet hold. Reveal the answer in the following beat.
   Return only JSON in the form {"beats":[{"narration":"exact words to voice","visual":"what to show"}]}.
+  Include prediction only on a prediction question.
 
 scene_direction: >-
   Use exactly one scene per script beat, using its beat id as the scene id, in order. The pipeline inserts
@@ -25,13 +35,17 @@ scene_direction: >-
 
 reviewer: |
   Review these lecture scenes before voice recording. You have the original brief, script and actual scene props.
+  For a beginner concept lesson, verify that the first teaching beat answers what the requested concept means
+  in readable text and speech before its first demonstration.
   Check coverage of the requested teaching outcome, prerequisite order, factual accuracy and consistency of shared values.
   Check that the visuals show the concrete example, result, and difference the narration refers to, at the spoken cue.
+  If an icon stands in for the field, calculation or evidence under discussion, request that exact material
+  on screen. Check whether repeated diagrams introduce a relationship the learner still needs to see.
   Follow the lesson in order and account for the contents already visible from earlier scenes. Distinguish minor wording
   or style preferences from problems that materially change what a beginner learns. Report only material problems supported
   by what you see, and describe an actionable fix. Assign each gap to the specific scene that should fix it. If the narration
   is correct, request the visual fix and omit replacement. If the script itself needs a correction, supply replacement with
-  both the complete revised narration and what the corrected beat must show. Preserve the lesson language and budget.
+  both the complete revised narration and what the corrected beat must show. Preserve prediction:true on a retained prediction question. Preserve the lesson language and budget.
   When no material issues remain, return {"issues":[]}.
   Return only JSON in the form {"issues":[{"scene_id":"beat-2","problem":"specific problem and fix",
   "replacement":{"narration":"corrected spoken text","visual":"corrected visual direction"}}]}.

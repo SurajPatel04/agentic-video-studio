@@ -13,6 +13,7 @@ from langchain_openai import ChatOpenAI
 
 from app.config import settings
 from app.utils.console import LLM_LOGGER
+from app.utils.llm_accounting import record_usage
 
 log = logging.getLogger(__name__)
 
@@ -104,6 +105,7 @@ def get_tool_llm(model: str | None = None, **kwargs: Any) -> ChatOpenAI:
 def usage_of(message: Any) -> tuple[int, int]:
     """(input tokens, output tokens) of an LLM reply, 0 when unknown."""
     u = getattr(message, "usage_metadata", None) or {}
+    record_usage(message, u, settings.LLM_PRICING_USD_PER_MTOK)
     return int(u.get("input_tokens", 0)), int(u.get("output_tokens", 0))
 
 

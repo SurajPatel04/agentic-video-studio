@@ -11,7 +11,7 @@ import {LookupBadge, lookupState, badgeSchema} from '../iso/LookupBadge';
 import {IsoLink} from '../iso/link';
 import {BroadcastWaves, shareHops, unitInterval, type LinkMedia} from '../iso/MediaFlow';
 import {along, bendPoint, curve, sample} from '../iso/curve';
-import {IsoArt, Road, iconByName, type ArtKind} from '../iso/objects';
+import {HTTP_METHODS, IsoArt, Road, iconByName, isHttpMethodKind, type ArtKind} from '../iso/objects';
 import {GENERAL_KINDS} from '../iso/general';
 import {COMMUNICATION_KINDS} from '../iso/communication';
 import {AI_KINDS} from '../iso/ai';
@@ -27,7 +27,12 @@ const ROAD_PRESETS = Object.fromEntries(Object.entries(ROAD_KINDS).map(([kind, v
 const COMMUNICATION_PRESETS = Object.fromEntries(Object.entries(COMMUNICATION_KINDS).map(([kind, value]) => [kind, {shape: 'art', size: [...value.size], color: value.color}])) as Record<keyof typeof COMMUNICATION_KINDS, Kind>;
 const AI_PRESETS = Object.fromEntries(Object.entries(AI_KINDS).map(([kind, value]) => [kind, {shape: 'art', size: [...value.size], color: value.color}])) as Record<keyof typeof AI_KINDS, Kind>;
 const AUDIO_PRESETS = Object.fromEntries(Object.entries(AUDIO_KINDS).map(([kind, value]) => [kind, {shape: 'art', size: [...value.size], color: value.color}])) as Record<keyof typeof AUDIO_KINDS, Kind>;
+const HTTP_PRESETS = Object.fromEntries(Object.keys(HTTP_METHODS).map(kind =>
+  [kind, {shape: 'art', size: [2.35, 0.30, 0.88], color: 'butter'}],
+)) as Record<keyof typeof HTTP_METHODS, Kind>;
+
 export const KINDS = {
+  ...HTTP_PRESETS,
   ...COMMUNICATION_PRESETS,
   ...AI_PRESETS,
   ...AUDIO_PRESETS,
@@ -323,6 +328,14 @@ const KIND_ALIASES: Record<string, string> = {
 const fixKind = (raw: unknown) => {
   if (!raw || typeof raw !== 'object') return raw;
   const o = raw as Record<string, unknown>;
+  if (o.kind === 'tile' && (o.design === 'http-method' || o.design === 'api-request')) {
+    const method = typeof o.label === 'string' ? o.label.trim().match(/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)(?=$|\s)/i)?.[1] : undefined;
+    const kind = method && `http-${method.toLowerCase()}`;
+    if (kind && isHttpMethodKind(kind)) {
+      const {design: _design, faces: _faces, icon: _icon, ...object} = o;
+      return {...object, kind};
+    }
+  }
   if (typeof o.kind !== 'string' || o.kind in KINDS) return raw;
   const k = o.kind.trim().toLowerCase().replace(/[\s_]+/g, '-');
   if (k in KINDS) return {...o, kind: k};
@@ -426,6 +439,7 @@ export const isoSceneSchema = z.object({
 });
 
 export const description =
+  'Use http-get, http-post, http-put, http-patch, http-delete, http-head or http-options for request method tiles. Put paths and payload details on links or in exampleLines. ' +
   'Place kind table with table:{name,columns,rows,indexed?,locked?,duplicateKey?} next to a database to show the actual records. ' +
   'Timed steps support timer, count, meter, progress, ttl, retry, queue, think, react, say and mood. A reply step such as cache→app returns on an existing request link. Links can clean or drop packets and carry keys or coins. ' +
   'Use badge on objects or timed steps for animated lookup, worker, access or health states. Use none to clear, or {icon,text,tone} for a custom Lucide badge. ' +
@@ -789,7 +803,7 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
           {ob.kind !== 'table' && (g.shape === 'art' || slab) ? sh : null}
           {body}
         </g>
-        {s.label && !slab ? (
+        {s.label && !slab && !(isHttpMethodKind(ob.kind) && s.label.trim().toUpperCase() === HTTP_METHODS[ob.kind]) ? (
           <text x={labelAt.x} y={labelAt.y} textAnchor="middle" fontFamily={PAPER.font} fontWeight={700} fontSize={fs} fill={PAPER.ink}
             stroke={PAPER.bg} strokeWidth={fs * 0.32} paintOrder="stroke" strokeLinejoin="round" opacity={labelIn}>{s.label}</text>
         ) : null}

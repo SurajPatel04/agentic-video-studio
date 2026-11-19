@@ -37,6 +37,7 @@ from pydantic import ValidationError
 
 from app.agent.videoGenerator import skills as teaching_skills
 from app.agent.videoGenerator.nodes import select_skills as skill_router
+from app.agent.videoGenerator.teaching_patterns import pattern_hint
 from app.agent.videoGenerator.generator import plan_video
 from app.agent.videoGenerator.nodes.plan_scenes import PlanError, _extract_json, apply_layout
 from app.agent.videoGenerator.prompts.catalog import BRIEF_GUIDANCE, OUTLINE_RULES
@@ -47,6 +48,7 @@ from app.utils import cues, subtitles
 from app.utils.console import step
 from app.utils.iso import expand_continuations
 from app.utils.llm import get_llm, text_of, usage_of
+from app.utils.llm_accounting import UsageDetails, collect_usage
 from app.utils.render import RenderError, captions_enabled, default_caption_mode, render_video, validate, without_intro
 
 log = logging.getLogger(__name__)
@@ -156,13 +158,13 @@ def length_rule(minutes: float, chapters: int | None, fixed: bool) -> str:
 
 
 async def make_outline(topic: str, minutes: float, *, chapters: int | None = None, model: str | None = None,
-                       skills: list[str] | None = None, fixed_length: bool = False) -> tuple[Outline, int, int, int]:
+                       skills: list[str] | None = None, fixed_length: bool = False, objective: str = "") -> tuple[Outline, int, int, int]:
     """LLM writes the outline. Returns (outline, llm calls, input tokens, output tokens).
     ``minutes`` is the exact length with ``fixed_length``, else the most the video may take."""
     selected = teaching_skills.select(topic, skills, long_video=True)
     rule = length_rule(minutes, chapters, fixed_length)
     messages: list[Any] = [
-        SystemMessage(BRIEF_GUIDANCE + "\n" + OUTLINE_RULES.format(length_rule=rule) + teaching_skills.guidance(selected)),
+        SystemMessage(BRIEF_GUIDANCE + "\n" + OUTLINE_RULES.format(length_rule=rule) + pattern_hint(objective) + teaching_skills.guidance(selected)),
         HumanMessage(f"Topic: {topic}\nTotal length: {'exactly' if fixed_length else 'up to'} {minutes:g} minutes."),
     ]
     llm = get_llm(model or settings.LONG_MODEL or settings.PLANNER_MODEL or None)
@@ -211,16 +213,25 @@ async def create_long_video(topic: str, minutes: float, *, chapters: int | None 
     """Write and save the outline (nothing planned or rendered yet). Review it, then run.
     ``minutes`` is the most the video may take (the content decides, never padded); ``fixed_length`` makes it exact.
     ``job_id``: use this id (from new_id()) so a caller can report on the job while the outline is written."""
-    chosen = await skill_router.route(topic, skills, long_video=True, model=model)  # once; chapters reuse it
-    selected = chosen.skills
-    with step("outline", topic=topic, minutes=minutes, skills=",".join(selected)) as s:
-        outline, calls, tin, tout = await make_outline(topic, minutes, chapters=chapters, model=model, skills=selected,
-                                                       fixed_length=fixed_length)
-        planned = round(sum(c.minutes for c in outline.chapters), 1)
-        s.update(chapters=len(outline.chapters), planned_min=planned, limit_min=minutes, tokens_in=tin, tokens_out=tout)
+    started = time.perf_counter()
+    with collect_usage() as usage:
+        routing_started = time.perf_counter()
+        chosen = await skill_router.route(topic, skills, long_video=True, model=model)  # once; chapters reuse it
+        routing_seconds = time.perf_counter() - routing_started
+        outline_started = time.perf_counter()
+        selected = chosen.skills
+        with step("outline", topic=topic, minutes=minutes, skills=",".join(selected)) as s:
+            outline, calls, tin, tout = await make_outline(topic, minutes, chapters=chapters, model=model, skills=selected,
+                                                           fixed_length=fixed_length, objective=chosen.objective)
+            planned = round(sum(c.minutes for c in outline.chapters), 1)
+            s.update(chapters=len(outline.chapters), planned_min=planned, limit_min=minutes, tokens_in=tin, tokens_out=tout)
     state = _new_state(topic, planned, outline, max_minutes=minutes, job_id=job_id, captions=captions, scale=scale, mode=mode, model=model,
-                       skills=selected, layout=layout)
+                       skills=selected, layout=layout, objective=chosen.objective)
     state.llm_calls, state.input_tokens, state.output_tokens = calls + chosen.calls, tin + chosen.input_tokens, tout + chosen.output_tokens
+    state.processing_seconds = {"routing": round(routing_seconds, 3),
+                                "outline": round(time.perf_counter() - outline_started, 3)}
+    state.total_processing_seconds = round(time.perf_counter() - started, 3)
+    state.add_usage(usage.details)
     state.step = f"outline: {len(outline.chapters)} chapters"
     save(state)
     log.info("long.outline id=%s chapters=%d tokens_in=%d tokens_out=%d", state.id, len(outline.chapters), tin, tout)
@@ -323,10 +334,19 @@ async def plan_chapter(state: LongState, n: int) -> dict[str, Any]:
     note = ""
     for _ in range(2):
         topic = f"{state.outline.title}: chapter {n}, {ch.title}"
-        plan = await plan_video(
-            topic, scenes=scenes, mode=state.mode, model=state.model, context=chapter_context(state, n, note),
-            skills=state.skills, layout=state.layout, code_demo=ch.code_demo.strip(), narration_budget=ch.words,  # type: ignore[arg-type]
-        )
+        with collect_usage() as usage:
+            try:
+                plan = await plan_video(
+                    topic, scenes=scenes, mode=state.mode, model=state.model, context=chapter_context(state, n, note),
+                    skills=state.skills, layout=state.layout, objective=state.objective, code_demo=ch.code_demo.strip(), narration_budget=ch.words,  # type: ignore[arg-type]
+                )
+            except BaseException:
+                cs.llm_calls += usage.details.usage_details_calls
+                cs.input_tokens += usage.input_tokens
+                cs.output_tokens += usage.output_tokens
+                raise
+            finally:
+                cs.add_usage(usage.details)
         cs.llm_calls += plan.llm_calls
         cs.input_tokens += plan.input_tokens
         cs.output_tokens += plan.output_tokens
@@ -375,6 +395,8 @@ async def _render_chapter(state: LongState, n: int) -> None:
         spec = without_intro(spec)  # the logo intro plays once, at the start of the whole video
     result = await render_video(spec, captions=state.captions, job_id=cs.job_id, scale=state.scale,
                                 concurrency=render_concurrency())
+    for stage, seconds in getattr(result, "processing_seconds", {}).items():
+        cs.processing_seconds[stage] = round(cs.processing_seconds.get(stage, 0) + seconds, 3)
     cs.seconds = await _duration(result.video)
     cs.status, cs.failed_stage, cs.error = "rendered", "", ""
 
@@ -566,11 +588,13 @@ def start(job_id: str, *, render: bool = True) -> bool:
     return True
 
 
-def _total_tokens(state: LongState, outline_calls: tuple[int, int, int]) -> None:
+def _total_tokens(state: LongState, outline_calls: tuple[int, int, int], outline_details: UsageDetails) -> None:
     calls, tin, tout = outline_calls
     state.llm_calls = calls + sum(c.llm_calls for c in state.chapters)
     state.input_tokens = tin + sum(c.input_tokens for c in state.chapters)
     state.output_tokens = tout + sum(c.output_tokens for c in state.chapters)
+    for field in UsageDetails.model_fields:
+        setattr(state, field, getattr(outline_details, field) + sum(getattr(c, field) for c in state.chapters))
 
 
 @_exclusive
@@ -586,12 +610,18 @@ async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
     (planning waits on the LLM, rendering uses the CPU). Up to LONG_RENDER_WORKERS chapters render at
     once. LONG_PARALLEL_PLANNING plans all chapters at once (faster; each chapter then knows the outline
     but not what earlier chapters actually said)."""
+    started = time.perf_counter()
     state = load(job_id)
+    previous_seconds = state.total_processing_seconds or 0
     if state.skills is None:
         state.skills = teaching_skills.select(state.topic, long_video=True)
     outline_usage = (state.llm_calls - sum(c.llm_calls for c in state.chapters),
                      state.input_tokens - sum(c.input_tokens for c in state.chapters),
                      state.output_tokens - sum(c.output_tokens for c in state.chapters))
+    outline_details = UsageDetails(**{
+        field: max(0, getattr(state, field) - sum(getattr(c, field) for c in state.chapters))
+        for field in UsageDetails.model_fields
+    })
     total = len(state.chapters)
     planning: set[int] = set()
     rendering: set[int] = set()
@@ -603,7 +633,8 @@ async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
         busy = ([f"planning ch {', '.join(map(str, sorted(planning)))}"] if planning else []) + \
                ([f"rendering ch {', '.join(map(str, sorted(rendering)))}"] if rendering else [])
         state.step = text or " · ".join(busy) or state.step
-        _total_tokens(state, outline_usage)
+        state.total_processing_seconds = round(previous_seconds + time.perf_counter() - started, 3)
+        _total_tokens(state, outline_usage, outline_details)
         save(state)
 
     def fail(cs: ChapterState, stage: str, exc: BaseException) -> None:
@@ -622,6 +653,7 @@ async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
         async with render_slots:
             rendering.add(cs.n)
             mark()
+            stage_started = time.perf_counter()
             try:
                 with step(f"chapter {cs.n}/{total} render", title=state.outline.chapters[cs.n - 1].title) as s:
                     await _render_chapter(state, cs.n)
@@ -629,6 +661,7 @@ async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
             except Exception as exc:
                 fail(cs, "render", exc)
             finally:
+                cs.processing_seconds["render"] = round(cs.processing_seconds.get("render", 0) + time.perf_counter() - stage_started, 3)
                 rendering.discard(cs.n)
                 mark()
 
@@ -639,6 +672,7 @@ async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
     async def plan_one(cs: ChapterState) -> bool:
         planning.add(cs.n)
         mark()
+        stage_started = time.perf_counter()
         try:
             with step(f"chapter {cs.n}/{total} plan", title=state.outline.chapters[cs.n - 1].title,
                       budget_words=state.outline.chapters[cs.n - 1].words) as s:
@@ -648,6 +682,7 @@ async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
             fail(cs, "plan", exc)
             return False
         finally:
+            cs.processing_seconds["plan"] = round(cs.processing_seconds.get("plan", 0) + time.perf_counter() - stage_started, 3)
             planning.discard(cs.n)
             mark()
         start_render(cs)  # render this chapter while the next one is planned
@@ -686,7 +721,11 @@ async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
         if not state.video or not Path(state.video).exists():
             mark("joining chapters")
             with step("join chapters (ffmpeg)", chapters=total) as s:
-                await join_chapters(state)
+                stage_started = time.perf_counter()
+                try:
+                    await join_chapters(state)
+                finally:
+                    state.processing_seconds["join"] = round(state.processing_seconds.get("join", 0) + time.perf_counter() - stage_started, 3)
                 s.update(video=state.video, length=f"{state.seconds / 60:.1f}min", target=f"{state.minutes:g}min")
         state.status = "done"
         mark(f"done: {_stamp(state.seconds)} (target {state.minutes:g} min)")

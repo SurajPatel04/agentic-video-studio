@@ -50,6 +50,7 @@ class RenderResult:
     log: list[str] = field(default_factory=list)
     subtitles: Path | None = None  # captions.srt (captions.vtt next to it), when the narration has words
     captions_mode: str = ""
+    processing_seconds: dict[str, float] = field(default_factory=dict)
 
 
 def _transition_into(spec: dict[str, Any], i: int) -> int:
@@ -158,7 +159,8 @@ async def add_narration(spec: dict[str, Any], *, captions: bool | None = None) -
                 {"t": w.text, "s": delay + round(w.start * fps), "e": delay + max(round(w.start * fps) + 1, round(w.end * fps))}
                 for w in words
             ]
-        needed = delay + frames + 12 + _transition_into(spec, i + 1)  # speech + breath + next transition
+        pause = math.ceil(scene["narration"].get("pauseAfterSeconds", 0) * fps)
+        needed = delay + frames + max(12, pause) + _transition_into(spec, i + 1)
         before = scene.get("durationInFrames")
         if not before or before < needed:
             scene["durationInFrames"] = needed
@@ -224,16 +226,20 @@ async def render_video(
     spec = apply_brand(spec)
     made = cached = 0
     lines: list[str] = []
+    narration_started = time.perf_counter()
     if narrate:
         spec, made, cached, lines = await add_narration(spec, captions=captions)
     else:
         spec = set_captions(spec, captions)
+    narration_seconds = time.perf_counter() - narration_started
     spec = set_caption_mode(spec, captions_mode)
     spec, _ = cues.resolve(spec)  # word cues left (no narration / narrate off): estimated from the text
 
     composition = job_dir / "composition.json"
     composition.write_text(json.dumps(spec, indent=2))
+    validation_started = time.perf_counter()
     await validate(composition)
+    validation_seconds = time.perf_counter() - validation_started
 
     video = job_dir / "video.mp4"
     cmd = ["npx", "remotion", "render", "src/index.ts", "VideoComposition", str(video), f"--props={composition}", "--gl=angle"]
@@ -242,6 +248,7 @@ async def render_video(
     if concurrency:
         cmd.append(f"--concurrency={concurrency}")  # Remotion threads (default: half the cores)
     frames = sum(int(sc.get("durationInFrames", 0)) for sc in spec.get("scenes", []))
+    remotion_started = time.perf_counter()
     with step("remotion render", job=job_id, scenes=len(spec.get("scenes", [])), frames=frames, scale=scale, threads=concurrency) as s:
         code, out = await _run(cmd, timeout=settings.RENDER_TIMEOUT_SECONDS)
         (job_dir / "render.log").write_text(out)
@@ -250,12 +257,16 @@ async def render_video(
             raise RenderError("Remotion render failed", tail)
         s.update(video=str(video), size=f"{video.stat().st_size / 1e6:.1f}MB")
 
+    remotion_seconds = time.perf_counter() - remotion_started
+    subtitles_started = time.perf_counter()
     srt, mode = await add_subtitles(spec, job_dir, video)
     if items := subtitles.transcript(spec):  # what is said, with times (even when captions are off)
         subtitles.write_transcript(items, job_dir)
     seconds = time.perf_counter() - started
     log.info("render.ok job=%s voice_new=%d voice_cached=%d took_s=%.1f", job_id, made, cached, seconds)
-    return RenderResult(job_id, job_dir, composition, video, seconds, made, cached, lines, srt, mode)
+    timings = {"narration_and_alignment": narration_seconds, "validation": validation_seconds,
+               "remotion": remotion_seconds, "subtitles_and_transcript": time.perf_counter() - subtitles_started}
+    return RenderResult(job_id, job_dir, composition, video, seconds, made, cached, lines, srt, mode, timings)
 
 
 async def add_subtitles(spec: dict[str, Any], job_dir: Path, video: Path) -> tuple[Path | None, str]:

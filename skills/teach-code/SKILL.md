@@ -61,8 +61,7 @@ Hard rules for programming topics (they override softer advice below; EditorScen
 - APIs: show each endpoint as a real call: TerminalScene with the curl command, the status line and the JSON body; EditorScene for a response shape, an error body or the handler. Put a good and a bad response side by side.
 - For every HTTP IsoScene, write the method and path, status code, or other HTTP detail being explained as on-screen text. Keep diagrams focused on who sends, receives, or stores data. Show the request on the client-to-server arrow and the response on the server-to-client arrow. Put longer headers and bodies in AnnotatedTextScene with editor layout.
 - AnnotatedTextScene can show the HTTP text beside an IsoScene diagram through its diagram field. Keep the same actors and positions through a request, reply and recap. Cue each new arrow to the spoken send action, draw it once with flow "none", and carry completed arrows with enter "none". Cue the method, path, status and data highlights in spoken order.
-- Never more than 2 DefinitionScene / ExplainScene in a row; break them with code, a diagram, or a comparison.
-- Pattern for an implementation walkthrough: EditorScene (what we write) -> IsoScene or a diagram (what the runtime does) -> TerminalScene or the editor's run (what we see).
+- For implementation walkthroughs, keep the input, relevant expression and output readable together. Highlight the value as the narration follows it. Use a runtime diagram when the learner needs to see a transfer or relationship.
 - Debugging story: EditorScene run fails (variant error) -> error on the line -> fix -> run succeeds. Match each action to the narration.
 
 Teach observable behavior before introducing terminology. For executable concepts, use a small EditorScene example (usually 5–12 readable lines), highlight the relevant lines, and explain what the viewer should notice. Keep identifiers and inputs consistent between code, narration, diagrams, and output.

@@ -9,11 +9,14 @@ metadata:
   tags:
   - explain
   - explainer
+  - what is
+  - what are
   - how
   - why
   - overview
   - introduction
   scenes:
+  - ExplainScene
   - FlowchartScene
   - StepsScene
   - ComparisonTableScene
@@ -21,7 +24,7 @@ metadata:
 
 Apply when the viewer wants to understand an idea, event, system, or mechanism. Follow the user's purpose if words such as “explain” occur inside an ad or another format.
 
-Frame one central question and give the viewer an early orientation to the answer. Establish just enough context to understand the mechanism. Then show how the important parts relate and why one step leads to the next. A sequence of definitions is not a causal explanation.
+Open with an ExplainScene, optionally after a title. Write the concept in the heading and its meaning or purpose in one plain-language sentence. Keep that answer visible during the explanation. Introduce the first worked example or animation on the next slide. Establish just enough context to understand the mechanism. Then show how the important parts relate and why one step leads to the next. A sequence of definitions is not a causal explanation.
 
 Use one concrete example to make an abstract relationship visible. Pair a simple overall model with a closer view of the important step. Distinguish correlation, chronology, and causation. For disputed topics, identify uncertainty rather than manufacturing a single settled explanation.
 
