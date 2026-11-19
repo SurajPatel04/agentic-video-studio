@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from langchain_core.messages import AIMessage
 
-from app.utils import catalog, planner, skills
+from app.utils import catalog, long_video, planner, skills
 from app.config import settings
 
 settings.SKILL_ROUTER = "keyword"  # offline tests: no skill-router LLM call (tested with a mock in test_skills)
@@ -211,6 +211,92 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
 
     def test_catalog_shows_number_limits(self):
         self.assertIn("300..", catalog.overlay_text("terminal"))
+
+
+class LessonScriptTests(unittest.IsolatedAsyncioTestCase):
+    async def test_script_locks_narration_and_review_repairs_only_the_flagged_example(self):
+        beats = [
+            {"narration": "Imagine your watch shop app needs the inventory. The app sends a request to ask for it.",
+             "visual": "Introduce the idea of requesting inventory in one readable sentence."},
+            {"narration": "Get asks to read something. The watches path tells the shop which list to read.",
+             "visual": "Keep GET /watches intact. Highlight GET on Get asks, then /watches on watches path."},
+            {"narration": "The returned list includes the watch with ID W one oh five.",
+             "visual": 'Show a readable JSON list containing the watch: [{"id":"w-105"}].'},
+        ]
+        scenes = [
+            {"id": "beat-1", "component": "ExplainScene", "durationInFrames": 180,
+             "props": {"heading": "Read the inventory", "body": "The app sends a request to ask for the watch list."}},
+            {"id": "beat-2", "component": "AnnotatedTextScene", "durationInFrames": 210,
+             "props": {"layout": "editor", "text": "GET /watches", "steps": [
+                 {"cue": "method keyword", "focus": "GET", "explanation": "Read"},
+                 {"cue": "watches path", "focus": "/watches", "explanation": "Choose the watch list"}]},
+             "narration": {"text": "The method keyword asks to fetch it."}},
+            {"id": "beat-3", "component": "AnnotatedTextScene", "durationInFrames": 180,
+             "props": {"layout": "editor", "text": '[{"id":"w-107"}]'}},
+        ]
+        props = {**scenes[1]["props"], "steps": [
+            {**scenes[1]["props"]["steps"][0], "cue": "Get asks"}, scenes[1]["props"]["steps"][1]]}
+        replacement = {"narration": "The returned list includes the watch with ID W one oh four.",
+                       "visual": 'Show the original sample watch in the returned JSON list: [{"id":"w-104"}].'}
+        repaired = {**scenes[2], "props": {"layout": "editor", "text": '[{"id":"w-104"}]'}}
+        model = AsyncMock()
+        model.ainvoke.side_effect = [AIMessage(json.dumps(reply)) for reply in [
+            {"beats": beats}, {"scenes": scenes}, {"updates": {"scenes[1].props": props}},
+            {"issues": [{"scene_id": "beat-3", "problem": "Restore the supplied watch ID in the script and result.",
+                         "replacement": replacement}]},
+            {"updates": {"scenes[2]": repaired}}, {"issues": []},
+        ]]
+
+        with patch.object(planner, "get_llm", return_value=model):
+            plan = await planner.plan_video("A beginner lecture on GET requests. Use watch w-104.",
+                                            mode="catalog", skills=["teach-lecture"])
+
+        self.assertEqual(plan.llm_calls, 6)
+        self.assertEqual([scene["narration"]["text"] for scene in plan.spec["scenes"]],
+                         [beats[0]["narration"], beats[1]["narration"], replacement["narration"]])
+        self.assertEqual(plan.spec["scenes"][1]["props"], props)
+        self.assertEqual(plan.spec["scenes"][2]["props"], repaired["props"])
+        self.assertEqual(set(json.loads(model.ainvoke.call_args_list[2].args[0][-1].content)), {"scenes[1].props"})
+        self.assertEqual(set(json.loads(model.ainvoke.call_args_list[4].args[0][-1].content)), {"scenes[2]"})
+        self.assertEqual(planner.cues.resolve(plan.spec)[1], {})
+
+    async def test_long_nontechnical_lesson_uses_script_in_tools_mode(self):
+        beats = [
+            {"narration": "Imagine you open a news story because you want to know what happened. The lead is the opening that tells you.",
+             "visual": "Explain what a lead tells the reader."},
+            {"narration": "Here the key fact is that the library reopens on Monday. The next sentence adds that the roof was repaired.",
+             "visual": "Show the whole excerpt and highlight its key fact when spoken."},
+        ]
+        word_budget = sum(len(beat["narration"].split()) for beat in beats)
+        outline = long_video.Outline(title="Writing a news lead", chapters=[long_video.ChapterOutline(
+            title="The opening", goal="Recognize the main fact in a news lead", key_points=["lead", "key fact"],
+            minutes=1, words=word_budget)])
+        state = long_video._new_state("A beginner journalism lesson", 1, outline, mode="tools", skills=["teach-lecture"])
+        draft = {"scenes": [
+            {"id": "beat-1", "component": "ExplainScene", "durationInFrames": 200,
+             "props": {"heading": "The news lead", "body": "The opening tells the reader what happened."}},
+            {"id": "beat-2", "component": "AnnotatedTextScene", "durationInFrames": 200,
+             "props": {"layout": "text", "text": "The library reopens on Monday. Its roof was repaired.",
+                       "steps": [{"cue": "key fact", "focus": "reopens on Monday", "explanation": "What happened"}]}},
+        ]}
+        writer = AsyncMock()
+        writer.ainvoke.side_effect = [AIMessage('{"beats":[{"narration":"Too short.","visual":"Opening"},'
+                                                 '{"narration":"End.","visual":"Example"}]}'),
+                                     AIMessage(json.dumps({"beats": beats})), AIMessage('{"issues":[]}')]
+        tool_model = AsyncMock()
+        tool_model.ainvoke.side_effect = [AIMessage("", tool_calls=[
+            {"name": "load_skill", "args": {"name": "teach-lecture"}, "id": "load-lecture"},
+        ]), AIMessage(json.dumps(draft))]
+
+        with patch.object(planner, "get_llm", return_value=writer), patch.object(planner, "get_tool_llm") as tool_llm:
+            tool_llm.return_value.bind_tools.return_value = tool_model
+            planned = await long_video.plan_chapter(state, 1)
+
+        self.assertEqual(state.chapters[0].llm_calls, 5)
+        self.assertIn("A beginner journalism lesson", writer.ainvoke.call_args_list[0].args[0][-1].content)
+        self.assertIn("Adjust the script", writer.ainvoke.call_args_list[1].args[0][-1].content)
+        self.assertEqual([scene["narration"]["text"] for scene in planned["scenes"]], [beat["narration"] for beat in beats])
+        self.assertEqual(planner.cues.resolve(planned)[1], {})
 
 
 if __name__ == "__main__":

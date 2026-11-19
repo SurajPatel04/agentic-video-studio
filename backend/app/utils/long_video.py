@@ -420,7 +420,7 @@ async def plan_chapter(state: LongState, n: int) -> dict[str, Any]:
         topic = f"{state.outline.title}: chapter {n}, {ch.title}"
         plan = await plan_video(
             topic, scenes=scenes, mode=state.mode, model=state.model, context=chapter_context(state, n, note),
-            skills=state.skills, layout=state.layout, code_demo=ch.code_demo.strip(),  # type: ignore[arg-type]
+            skills=state.skills, layout=state.layout, code_demo=ch.code_demo.strip(), narration_budget=ch.words,  # type: ignore[arg-type]
         )
         cs.llm_calls += plan.llm_calls
         cs.input_tokens += plan.input_tokens

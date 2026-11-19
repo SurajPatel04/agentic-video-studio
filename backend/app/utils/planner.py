@@ -17,14 +17,15 @@ import json
 import logging
 import re
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 
 from app.config import settings
-from app.utils import catalog, skill_router, skills as teaching_skills
+from app.utils import catalog, lesson_script, skill_router, skills as teaching_skills
 from app.utils.console import step
 from app.utils.iso import expand_continuations, paper_code_scenes
 from app.utils.llm import get_llm, get_tool_llm, text_of, usage_of
@@ -207,17 +208,26 @@ def _concept_card(scene: dict[str, Any]) -> bool:
             and all(isinstance(props.get(k), str) and props[k].strip() for k in ("heading", "body")))
 
 
-async def _check(reply: str, code_demo: str | None = None, *, lecture: bool = False) -> tuple[dict[str, Any] | None, str]:
+async def _check(reply: str, code_demo: str | None = None, *, lecture: bool = False,
+                 script: lesson_script.Script | None = None) -> tuple[dict[str, Any] | None, str]:
     """Parse + validate a reply. Returns (spec, "") or (None, problem to send back)."""
     try:
-        spec = _normalize(_extract_json(reply))
+        spec = _extract_json(reply)
+        if script:
+            script.bind(spec)
+        _normalize(spec)
     except (ValueError, json.JSONDecodeError) as exc:
         return None, f"Your reply was not a valid JSON object ({exc}). Reply with ONLY the corrected JSON."
+    # The plan keeps its word cues (resolved from real word times at render); check an estimated copy.
+    estimated, missing = cues.resolve(spec)
+    if script and missing:
+        issues = "\n".join(f"- scene '{sid}': Cue {', '.join(map(repr, lost))} is missing from the locked narration. "
+                           "Use the exact spoken phrase for the change." for sid, lost in missing.items())
+        return None, "The JSON has these errors:\n" + issues
     work = settings.WORKSPACE_DIR / "plans"
     work.mkdir(parents=True, exist_ok=True)
     path = work / f"{uuid.uuid4().hex[:12]}.json"
-    # The plan keeps its word cues (resolved from real word times at render); check an estimated copy.
-    path.write_text(json.dumps(cues.resolve(spec)[0], indent=2))
+    path.write_text(json.dumps(estimated, indent=2))
     try:
         await validate(path)
     except RenderError as exc:
@@ -591,14 +601,18 @@ LOOKUP_TOOLS = {t.name: t for t in (search_scenes, get_scene, list_device_kinds,
 # --------------------------------------------------------------------------- modes
 
 
-def _repair_for(reply: str, spec: dict | None, problem: str, previous: Repair | None = None) -> Repair | None:
+def _repair_for(reply: str, spec: dict | None, problem: str, previous: Repair | None = None,
+                *, script: lesson_script.Script | None = None) -> Repair | None:
     """A scoped repair for the flagged fields. A scene that is still broken after a scoped repair is
     repaired whole (full props + its field list), so the model can add a missing object or reshape
     a table instead of guessing the same field again."""
     if spec is None:
         if not problem.startswith("The JSON has these errors:"):
             return None
-        spec = _normalize(_extract_json(reply))
+        spec = _extract_json(reply)
+        if script:
+            script.bind(spec)
+        _normalize(spec)
     repair = scoped_repair(spec, problem, contract=catalog.scene_text)
     again = repair.scenes() & previous.scenes() if repair and previous else set()
     if again:
@@ -664,7 +678,7 @@ async def _edit(repair: Repair, llm, *, use_tool: bool = False):
 
 
 async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[str] | tuple[str, ...] = (),
-                        *, code_demo: str | None = None) -> Plan:
+                        *, code_demo: str | None = None, script: lesson_script.Script | None = None) -> Plan:
     known = teaching_skills.guidance(list(skills)) if skills else ""  # iso objects the guides already describe are not repeated
     system = _rules() + hint + "\nOutput ONLY the JSON object, no prose, no code fences.\n\nScene library:\n" + catalog.catalog_text(topic, known=known)
     messages: list[Any] = [SystemMessage(system), HumanMessage(f"Topic: {topic}")]
@@ -685,7 +699,7 @@ async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[s
         if reply is None:
             repair = None
             continue
-        spec, problem = await _check(reply, code_demo, lecture="teach-lecture" in skills)
+        spec, problem = await _check(reply, code_demo, lecture="teach-lecture" in skills, script=script)
         if spec:
             style = _lint(spec, skills, topic, code_demo=code_demo)
             if not style:
@@ -695,18 +709,18 @@ async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[s
             problem = style
         log.warning("planner.retry mode=catalog attempt=%d problem=%s", attempt, problem[:300])
         last = reply
-        repair = _repair_for(reply, spec, problem, repair)
+        repair = _repair_for(reply, spec, problem, repair, script=script)
         messages = [*messages[:2], AIMessage(reply), HumanMessage(problem)]
     if best.spec:
         return Plan(best.spec, best.attempt, "catalog", calls, tin, tout)
-    salvaged = await _salvage(last, problem, code_demo, lecture="teach-lecture" in skills)
+    salvaged = None if script else await _salvage(last, problem, code_demo, lecture="teach-lecture" in skills)
     if salvaged:
         return Plan(salvaged, settings.PLANNER_MAX_ATTEMPTS, "catalog", calls, tin, tout)
     raise PlanError(f"planner gave invalid JSON {settings.PLANNER_MAX_ATTEMPTS} times", problem)
 
 
 async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[str], allowed: list[str] | None,
-                      *, code_demo: str | None = None) -> Plan:
+                      *, code_demo: str | None = None, script: lesson_script.Script | None = None) -> Plan:
     skills = selected
     system = (
         _rules()
@@ -758,7 +772,7 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
             continue
         attempts += 1
         last = text_of(msg)
-        spec, problem = await _check(last, code_demo, lecture="teach-lecture" in skills)
+        spec, problem = await _check(last, code_demo, lecture="teach-lecture" in skills, script=script)
         if spec:
             style = _lint(spec, skills, topic, code_demo=code_demo)
             if not style:
@@ -769,25 +783,127 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
         log.warning("planner.retry mode=tools attempt=%d problem=%s", attempts, problem[:300])
         if attempts >= settings.PLANNER_MAX_ATTEMPTS:
             break
-        repair = _repair_for(text_of(msg), spec, problem, repair)
+        repair = _repair_for(last, spec, problem, repair, script=script)
         messages.append(HumanMessage(problem + " Use get_scene to check fields if unsure."))
     if best.spec:
         return Plan(best.spec, best.attempt, "tools", calls, tin, tout, sorted(loaded))
-    salvaged = await _salvage(last, problem, code_demo, lecture="teach-lecture" in skills)
+    salvaged = None if script else await _salvage(last, problem, code_demo, lecture="teach-lecture" in skills)
     if salvaged:
         return Plan(salvaged, attempts, "tools", calls, tin, tout, sorted(loaded))
     raise PlanError(f"planner did not produce valid JSON (mode=tools, {attempts} attempts, {calls} calls)", problem)
 
 
+LessonReply = TypeVar("LessonReply")
+
+
+async def _lesson_reply(llm, system: str, brief: str, parse: Callable[[dict], LessonReply],
+                        stage: str) -> tuple[LessonReply, int, int, int]:
+    messages = [SystemMessage(system), HumanMessage(brief)]
+    tin = tout = 0
+    problem = ""
+    for attempt in range(1, settings.PLANNER_MAX_ATTEMPTS + 1):
+        msg = await llm.ainvoke(messages)
+        i, o = usage_of(msg)
+        tin, tout = tin + i, tout + o
+        reply = text_of(msg)
+        try:
+            return parse(_extract_json(reply)), attempt, tin, tout
+        except ValueError as exc:
+            problem = str(exc)[:2000]
+            messages = [*messages[:2], AIMessage(reply), HumanMessage(f"{problem}\nReturn corrected JSON only.")]
+    raise PlanError(f"{stage} failed validation", problem)
+
+
+def _check_script(script: lesson_script.Script, budget: int | None) -> lesson_script.Script:
+    if budget:
+        words = sum(len(beat.narration.split()) for beat in script.beats)
+        if abs(words - budget) / budget > settings.LONG_BUDGET_TOLERANCE:
+            raise ValueError(f"The narration has {words} words. Adjust the script to about {budget} words.")
+    lines = [{"id": sid, "narration": {"text": beat.narration}} for sid, beat in script.by_id().items()]
+    if problems := _lint_narration(lines):
+        raise ValueError("\n".join(problems))
+    return script
+
+
+def _lesson_repair(spec: dict, script: lesson_script.Script, review: lesson_script.Review) -> Repair:
+    issues = {issue.scene_id: issue for issue in review.issues}
+    beats = script.by_id()
+    targets = {}
+    for i, scene in enumerate(spec["scenes"]):
+        sid = scene["id"]
+        if sid not in issues:
+            continue
+        beat, issue = beats[sid], issues[sid]
+        component = scene["component"]
+        names = [name for name, _, _ in catalog.search_scenes(issue.problem + " " + beat.visual, limit=3)]
+        contracts = [catalog.scene_text(name) for name in dict.fromkeys([component, *names])]
+        targets[f"scenes[{i}]"] = (["scenes", i], {
+            "scene": sid, "component": component, "current": scene, "issue": issue.problem,
+            "context": {"narration": beat.narration, "visual_direction": beat.visual, "fields": contracts,
+                        "rule": "Return the complete corrected scene with the same id. Keep its transition and other correct "
+                                "visual details. Use exact phrases of the supplied narration for cues. Narration is inserted by the pipeline."},
+        })
+    return Repair(spec, targets)
+
+
+async def _review_lesson(plan: Plan, script: lesson_script.Script, brief: str, llm,
+                         *, code_demo: str | None, budget: int | None) -> None:
+    """Review what the learner will hear and see, then patch only the scenes with material issues."""
+    for revision in range(3):
+        beats = script.by_id()
+
+        def parse(data: dict) -> tuple[lesson_script.Review, lesson_script.Script]:
+            review = lesson_script.Review.model_validate(data)
+            if unknown := {issue.scene_id for issue in review.issues} - beats.keys():
+                raise ValueError(f"Review mentions unknown scenes: {', '.join(sorted(unknown))}.")
+            updated = {issue.scene_id: issue.replacement for issue in review.issues if issue.replacement}
+            revised = lesson_script.Script(beats=[updated.get(sid, beat) for sid, beat in beats.items()])
+            return review, _check_script(revised, budget)
+
+        visuals = [{key: value for key, value in scene.items() if key != "narration"} for scene in plan.spec["scenes"]]
+        content = {"script": {sid: beat.model_dump() for sid, beat in beats.items()}, "scenes": visuals}
+        (review, revised), calls, tin, tout = await _lesson_reply(
+            llm, lesson_script.REVIEWER, brief + "\n\n" + json.dumps(content, ensure_ascii=False), parse, "lesson review",
+        )
+        plan.llm_calls += calls
+        plan.input_tokens += tin
+        plan.output_tokens += tout
+        if not review.issues:
+            return
+        problems = "\n".join(f"{issue.scene_id}: {issue.problem}" for issue in review.issues)
+        if revision == 2:
+            raise PlanError("lesson review still found teaching issues after two repairs", problems)
+        script = revised
+        repair = _lesson_repair(plan.spec, script, review)
+        log.info("lesson.review repairing scenes=%s", sorted(issue.scene_id for issue in review.issues))
+        problem = ""
+        for _ in range(min(2, settings.PLANNER_MAX_ATTEMPTS)):
+            reply, (tin, tout) = await _edit(repair, llm)
+            plan.llm_calls += 1
+            plan.input_tokens += tin
+            plan.output_tokens += tout
+            if reply is None:
+                problem = "Use exactly the requested scene paths and provide a complete scene at each path."
+            else:
+                checked, problem = await _check(reply, code_demo, lecture=True, script=script)
+                if checked is not None:
+                    plan.spec = checked
+                    break
+            for _, details in repair.targets.values():
+                details["context"]["validation_feedback"] = problem[:3000]
+        else:
+            raise PlanError("could not repair the scenes flagged by lesson review", problems + "\n" + problem)
+
+
 async def plan_video(topic: str, *, scenes: int | None = None, model: str | None = None, mode: Mode | None = None,
                      context: str = "", skills: list[str] | None = None, layout: Layout = "desktop",
-                     code_demo: str | None = None) -> Plan:
+                     code_demo: str | None = None, narration_budget: int | None = None) -> Plan:
     """Ask the LLM for a valid composition about ``topic`` (printed as one step with its result).
     ``layout``: desktop 1920x1080 (default) | mobile 1080x1920 | square 1080x1080."""
     with step("plan", topic=topic, scenes=scenes, mode=mode or settings.PLANNER_MODE, layout=layout) as s:
         context = LAYOUT_HINT.get(layout, "") + context
         plan = await _plan_video(topic, scenes=scenes, model=model, mode=mode, context=context, skills=skills,
-                                 code_demo=code_demo)
+                                 code_demo=code_demo, narration_budget=narration_budget)
         await iso_design.materialize(plan, model)
         apply_layout(plan.spec, layout)
         s.update(mode=plan.mode, skills=",".join(plan.skills), scenes=len(plan.spec.get("scenes", [])),
@@ -796,7 +912,8 @@ async def plan_video(topic: str, *, scenes: int | None = None, model: str | None
 
 
 async def _plan_video(topic: str, *, scenes: int | None = None, model: str | None = None, mode: Mode | None = None,
-                      context: str = "", skills: list[str] | None = None, code_demo: str | None = None) -> Plan:
+                      context: str = "", skills: list[str] | None = None, code_demo: str | None = None,
+                      narration_budget: int | None = None) -> Plan:
     """Ask the LLM for a valid composition about ``topic``.
 
     ``context``: extra instructions added to the rules, e.g. a long video's outline and what earlier
@@ -814,6 +931,22 @@ async def _plan_video(topic: str, *, scenes: int | None = None, model: str | Non
         mode = "tools" if len(catalog.scene_names()) > settings.PLANNER_TOOLS_THRESHOLD else "catalog"
     chosen = await skill_router.route(topic, skills, model=model)
     selected = chosen.skills
+    script = None
+    calls = tin = tout = 0
+    if "teach-lecture" in selected:
+        brief = f"Topic: {topic}\n{hint}"
+        llm = get_llm(model or settings.PLANNER_MODEL or None)
+        with step("write lesson script", topic=topic) as s:
+            script, calls, tin, tout = await _lesson_reply(
+                llm, BRIEF_GUIDANCE + "\n" + lesson_script.WRITER, brief,
+                lambda data: _check_script(lesson_script.Script.model_validate(data), narration_budget), "lesson script",
+            )
+            s.update(beats=len(script.beats), llm_calls=calls, tokens_in=tin, tokens_out=tout)
+        hint += ("\nThe following lesson script is the source of truth. Use exactly one scene per beat, "
+                 "using its beat id as the scene id, in the same order. The pipeline inserts narration, so omit narration "
+                 "from your JSON. Design the visual requested in each beat and take cues from its exact spoken words. "
+                 "The script decides the number of scenes. Keep the lesson and its examples intact.\n"
+                 + json.dumps({sid: beat.model_dump() for sid, beat in script.by_id().items()}, ensure_ascii=False) + "\n")
     if "iso-diagrams" in selected:
         hint += iso_design.planner_hint()
     hint += _visual_hint(topic, selected)
@@ -823,7 +956,7 @@ async def _plan_video(topic: str, *, scenes: int | None = None, model: str | Non
     if mode == "tools":
         if selected:
             hint += "\nLoad these guides before planning: " + ", ".join(selected) + ". Use load_skill(name).\n"
-        plan = await _plan_tools(topic, hint, model, selected, allowed, code_demo=code_demo)
+        plan = await _plan_tools(topic, hint, model, selected, allowed, code_demo=code_demo, script=script)
     else:
         hint += teaching_skills.guidance(selected)
         available = teaching_skills.discover()
@@ -833,9 +966,12 @@ async def _plan_video(topic: str, *, scenes: int | None = None, model: str | Non
         extra = [catalog.scene_text(n) for n in extra_scenes if n in scene_names]
         hint += "\n" + catalog.kind_legend(*extra, known=teaching_skills.guidance(selected)) + "\n".join(extra)
         hint += "\n" + "\n".join(catalog.overlay_text(n) for n in extra_overlays)
-        plan = await _plan_catalog(topic, hint, model, selected, code_demo=code_demo)
+        plan = await _plan_catalog(topic, hint, model, selected, code_demo=code_demo, script=script)
         plan.skills = selected
-    plan.llm_calls += chosen.calls  # the skill router's call counts towards the plan
-    plan.input_tokens += chosen.input_tokens
-    plan.output_tokens += chosen.output_tokens
+    if script:
+        with step("review lesson", topic=topic):
+            await _review_lesson(plan, script, brief, llm, code_demo=code_demo, budget=narration_budget)
+    plan.llm_calls += chosen.calls + calls
+    plan.input_tokens += chosen.input_tokens + tin
+    plan.output_tokens += chosen.output_tokens + tout
     return plan
