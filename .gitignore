@@ -60,3 +60,7 @@ rendering/examples/*.voiced.json
 
 # Frame grabs for visual checks
 test_picture/
+
+# Local planning and one-off rendering helpers
+/backend/plan.json
+/rendering/scripts/tmp-render-example.mjs
