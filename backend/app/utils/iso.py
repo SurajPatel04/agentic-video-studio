@@ -114,6 +114,10 @@ def expand_continuations(spec: dict[str, Any]) -> dict[str, Any]:
             for k in ("eyebrow", "title", "subtitle"):  # same picture, same heading unless it changes
                 if k not in props and k in (prev.get("props") or {}):
                     props[k] = prev["props"][k]
+            previous_note = prev["props"].get("sideNote")
+            if previous_note and "until" not in previous_note and not {"sideNote", "exampleLines", "points"} & props.keys():
+                props["sideNote"] = {**previous_note, "at": 0}
+                props["sideNote"].pop("cue", None)
             previous_lines = (prev.get("props") or {}).get("exampleLines")
             if previous_lines and "exampleLines" not in props and "points" not in props:
                 props["exampleLines"] = [{"text": line["text"], "at": 0} for line in previous_lines

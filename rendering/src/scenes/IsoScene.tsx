@@ -58,6 +58,7 @@ export const KINDS = {
   lock: {shape: 'art', size: [1.3, 0.7, 1], color: 'coral'},
   file: {shape: 'art', size: [1.2, 0.8, 1.6], color: 'cream'},
   code: {shape: 'art', size: [2.2, 0.8, 1.5], color: 'lavender'},
+  mug: {shape: 'art', size: [1.7, 1.3, 1.45], color: 'butter'},
   box: {shape: 'art', size: [1.5, 1.5, 1.1], color: 'peach'},
   // everyday / media objects
   tile: {shape: 'art', size: [1.7, 0.4, 1.7], color: 'cream'}, // upright card showing any "icon"
@@ -379,6 +380,17 @@ const EXAMPLE_STEPS: z.output<typeof stepSchema>[] = [
   {at: 0.7, target: 'b', highlight: true, status: 72, note: 'New requests go to B'},
 ];
 
+export const isoSideNoteSchema = z.object({
+    text: z.string().min(1).max(150),
+    detail: z.string().min(1).max(200).optional(),
+    side: z.enum(['left', 'right']).default('left'),
+    at: fraction.default(0),
+    until: fraction.optional(),
+  }).strict().refine(note => note.until === undefined || note.until > note.at, {
+    path: ['until'], message: 'Close the side note after it opens.',
+  });
+export const PreviousIsoSideNote = createContext<z.output<typeof isoSideNoteSchema> | null>(null);
+
 export const isoSceneSchema = z.object({
   eyebrow: z.string().max(40).optional(),
   title: z.string().max(80).optional(),
@@ -390,6 +402,7 @@ export const isoSceneSchema = z.object({
   exampleLines: z.array(z.object({
     text: z.string().min(1).max(72), at: fraction,
   }).strict()).min(1).max(4).optional(),
+  sideNote: isoSideNoteSchema.optional(),
   zoom: z.number().min(0.5).max(1.6).default(1),
   sound: z.boolean().default(true),
   continued: z.boolean().optional(), // set by the backend: this scene continues the previous picture
@@ -439,6 +452,7 @@ export const isoSceneSchema = z.object({
 });
 
 export const description =
+  'Use mug for a concrete mug product. Use a solid arrow for a database lookup. Use a separate return arrow for the response data. Add sideNote with text, optional detail, side, at and optional until to make room for written evidence, then restore the diagram. ' +
   'Use http-get, http-post, http-put, http-patch, http-delete, http-head or http-options for request method tiles. Put paths and payload details on links or in exampleLines. ' +
   'Place kind table with table:{name,columns,rows,indexed?,locked?,duplicateKey?} next to a database to show the actual records. ' +
   'Timed steps support timer, count, meter, progress, ttl, retry, queue, think, react, say and mood. A reply step such as cache→app returns on an existing request link. Links can clean or drop packets and carry keys or coins. ' +
@@ -604,6 +618,7 @@ export const IsoRegion = createContext<{left: number; right: number; top: number
 
 export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const region = useContext(IsoRegion);
+  const previousNote = useContext(PreviousIsoSideNote);
   const stageId = useId();
   const p = isoSceneSchema.parse(input);
   const links = linkLegs(p.links);
@@ -614,19 +629,35 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const sw = 3 * u;
 
   const hasTitle = !region && Boolean(p.title || p.eyebrow);
-  const example = !region && p.objects.length ? p.exampleLines : undefined;
+  const sideNote = !region && p.objects.length ? p.sideNote : undefined;
+  const replacingNote = p.continued && previousNote && sideNote?.at === 0 &&
+    sideNote.side === previousNote.side &&
+    (sideNote.text !== previousNote.text || sideNote.detail !== previousNote.detail);
+  const portraitNote = W <= H;
+  const noteMotionFrames = Math.max(1, Math.round(fps * 0.42));
+  const noteProgress = (frame: number) => {
+    const t = Math.max(0, Math.min(1, frame / noteMotionFrames));
+    return t * t * (3 - 2 * t);
+  };
+  // A note at frame zero is already open, so a continued scene can match its predecessor.
+  const opening = sideNote?.at ? noteProgress(f - Math.round(sideNote.at * len)) : 1;
+  const closing = sideNote?.until === undefined ? 1 : 1 - noteProgress(f - Math.round(sideNote.until * len));
+  const noteAmount = sideNote ? Math.min(opening, closing) : 0;
+  const noteWidth = W * 0.32;
+  const noteSpace = (noteWidth + 40 * u) * noteAmount;
+  const example = !region && p.objects.length && !sideNote ? p.exampleLines : undefined;
   const stacked = Boolean(example && W <= H);
-  const cards = region || example ? [] : p.points ?? [];
+  const cards = region || example || sideNote ? [] : p.points ?? [];
   const onlyCard = !region && p.objects.length === 0;
 
   // ---------- layout: fit every object (+ room for pills/notes) into the free area
   const tall = p.objects.map(() => true); // pill room for every object, so the layout depends only on positions (continued scenes match)
   const geos = separate(p.objects.map(geometry), tall, p.objects.map((ob) => ob.id));
   const headingBottom = region ? region.top : hasTitle ? (p.subtitle ? 250 : 205) * u : 80 * u;
-  const top = stacked ? headingBottom + 320 * u : headingBottom;
+  const top = headingBottom + (stacked ? 320 * u : portraitNote ? 340 * u * noteAmount : 0);
   const bottom = H - 200 * u; // captions live below
-  const right = region ? region.right : cards.length ? W - 600 * u : W - 90 * u;
-  const left = region ? region.left : example && !stacked ? W * 0.46 : 90 * u;
+  const right = region ? region.right : cards.length ? W - 600 * u : W - 90 * u - (!portraitNote && sideNote?.side === 'right' ? noteSpace : 0);
+  const left = region ? region.left : example && !stacked ? W * 0.46 : 90 * u + (!portraitNote && sideNote?.side === 'left' ? noteSpace : 0);
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   geos.forEach((g, i) => {
     for (const [a, b] of [[g.x, g.y], [g.x + g.w, g.y], [g.x + g.w, g.y + g.d], [g.x, g.y + g.d]]) {
@@ -1045,6 +1076,29 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
           {p.eyebrow ? <div style={{fontFamily: PAPER.font, fontWeight: 700, fontSize: 22 * u, letterSpacing: 3 * u, color: '#8a6fd1', textTransform: 'uppercase'}}>{p.eyebrow}</div> : null}
           {p.title ? <div style={{fontSize: 56 * u, fontWeight: 800, color: PAPER.ink, letterSpacing: -1 * u, marginTop: 6 * u}}>{p.title}</div> : null}
           {p.subtitle ? <div style={{fontSize: 28 * u, color: PAPER.inkSoft, marginTop: 8 * u, maxWidth: 1300 * u}}>{p.subtitle}</div> : null}
+        </div>
+      ) : null}
+
+      {sideNote && noteAmount > 0 ? (
+        <div style={{position: 'absolute',
+          left: portraitNote || sideNote.side === 'left' ? 90 * u : undefined,
+          right: !portraitNote && sideNote.side === 'right' ? 90 * u : undefined,
+          top: portraitNote ? headingBottom : (headingBottom + bottom) / 2,
+          width: portraitNote ? W - 180 * u : noteWidth, boxSizing: 'border-box',
+          transform: portraitNote ? undefined : `translateY(-50%)`,
+          opacity: noteAmount * noteAmount, padding: 24 * u,
+          border: `1px solid ${PAPER.inkSoft}`, borderRadius: 16 * u, background: PAPER.card,
+          color: PAPER.ink, fontSize: 31 * u, fontWeight: 650, lineHeight: 1.25}}>
+          <div style={{display: 'grid'}}>
+            {(replacingNote ? [previousNote, sideNote] : [sideNote]).map((note, i) => (
+              <div key={i} style={{gridArea: '1 / 1',
+                opacity: replacingNote ? (i === 0 ? 1 - noteProgress(f) : noteProgress(f)) : 1}}>
+                {note.text}
+                {note.detail ? <div style={{fontFamily: PAPER.font, fontSize: 23 * u, fontWeight: 600,
+                  marginTop: 16 * u, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere'}}>{note.detail}</div> : null}
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
 

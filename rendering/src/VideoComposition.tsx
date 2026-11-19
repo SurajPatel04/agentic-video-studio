@@ -1,3 +1,4 @@
+import {isoSideNoteSchema, PreviousIsoSideNote} from './scenes/IsoScene';
 import {linearTiming, TransitionSeries} from '@remotion/transitions';
 import {Fragment, useMemo} from 'react';
 import {AbsoluteFill, Sequence} from 'remotion';
@@ -105,11 +106,15 @@ export const VideoComposition: React.FC<CompositionSpec> = (spec) => {
      <Sequence from={offset} name="video">
       {audio.music ? <Music music={audio.music} speaking={speaking} /> : null}
       {audio.transitions
-        ? spec.scenes.map((_, i) => (transitionFrames(spec, i) > 0 ? <Sfx key={`w${i}`} sound="whoosh" at={Math.max(0, starts[i] - 4)} volume={0.6} /> : null))
+        ? spec.scenes.map((scene, i) => (scene.props?.continued !== true && transitionFrames(spec, i) > 0 ? <Sfx key={`w${i}`} sound="whoosh" at={Math.max(0, starts[i] - 4)} volume={0.6} /> : null))
         : null}
       <TransitionSeries>
         {spec.scenes.map((scene, i) => {
           const frames = transitionFrames(spec, i);
+          const previous = spec.scenes[i - 1];
+          const oldNote = scene.component === 'IsoScene' && scene.props?.continued === true &&
+            previous?.component === 'IsoScene' ? isoSideNoteSchema.safeParse(previous.props?.sideNote) : undefined;
+          const previousNote = oldNote?.success && oldNote.data.until === undefined ? oldNote.data : null;
           const transition = transitionInto(spec, i);
           const hideOutgoingCaptions = i + 1 < spec.scenes.length && ['fade', 'wipe'].includes(transitionInto(spec, i + 1).type);
           const captionFrames = scene.durationInFrames - (hideOutgoingCaptions ? transitionFrames(spec, i + 1) : 0);
@@ -122,7 +127,9 @@ export const VideoComposition: React.FC<CompositionSpec> = (spec) => {
                 />
               ) : null}
               <TransitionSeries.Sequence durationInFrames={scene.durationInFrames}>
-                <SceneFrame scene={scene} audio={audio} captions={shownCaptions} captionFrames={captionFrames} fps={spec.fps} />
+                <PreviousIsoSideNote.Provider value={previousNote}>
+                  <SceneFrame scene={scene} audio={audio} captions={shownCaptions} captionFrames={captionFrames} fps={spec.fps} />
+                </PreviousIsoSideNote.Provider>
               </TransitionSeries.Sequence>
             </Fragment>
           );

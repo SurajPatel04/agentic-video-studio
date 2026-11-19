@@ -42,6 +42,16 @@ rules: |
   Say what the learner can infer and point to the detail that justifies it. Keep the example visible through
   its interpretation. Cue the highlight to the phrase that explains the detail, including when the item
   was already named in an introductory reading. Revisit a diagram only when a new relationship appears.
+  When a diagram is still relevant, continue its existing actors and use a timed IsoScene sideNote for
+  the next short teaching sentence and evidence. The open note carries to a continuation. Set until
+  to close it and let the diagram fill the space again. Use a complete sentence and put a literal URL,
+  command, or indented result in detail when relevant.
+  Replace the note inside the same panel on a continuation with the same side and at:0. Use a solid
+  arrow labeled with the lookup to show what the server reads. Show the data on the return arrow.
+  When explaining a database-backed read, show the server querying the database and the record
+  returning to the server before the HTTP response. Put the product image or its details beside the
+  record as evidence. Present a specific database as part of the example when the implementation is illustrative.
+  Choose a concrete object when the product is known, such as mug for a mug in a product example.
   Choose a diagram when the relationship, location or direction is the teaching point. When the speaker
   follows a changing value, decision or interpretation, keep the example on one board. Show the input,
   the operation or evidence, and the result as each is explained. Give the learner a short written point

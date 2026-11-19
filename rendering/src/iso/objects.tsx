@@ -208,6 +208,27 @@ const Cardboard: FC<ArtProps> = (p) => {
   return <Decorated {...p} top={<rect x={g.w / 2 - 0.12} y={0} width={0.24} height={g.d} fill="#e9d3a6" opacity={0.9} />} front={<rect x={g.w / 2 - 0.12} y={0} width={0.24} height={g.h * 0.4} fill="#e9d3a6" opacity={0.9} />} />;
 };
 
+/** A ceramic mug with an open rim and a handle. */
+const Mug: FC<ArtProps> = ({g, zz, T, o, sw, color}) => {
+  const center = project(g.x + g.w * 0.42, g.y + g.d / 2, zz, T, o);
+  const rim = -g.h * T;
+  const r = g.d * T * 0.45;
+  const depth = r * 0.38;
+  return (
+    <g>
+      <IsoShadow x={g.x} y={g.y} w={g.w} d={g.d} opacity={0.8} T={T} o={o} sw={sw} />
+      <g transform={`translate(${center.x} ${center.y - depth})`} stroke={PAPER.ink} strokeWidth={sw}>
+        <path d={`M${r * .82},${rim + depth} C${r * 2.1},${rim - depth} ${r * 2.05},${-depth} ${r * .8},${-depth}
+          L${r * .8},${-2 * depth} C${r * 1.55},${-2 * depth} ${r * 1.52},${rim + depth} ${r * .82},${rim + 2 * depth} Z`}
+          fill={shade(color, -0.17)} />
+        <path d={`M${-r},${rim} L${-r * .85},0 A${r * .85},${depth} 0 0 0 ${r * .85},0 L${r},${rim} Z`} fill={color} />
+        <ellipse cy={rim} rx={r} ry={depth} fill={shade(color, 0.22)} />
+        <ellipse cy={rim + depth * .1} rx={r * .8} ry={depth * .69} fill={shade(color, -0.3)} />
+      </g>
+    </g>
+  );
+};
+
 const Globe: FC<ArtProps> = ({g, zz, T, o, sw, color}) => {
   const c = project(g.x + g.w / 2, g.y + g.d / 2, zz + g.h * 0.55, T, o);
   const r = Math.min(g.w, g.d) * 0.62 * T;
@@ -2289,7 +2310,7 @@ const HttpMethodTile: FC<ArtProps & {method: string}> = ({method, ...props}) => 
 };
 
 export type ArtKind = HttpMethodKind | MediaKind | CommunicationKind | AiKind | AudioKind | RoadKind | GeneralKind | 'server' | 'database' | 'storage' | 'cache' | 'cloud' | 'loadbalancer' | 'router' | 'api' | 'queue' | 'client' |
-  'laptop' | 'phone' | 'cpu' | 'memory' | 'globe' | 'lock' | 'file' | 'code' | 'box' |
+  'laptop' | 'phone' | 'cpu' | 'memory' | 'globe' | 'lock' | 'file' | 'code' | 'box' | 'mug' |
   'tile' | 'tv' | 'radio' | 'newspaper' | 'tower' | 'satellite' | 'building' | 'book' | 'mic' | 'camera' | 'billboard' |
   'hospital' | 'doctor' | 'bed' | 'ambulance' | 'pill' | 'syringe' | 'heartmonitor' | 'microscope' | 'testtubes' | 'dna' |
   'school' | 'teacher' | 'desk' | 'bookshelf' | 'gradcap' | 'backpack' | 'standglobe' | 'certificate' | 'notebook' |
@@ -2321,6 +2342,7 @@ export const IsoArt: FC<ArtProps & {kind: ArtKind}> = (props) => {
     case 'lock': return <Padlock {...props} />;
     case 'globe': return <Globe {...props} />;
     case 'cloud': return <Cloud {...props} />;
+    case 'mug': return <Mug {...props} />;
     case 'box': return <Cardboard {...props} />;
     case 'tile': return <Tile {...props} />;
     case 'tv': return <Television {...props} />;

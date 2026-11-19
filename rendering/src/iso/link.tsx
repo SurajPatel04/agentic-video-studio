@@ -54,7 +54,7 @@ const Lane: FC<LaneProps & {returning?: boolean}> = ({returning, k, progress, ph
   const headSize = Math.min(24 * u, k.length * 0.32) * Math.min(1, progress * 3) * (1 + 0.3 * Math.sin(arrival * Math.PI));
   const tint = returning ? '#95cbb4' : '#b3a3d9';
   const shaft = pathTo(k, progress);
-  const dash = dashed ? {strokeDasharray: `${sw * 3} ${sw * 3}`, strokeDashoffset: -phase * u} : {};
+  const dash = dashed ? {strokeDasharray: `${sw * 3} ${sw * 3}`, strokeDashoffset: flow === 'none' && !returning ? 0 : -phase * u} : {};
   const fadeEnds = (s: number) => Math.min(1, s * 7, (1 - s) * 7);
 
   return (

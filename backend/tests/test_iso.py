@@ -62,6 +62,17 @@ class ContinueTests(unittest.TestCase):
         self.assertEqual(continuation["props"]["exampleLines"],
                          [{"text": "Initial state", "at": 0}, {"text": "Result", "at": 0}])
 
+    def test_side_note_stays_open_until_explicitly_closed(self):
+        setup = base()
+        setup["props"]["sideNote"] = {"text": "Read the outcome.", "cue": "outcome", "side": "right"}
+        keep = {"component": "IsoScene", "props": {"continue": True}}
+        close = {"component": "IsoScene", "props": {"continue": True, "sideNote": {
+            "text": "Read the outcome.", "at": 0, "side": "right", "until": 0.6}}}
+        after = {"component": "IsoScene", "props": {"continue": True}}
+        expand_continuations({"scenes": [setup, keep, close, after]})
+        self.assertEqual(keep["props"]["sideNote"], {"text": "Read the outcome.", "side": "right", "at": 0})
+        self.assertNotIn("sideNote", after["props"])
+
     def test_carries_end_state_without_entrance(self):
         spec = {"scenes": [base(), {"id": "s2", "component": "IsoScene", "props": {
             "continue": True, "objects": [{"id": "b", "kind": "server", "at": [3.5, 0]}],
