@@ -10,6 +10,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=PROJECT_ROOT / ".env", extra="ignore")
 
+    # Video job worker. Celery uses separate Redis databases for messages and results.
+    CELERY_BROKER_URL: str = "redis://127.0.0.1:6379/0"
+    CELERY_RESULT_BACKEND: str = "redis://127.0.0.1:6379/1"
+    CELERY_VIDEO_QUEUE: str = "video"
+
     # Same convention as the discovery service: credentials live in the tracking URI,
     # e.g. https://user:password@dev.landnextrole.com/mlflow
     MLFLOW_TRACKING_URI: str = ""

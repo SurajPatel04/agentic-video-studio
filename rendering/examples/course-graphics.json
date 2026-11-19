@@ -1,0 +1,106 @@
+{
+  "fps": 15,
+  "brand": {"intro":false},
+  "width": 1280,
+  "height": 720,
+  "defaultTransition": {
+    "type": "fade",
+    "durationInFrames": 4
+  },
+  "scenes": [
+    {
+      "id": "lesson-1",
+      "component": "SequenceScene",
+      "durationInFrames": 60,
+      "props": {
+        "protocol": "HTTP"
+      }
+    },
+    {
+      "id": "lesson-2",
+      "component": "SequenceScene",
+      "durationInFrames": 60,
+      "props": {
+        "protocol": "DNS"
+      }
+    },
+    {
+      "id": "lesson-3",
+      "component": "SequenceScene",
+      "durationInFrames": 60,
+      "props": {
+        "protocol": "TCP"
+      }
+    },
+    {
+      "id": "lesson-4",
+      "component": "LogicGateScene",
+      "durationInFrames": 60,
+      "props": {}
+    },
+    {
+      "id": "lesson-5",
+      "component": "BinaryHexScene",
+      "durationInFrames": 60,
+      "props": {}
+    },
+    {
+      "id": "lesson-6",
+      "component": "CpuCycleScene",
+      "durationInFrames": 60,
+      "props": {}
+    },
+    {
+      "id": "lesson-7",
+      "component": "SchedulingScene",
+      "durationInFrames": 60,
+      "props": {}
+    },
+    {
+      "id": "lesson-8",
+      "component": "PagingScene",
+      "durationInFrames": 60,
+      "props": {}
+    },
+    {
+      "id": "lesson-9",
+      "component": "CommunicationModelScene",
+      "durationInFrames": 60,
+      "props": {
+        "model": "SMCR"
+      }
+    },
+    {
+      "id": "lesson-10",
+      "component": "CommunicationModelScene",
+      "durationInFrames": 60,
+      "props": {
+        "model": "Lasswell"
+      }
+    },
+    {
+      "id": "lesson-11",
+      "component": "BreakingNewsScene",
+      "durationInFrames": 60,
+      "props": {}
+    },
+    {
+      "id": "lesson-12",
+      "component": "CameraFramingScene",
+      "durationInFrames": 60,
+      "props": {}
+    },
+    {
+      "id": "lesson-13",
+      "component": "CharacterScene",
+      "durationInFrames": 60,
+      "props": {}
+    },
+    {
+      "id": "lesson-14",
+      "component": "WhiteboardScene",
+      "durationInFrames": 60,
+      "props": {}
+    }
+  ]
+}

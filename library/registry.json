@@ -2019,6 +2019,1034 @@
     }
   },
   {
+    "name": "SequenceScene",
+    "version": "1.0.0",
+    "description": "Two lifelines and ordered message arrows for HTTP, DNS or TCP. Override steps with narrated messages.",
+    "tags": [
+      "sequence diagram",
+      "http",
+      "dns",
+      "tcp",
+      "handshake"
+    ],
+    "path": "rendering/src/scenes/SequenceScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 75
+        },
+        "protocol": {
+          "default": "TCP",
+          "type": "string",
+          "enum": [
+            "HTTP",
+            "DNS",
+            "TCP"
+          ]
+        },
+        "steps": {
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 48
+              },
+              "reverse": {
+                "type": "boolean"
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "message",
+              "reverse",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "protocol": "TCP"
+    }
+  },
+  {
+    "name": "LogicGateScene",
+    "version": "1.0.0",
+    "description": "Change input signals and evaluate a gate beside its matching truth table.",
+    "tags": [
+      "logic gate",
+      "boolean",
+      "truth table"
+    ],
+    "path": "rendering/src/scenes/LogicGateScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 75
+        },
+        "gate": {
+          "default": "AND",
+          "type": "string",
+          "enum": [
+            "AND",
+            "OR",
+            "XOR",
+            "NOT",
+            "NAND",
+            "NOR",
+            "XNOR"
+          ]
+        },
+        "states": {
+          "default": [
+            {
+              "a": false,
+              "b": false,
+              "at": 0
+            },
+            {
+              "a": true,
+              "b": false,
+              "at": 0.3
+            },
+            {
+              "a": true,
+              "b": true,
+              "at": 0.65
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "a": {
+                "type": "boolean"
+              },
+              "b": {
+                "type": "boolean"
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "a",
+              "b",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "gate": "AND",
+      "states": [
+        {
+          "a": false,
+          "b": false,
+          "at": 0
+        },
+        {
+          "a": true,
+          "b": false,
+          "at": 0.3
+        },
+        {
+          "a": true,
+          "b": true,
+          "at": 0.65
+        }
+      ]
+    }
+  },
+  {
+    "name": "BinaryHexScene",
+    "version": "1.0.0",
+    "description": "Convert an unsigned byte using binary place values and hexadecimal nibbles.",
+    "tags": [
+      "binary",
+      "hexadecimal",
+      "base conversion"
+    ],
+    "path": "rendering/src/scenes/BinaryHexScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 75
+        },
+        "value": {
+          "default": 42,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "at": {
+          "default": 0.48,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "value": 42,
+      "at": 0.48
+    }
+  },
+  {
+    "name": "CpuCycleScene",
+    "version": "1.0.0",
+    "description": "Trace fetch, decode and execute for an immediate add or subtract instruction.",
+    "tags": [
+      "cpu",
+      "instruction",
+      "fetch decode execute",
+      "accumulator"
+    ],
+    "path": "rendering/src/scenes/CpuCycleScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 75
+        },
+        "accumulator": {
+          "default": 4,
+          "type": "integer",
+          "minimum": -999,
+          "maximum": 999
+        },
+        "operand": {
+          "default": 3,
+          "type": "integer",
+          "minimum": -999,
+          "maximum": 999
+        },
+        "operation": {
+          "default": "ADD",
+          "type": "string",
+          "enum": [
+            "ADD",
+            "SUB"
+          ]
+        },
+        "decode": {
+          "default": {
+            "at": 0.32
+          },
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "at"
+          ]
+        },
+        "execute": {
+          "default": {
+            "at": 0.64
+          },
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "at"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "accumulator": 4,
+      "operand": 3,
+      "operation": "ADD",
+      "decode": {
+        "at": 0.32
+      },
+      "execute": {
+        "at": 0.64
+      }
+    }
+  },
+  {
+    "name": "SchedulingScene",
+    "version": "1.0.0",
+    "description": "Compute a proportional Gantt chart for nonpreemptive FCFS or shortest-job-first scheduling with simultaneous arrivals.",
+    "tags": [
+      "gantt",
+      "scheduling",
+      "fcfs",
+      "sjf"
+    ],
+    "path": "rendering/src/scenes/SchedulingScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 75
+        },
+        "policy": {
+          "default": "FCFS",
+          "type": "string",
+          "enum": [
+            "FCFS",
+            "SJF"
+          ]
+        },
+        "jobs": {
+          "default": [
+            {
+              "name": "A",
+              "burst": 4
+            },
+            {
+              "name": "B",
+              "burst": 2
+            },
+            {
+              "name": "C",
+              "burst": 3
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 12
+              },
+              "burst": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "name",
+              "burst"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "policy": "FCFS",
+      "jobs": [
+        {
+          "name": "A",
+          "burst": 4
+        },
+        {
+          "name": "B",
+          "burst": 2
+        },
+        {
+          "name": "C",
+          "burst": 3
+        }
+      ]
+    }
+  },
+  {
+    "name": "PagingScene",
+    "version": "1.0.0",
+    "description": "Split a byte address, look up the page frame and compute the physical address or show a page fault.",
+    "tags": [
+      "memory",
+      "paging",
+      "virtual memory",
+      "address translation"
+    ],
+    "path": "rendering/src/scenes/PagingScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 75
+        },
+        "address": {
+          "default": 42,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4095
+        },
+        "pageSize": {
+          "default": "16",
+          "type": "string",
+          "enum": [
+            "16",
+            "32",
+            "64",
+            "128"
+          ]
+        },
+        "frame": {
+          "default": 7,
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lookup": {
+          "default": {
+            "at": 0.3
+          },
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "at"
+          ]
+        },
+        "result": {
+          "default": {
+            "at": 0.62
+          },
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "at"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "address": 42,
+      "pageSize": "16",
+      "frame": 7,
+      "lookup": {
+        "at": 0.3
+      },
+      "result": {
+        "at": 0.62
+      }
+    }
+  },
+  {
+    "name": "CommunicationModelScene",
+    "version": "1.0.0",
+    "description": "Walk through Berlo SMCR or Lasswell using a running example for every stage.",
+    "tags": [
+      "berlo",
+      "smcr",
+      "lasswell",
+      "communication model",
+      "media"
+    ],
+    "path": "rendering/src/scenes/CommunicationModelScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 75
+        },
+        "model": {
+          "default": "SMCR",
+          "type": "string",
+          "enum": [
+            "SMCR",
+            "Lasswell"
+          ]
+        },
+        "stages": {
+          "minItems": 4,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "example": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 48
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "example",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "model": "SMCR"
+    }
+  },
+  {
+    "name": "BreakingNewsScene",
+    "version": "1.0.0",
+    "description": "A broadcast lower-third ticker replaces the developing headline at each timed update.",
+    "tags": [
+      "breaking news",
+      "ticker",
+      "headline",
+      "broadcast"
+    ],
+    "path": "rendering/src/scenes/BreakingNewsScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Follow a developing story",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 75
+        },
+        "station": {
+          "default": "Campus desk",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48
+        },
+        "updates": {
+          "default": [
+            {
+              "time": "09:00",
+              "headline": "Library opening delayed for inspection",
+              "at": 0
+            },
+            {
+              "time": "10:15",
+              "headline": "Inspection complete · doors open at eleven",
+              "at": 0.48
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "time": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 12
+              },
+              "headline": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 85
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "time",
+              "headline",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Follow a developing story",
+      "station": "Campus desk",
+      "updates": [
+        {
+          "time": "09:00",
+          "headline": "Library opening delayed for inspection",
+          "at": 0
+        },
+        {
+          "time": "10:15",
+          "headline": "Inspection complete · doors open at eleven",
+          "at": 0.48
+        }
+      ]
+    }
+  },
+  {
+    "name": "CameraFramingScene",
+    "version": "1.0.0",
+    "description": "Compare wide, medium and close-up framing of one subject with a rule-of-thirds grid.",
+    "tags": [
+      "camera shots",
+      "framing",
+      "rule of thirds"
+    ],
+    "path": "rendering/src/scenes/CameraFramingScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "How shot size changes what you see",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 75
+        },
+        "grid": {
+          "default": true,
+          "type": "boolean"
+        },
+        "shots": {
+          "default": [
+            {
+              "size": "wide",
+              "side": "left",
+              "at": 0
+            },
+            {
+              "size": "medium",
+              "side": "left",
+              "at": 0.33
+            },
+            {
+              "size": "close-up",
+              "side": "left",
+              "at": 0.66
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "size": {
+                "type": "string",
+                "enum": [
+                  "wide",
+                  "medium",
+                  "close-up"
+                ]
+              },
+              "side": {
+                "type": "string",
+                "enum": [
+                  "left",
+                  "right"
+                ]
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "size",
+              "side",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "How shot size changes what you see",
+      "grid": true,
+      "shots": [
+        {
+          "size": "wide",
+          "side": "left",
+          "at": 0
+        },
+        {
+          "size": "medium",
+          "side": "left",
+          "at": 0.33
+        },
+        {
+          "size": "close-up",
+          "side": "left",
+          "at": 0.66
+        }
+      ]
+    }
+  },
+  {
+    "name": "CharacterScene",
+    "version": "1.0.0",
+    "description": "Two named characters take timed turns speaking through a graphic speech bubble.",
+    "tags": [
+      "avatar",
+      "character",
+      "dialogue",
+      "role play"
+    ],
+    "path": "rendering/src/scenes/CharacterScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Ask where the evidence came from",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 75
+        },
+        "left": {
+          "default": "Editor",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48
+        },
+        "right": {
+          "default": "Reporter",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48
+        },
+        "turns": {
+          "default": [
+            {
+              "speaker": "left",
+              "line": "Who saw the meeting take place?",
+              "at": 0
+            },
+            {
+              "speaker": "right",
+              "line": "I interviewed two people who attended.",
+              "at": 0.48
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "speaker": {
+                "type": "string",
+                "enum": [
+                  "left",
+                  "right"
+                ]
+              },
+              "line": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 105
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "speaker",
+              "line",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Ask where the evidence came from",
+      "left": "Editor",
+      "right": "Reporter",
+      "turns": [
+        {
+          "speaker": "left",
+          "line": "Who saw the meeting take place?",
+          "at": 0
+        },
+        {
+          "speaker": "right",
+          "line": "I interviewed two people who attended.",
+          "at": 0.48
+        }
+      ]
+    }
+  },
+  {
+    "name": "WhiteboardScene",
+    "version": "1.0.0",
+    "description": "Draw custom marker strokes one by one. Supply normalized [x,y] points and optional labels.",
+    "tags": [
+      "hand drawn",
+      "sketch",
+      "whiteboard",
+      "diagram"
+    ],
+    "path": "rendering/src/scenes/WhiteboardScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Sketch a feedback loop",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 75
+        },
+        "strokes": {
+          "default": [
+            {
+              "points": [
+                [
+                  0.18,
+                  0.35
+                ],
+                [
+                  0.78,
+                  0.35
+                ],
+                [
+                  0.74,
+                  0.3
+                ],
+                [
+                  0.78,
+                  0.35
+                ],
+                [
+                  0.74,
+                  0.4
+                ]
+              ],
+              "label": "Send a message",
+              "at": 0
+            },
+            {
+              "points": [
+                [
+                  0.78,
+                  0.68
+                ],
+                [
+                  0.18,
+                  0.68
+                ],
+                [
+                  0.22,
+                  0.63
+                ],
+                [
+                  0.18,
+                  0.68
+                ],
+                [
+                  0.22,
+                  0.73
+                ]
+              ],
+              "label": "Return feedback",
+              "at": 0.48
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "points": {
+                "minItems": 2,
+                "maxItems": 64,
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 48
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "points",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Sketch a feedback loop",
+      "strokes": [
+        {
+          "points": [
+            [
+              0.18,
+              0.35
+            ],
+            [
+              0.78,
+              0.35
+            ],
+            [
+              0.74,
+              0.3
+            ],
+            [
+              0.78,
+              0.35
+            ],
+            [
+              0.74,
+              0.4
+            ]
+          ],
+          "label": "Send a message",
+          "at": 0
+        },
+        {
+          "points": [
+            [
+              0.78,
+              0.68
+            ],
+            [
+              0.18,
+              0.68
+            ],
+            [
+              0.22,
+              0.63
+            ],
+            [
+              0.18,
+              0.68
+            ],
+            [
+              0.22,
+              0.73
+            ]
+          ],
+          "label": "Return feedback",
+          "at": 0.48
+        }
+      ]
+    }
+  },
+  {
     "name": "AIWorkflowScene",
     "version": "1.0.0",
     "description": "Keep one board for an AI workflow. Mode lifecycle compares pretraining, fine-tuning and inference; rag traces question, retrieval, context and cited answer; tools traces tool selection and returned result; reliability compares grounded, unsupported and uncertain answers. Supply concrete steps and evidence.",

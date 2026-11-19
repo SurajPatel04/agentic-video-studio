@@ -12,7 +12,7 @@
     "try {",
     "  const r = pm.response.json();",
     "  if (pm.request.method === 'POST' && r.id) { pm.collectionVariables.set('videoId', r.id); console.log('videoId =', r.id); }",
-    "  if (r.status) console.log(`status=${r.status} step=${r.step} progress=${r.progress} ${r.error || ''}`);",
+    "  if (r.status) console.log(`status=${r.status} step=${r.step} progress=${r.progress_percent ?? (typeof r.progress === 'number' ? Math.round(r.progress * 1000) / 10 + '%' : '')} ${r.error || ''}`);",
     "} catch (e) {}"
   ]}}],
   "item": [

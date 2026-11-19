@@ -1,6 +1,8 @@
 import * as RAG from './scenes/RAGScene';
 import {mlFoundations} from './scenes/MLFoundations';
 import {llmMechanics} from './scenes/LLMMechanics';
+import {computerLessons} from "./scenes/ComputerLessons";
+import {mediaLessons} from "./scenes/MediaLessons";
 import * as Neural from './scenes/NeuralNetworkScene';
 import * as MLScatter from './scenes/MLScatterScene';
 import * as AIWorkflow from './scenes/AIWorkflowScene';
@@ -102,6 +104,8 @@ const baseCatalog: Record<string, SceneEntry> = {
   NeuralNetworkScene: {...Neural, component: Neural.NeuralNetworkScene, schema: Neural.neuralNetworkSceneSchema},
   MLScatterScene: {...MLScatter, component: MLScatter.MLScatterScene, schema: MLScatter.mlScatterSceneSchema},
   ...llmMechanics,
+  ...computerLessons,
+  ...mediaLessons,
   AIWorkflowScene: {...AIWorkflow, component: AIWorkflow.AIWorkflowScene, schema: AIWorkflow.aiWorkflowSceneSchema},
   WorkedExampleScene: {...WorkedExample, component: WorkedExample.WorkedExampleScene, schema: WorkedExample.workedExampleSceneSchema},
   AnnotatedTextScene: {...AnnotatedText, component: AnnotatedText.AnnotatedTextScene, schema: AnnotatedText.annotatedTextSceneSchema},

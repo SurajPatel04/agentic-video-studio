@@ -115,10 +115,14 @@ def kind(job_id: str) -> str | None:
     return None
 
 
+def progress_percent(fraction: float) -> str:
+    return f"{fraction * 100:.1f}".removesuffix(".0") + "%"
+
+
 def view(job_id: str) -> dict[str, Any] | None:
     job = _job_status(job_id)
     if job is not None:
-        job["progress_percent"] = f'{job["progress"] * 100:.1f}'.removesuffix(".0") + "%"
+        job["progress_percent"] = progress_percent(job["progress"])
     return job
 
 

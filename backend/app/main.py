@@ -455,7 +455,7 @@ def _long(job_id: str):
 
 
 def _long_view(state) -> dict[str, Any]:
-    return {**state.model_dump(), "running": long_video.is_running(state.id),
+    return {**state.model_dump(), "progress_percent": video_jobs.progress_percent(state.progress), "running": long_video.is_running(state.id),
             "video_url": f"/long/{state.id}/video" if state.status == "done" else None}
 
 
@@ -477,7 +477,8 @@ async def create_long(req: LongRequest) -> dict[str, Any]:
 
 @app.get("/long")
 def list_long() -> list[dict[str, Any]]:
-    return long_video.list_long_videos()
+    return [{**job, "progress_percent": video_jobs.progress_percent(job["progress"])}
+            for job in long_video.list_long_videos()]
 
 
 @app.get("/long/{job_id}")

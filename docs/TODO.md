@@ -5,7 +5,7 @@ Prompt → LLM plans the video → React/Remotion scenes → MP4.
 
 Legend: `[x]` done · `[~]` partly done · `[ ]` not started
 
-_Last updated: 2026-11-19 (89 scene contracts; word-synced cues, 3D iso designs, lecture-style plans, plan repair + salvage)_
+_Updated November 19, 2026. The catalog contains 118 scene contracts._
 
 ---
 
@@ -14,7 +14,8 @@ _Last updated: 2026-11-19 (89 scene contracts; word-synced cues, 3D iso designs,
 - [x] Folder layout: `backend/`, `rendering/`, `library/`, `skills/`, `workspace/`, `docs/`
 - [x] `.gitignore` (env, venv, node_modules, renders, workspace, brief)
 - [x] `.env` / `.env.example` loaded from project root
-- [x] All packages pinned to exact versions (Remotion 4.0.539 everywhere)
+- [x] Pin Remotion packages to 4.0.539.
+- [ ] Pin backend dependency versions for reproducible installs.
 - [x] First commit of `backend/`, `rendering/`, `docs/`
 
 ## 2. Backend foundation (Python / FastAPI)
@@ -105,10 +106,11 @@ _Last updated: 2026-11-19 (89 scene contracts; word-synced cues, 3D iso designs,
 - [x] Other examples: `networking-priority`, `study-gallery`, `network-{star,bus,ring,mesh}`, `globe-*`, `infrastructure`
 - [x] `examples/library-showcase.json` — 13 scenes, 53 s, covers all ten new components (`LibraryShowcase`)
 
-### Course components (planned, build later)
-Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute their own steps.
+### Course components
+The course graphics showcase covers 14 examples in `rendering/examples/course-graphics.json`.
 - [~] 1. Shared: `GraphScene` (nodes/edges, spread), `TreeScene` (BST/heap/org chart), `TableScene` (SQL, truth/DP tables)
   - [x] `GraphScene` (BFS/DFS/Dijkstra), `TreeScene` (BST/AVL/general tree)
+  - [ ] Add heap-specific operations to the tree visualization.
   - [x] Database tables: `QueryScene`, `PipelineScene`, `TableScene` (insert / update / delete), `JoinScene`, `SchemaScene` (ER), `TransactionScene` (commit / rollback)
   - [x] Truth tables (`TruthTableScene`), DP tables (`DPTableScene`)
 - [x] 2. DSA: `ArrayScene` (indices, swaps, i/j pointers), `SortingScene` (bubble/selection/insertion/merge/quick from `{algorithm, input}`), linked list, stack/queue, hash table, BFS/DFS/Dijkstra, recursion call stack, Big-O race, code trace with variables
@@ -117,14 +119,14 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] 3. Maths: `PlotScene` (y = f(x), tangent, area), `GeometryScene`, number line, unit circle, vectors, matrix multiply, probability (coin/dice/tree), fractions, algebra steps
   - [x] `PlotScene` (formulas, live params, trace, tangent, area, zoom) + `LiveChartScene` (bar/line/race charts recalculated from data or a formula)
   - [x] `GeometryScene`, `NumberLineScene`, `UnitCircleScene`, `VectorScene`, `MatrixMultiplyScene`, `ProbabilityScene`, `FractionScene`, `AlgebraStepsScene`, `RaceScene`
-- [ ] 4. CS: `SequenceScene` (HTTP/DNS/TCP handshake), `LayerStackScene` (OSI, encapsulation), `LogicGateScene` + truth table, binary/hex, CPU fetch-decode-execute, Gantt scheduling, memory/paging
-- [~] 5. Mass communication: communication models (Shannon–Weaver, SMCR, Lasswell with noise + feedback), generic media mockups (newspaper, breaking-news ticker, social post, video player, podcast), viral spread, camera shots / rule of thirds, agenda-setting funnel
+- [x] 4. CS: HTTP/DNS/TCP sequence diagrams, OSI stacks, logic gates and truth tables, binary/hex, CPU instruction cycle, FCFS/SJF schedules and memory paging.
+- [x] 5. Mass communication: communication models (Shannon–Weaver with a feedback extension, SMCR, Lasswell), generic media mockups (newspaper, breaking-news ticker, social post, video player, podcast), viral spread, camera shots / rule of thirds, agenda-setting funnel
   - [x] `MediaTheoryScene` (Shannon–Weaver with noise + feedback, agenda setting, two-step flow), `FrontPageScene`, `StudioScene`, `FeedScene`, `SpreadScene`, `NewsCycleScene`, iso media objects (video player, podcast booth, social post)
   - [x] `PrintDeliveryScene`, `SatelliteNewsScene`, `SignalHomesScene`, `RadioTuningScene`, `CreatorWorkflowScene`; ~110 media / PR / politics / newsroom iso objects
-  - [ ] SMCR / Lasswell models, breaking-news ticker, camera shots / rule of thirds
-- [~] Lecture scenes: `WorkedExampleScene` (cued stages beside a live table), `OutcomeComparisonScene`, `AnnotatedTextScene` (request / sentence / excerpt with notes)
-- [ ] Common: `MindMapScene`, `PyramidScene` / `FunnelScene`, `CharacterScene` (avatars + speech bubbles), `WhiteboardScene` (hand-drawn)
-- [ ] `LayersScene.tsx` exists in `src/scenes/` but is not registered yet
+  - [x] SMCR / Lasswell models, breaking-news ticker, camera shots / rule of thirds
+- [x] Lecture scenes: `WorkedExampleScene` (cued stages beside a live table), `OutcomeComparisonScene`, `AnnotatedTextScene` (request / sentence / excerpt with notes)
+- [x] Common: `ConceptMapScene`, `LayersScene` (pyramid/funnel), `CharacterScene` (avatars + speech bubbles), `WhiteboardScene` (hand-drawn)
+- [x] `LayersScene` is registered.
 
 ### Audio
 - [x] Deepgram TTS in the backend: `app/utils/tts.py` (cached WAV clips in `rendering/public/audio/tts/`), `app/utils/render.py` (narration → voice + scene lengths, validate, Remotion render to `workspace/jobs/<id>/video.mp4`)
@@ -157,11 +159,12 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] A stubborn invalid scene no longer fails the chapter (plan repair + salvage, see §6); failed job `53c8dfcd2d` re-planned fine
 
 ### One video API
+- [x] Video and long-job status and list responses expose `progress_percent` for display and `progress` as a numeric fraction. Postman logs the percentage.
 - [x] `POST /videos` (`length`: short | long, `layout`: desktop | mobile | square), `GET /videos/{id}`, transcript + captions; old jobs readable (`video_jobs.py`); Postman collection in `docs/postman/`
 
 ## 5. Library contract & registry
 
-- [x] Zod props schema + description + tags for every scene (89 entries) in `src/registry.ts` → `sceneCatalog`
+- [x] Zod props schema + description + tags for every scene (118 entries) in `src/registry.ts` → `sceneCatalog`
 - [x] `check:scenes` also exports `library/lucide-icons.json` (2,091 icon names for the backend)
 - [x] Validator "did you mean": wrong kind / icon / component names get the closest matches instead of the full list
 - [x] Schemas are strict: unknown props (typos like `"titel"`) are errors, not silently dropped
@@ -176,7 +179,7 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 ## 6. Planner agent (LLM → JSON)
 
 - [x] Planner prompt + call through the gateway; validate with the scene contracts, retry with the errors (`app/agent/videoGenerator/nodes/plan_scenes.py`)
-- [x] LLM writes `composition.json` directly from a compact catalog built from `registry.json` (no separate script.json step)
+- [x] LangGraph selects skills and plans scenes from the catalog. The lecture path writes a script first, reviews the planned lesson, and routes corrections through scene repair before asset preparation. Prompts live in `app/agent/videoGenerator/prompts/*.yml`.
 - [x] Durations: planner gives a rough length, the narration step stretches each scene to fit its speech
 - [x] Topic filter: only core + matching scenes go in the prompt (LAN/MAN/WAN plan: ~5.3K input tokens, was ~9–10K)
 - [x] Planner modes: `catalog` (filtered prompt, 1 call), `tools` (search_scenes / get_scene / list_device_kinds / get_overlay via the Responses API), `auto` (tools once the library has > 80 scenes)
@@ -190,17 +193,19 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
   - [x] Narration lint: "Term = meaning" glossary lines, phrases repeated across scenes
   - [x] Required scenes for history, geography, newspapers, social media, statistics, speeches; REST/API → Terminal/Editor
   - [ ] Narration still reads disclaimers aloud ("this is an illustrative front page") — move them to a small on-screen tag
-- [x] IsoScene objects like a real harness: no flat 179-name list when the guide covers them; `find_iso_objects(idea)` tool (kinds → Lucide icons → saved designs)
+- [x] IsoScene objects like a real harness: no flat 179-name list when the guide covers them; `find_iso_objects(idea)` tool (built-in objects, Lucide and React Icons, and saved designs)
 - [x] Plan repair (`plan_repair.py`): scoped field edits; context shows what a field must match (table columns, existing object ids); a scene still broken is repaired whole; last resort replaces ≤ 25% invalid scenes with title cards keeping their narration
 
 ### Custom iso designs (`app/agent/videoGenerator/tools/iso_design.py`)
-- [x] Order: built-in kind → Lucide icon (no LLM call) → saved design → designer
+- [x] Object selection supports built-in kinds, Lucide and React Icons, saved designs, and custom 3D designs.
 - [x] Designer returns 3D shapes (box, cylinder, sphere, flat detail); code projects at 30°, shades like built-ins, fits the frame; may answer with an icon for abstract ideas
 - [x] Unique aliases; designer sees only the concept + label; failures fall back to a plain tile; saved-design hint capped at 20
 - [ ] 7 old flat-style designs left (`api-request`, `http-method`, `watch-*`…); delete to redraw in 3D
 - [ ] Job-local new scenes (opt-in `allow_new_scenes`) or a "missing scenes" report for the component agent
 
 ## 7. API, queue, storage
+
+- [x] Configure Celery with a Redis broker, Redis result backend, and a dedicated video queue in `app/config/celery.py`.
 
 - [ ] `POST /jobs`, `GET /jobs/{id}`, `GET /jobs/{id}/artifacts`
 - [ ] Redis + RQ/Celery worker; status in Redis (`queued` → `planning` → … → `done`/`failed`)
@@ -248,7 +253,6 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 
 ## Known issues
 
-- `skills/teach-media` body is over the 7000-character limit: topics routed to it fail to plan (the planner then retries `load_skill` until its call limit) and 1 backend test fails. `iso-diagrams` is back under the limit.
 - MLflow route `summary` is shared with another service's usage tracking.
 - Scene durations are typed by hand in JSON; a too-short scene cuts animations off.
 - Survey of India outline is for visualization, not a certified survey map.
@@ -260,6 +264,6 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] Paginate default file reads and reserve input budget before dispatch (conservative local estimate, not a provider billing cap).
 - [x] Record per-call usage/cache/latency in each job's `usage.json`; offline regressions and opt-in TEST-only live smoke.
 - [ ] Same-request end-to-end cost/quality benchmark on TEST; semantic animation assertions and varied props.
-- [ ] Separate validation from staging publication; transactional rollback for all staging artifacts; isolated execution worker.
+- [x] Validate the draft before publishing. Publication restores staging artifacts on failure. Isolated execution is tracked in §8 and §10.
 
 See `docs/Agent-harness.md` for controls, commands and limitations.
