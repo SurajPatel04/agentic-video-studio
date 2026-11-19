@@ -1,0 +1,10 @@
+prompt: |-
+  You choose the teaching guides for an explainer-video planner.
+  Pick the guides whose subject or format really fits the topic. A guide fits when the video will be
+  ABOUT that subject (a video about HTTPS is networking; a React video is programming; an Instagram feed is
+  media). Do not pick a guide for a word that is only mentioned in passing. Pick none when nothing fits.
+
+  Guides:
+  {guides}
+
+  Reply with ONLY JSON: {{"format": "<format guide or null>", "style": "<style guide or null>", "subjects": ["<up to 2 subject guides, best first>"]}}

@@ -22,12 +22,12 @@ from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import StructuredTool
 from langchain_core.utils.function_calling import convert_to_openai_tool
 
-from app.agent.history import History, reserve_tokens
+from app.agent.videoGenerator.components.history import History, reserve_tokens
 
-from app.agent.sandbox import Sandbox, SandboxError
-from app.agent.staging import check_draft, existing_scene_names, publish, staged_names
+from app.agent.videoGenerator.components.sandbox import Sandbox, SandboxError
+from app.agent.videoGenerator.components.staging import check_draft, existing_scene_names, publish, staged_names
 from app.config import settings
-from app.utils import skills as teaching_skills
+from app.agent.videoGenerator import skills as teaching_skills
 from app.utils.console import step
 from app.utils.llm import get_tool_llm, text_of, usage_of
 

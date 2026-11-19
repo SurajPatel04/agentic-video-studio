@@ -1,1 +1,1 @@
-"""Agent that writes new scene components (sandboxed file tools + checks + staging)."""
+"""Agents for generating videos and authoring scene components."""

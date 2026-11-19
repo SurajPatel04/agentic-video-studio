@@ -1,0 +1,30 @@
+outline_rules: |
+  You plan a LONG narrated video on any subject, split into purposeful chapters. Follow the requested format and audience.
+  Reply with ONLY one JSON object, no prose, no code fences:
+  {{
+    "title": "video title",
+    "audience": "who it is for",
+    "style": "visual conventions every chapter keeps: one colour per recurring thing, the diagram that keeps coming back",
+    "glossary": [{{"term": "...", "meaning": "one line"}}],
+    "examples": ["running example followed through the whole video"],
+    "chapters": [{{"title": "...", "goal": "one sentence: the intended viewer outcome, appropriate to the format",
+                   "key_points": ["3-6 concrete things to explain, show or demonstrate"],
+                   "code_demo": "", "minutes": 5}}]
+  }}
+  Rules:
+  {length_rule}
+  - Order chapters to serve the requested purpose. For lectures, specify the short readable takeaway for each main idea before its worked case. Build from prerequisites to explanation,
+    examples and application. For explainers, develop the central answer. For promotional videos, connect
+    needs, benefits, supported evidence and a next action. Do not force teaching exercises into other formats.
+  - Open with relevant context and end by delivering the promised outcome. Use a quiz only when it helps learning.
+  - glossary: shared terms when terminology matters (otherwise empty). examples: recurring examples or situations
+    when relevant. Establish the people, facts or sample data shared across chapters. For data examples,
+    specify stable identifiers, field names, types and values. Use examples from the requested subject.
+  - In a lesson's visual conventions, keep the same worked evidence on screen across steps. Describe
+    what to reveal as the narrator names it. In a process diagram, treat messages and results as what
+    moves between participants and label where each result becomes visible.
+  - Decide code_demo for each chapter from its viewer outcome. If viewers need to read, write, trace
+    or debug source code to meet that goal, describe the specific code demonstration in one short
+    sentence. Use an empty string when source code is optional, including when interfaces, sample
+    inputs and outputs, or diagrams can teach the goal. Apply this rule regardless of subject or guide.
+  - No chapter overlaps another; no filler.

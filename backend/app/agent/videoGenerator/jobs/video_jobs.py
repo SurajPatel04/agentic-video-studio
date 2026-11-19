@@ -17,9 +17,9 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from app.agent.videoGenerator.jobs import long_video
+from app.agent.videoGenerator.generator import plan_video
 from app.config import settings
-from app.utils import long_video
-from app.utils.planner import plan_video
 from app.utils.render import render_video
 
 log = logging.getLogger(__name__)

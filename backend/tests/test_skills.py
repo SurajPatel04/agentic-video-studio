@@ -8,7 +8,10 @@ from unittest.mock import AsyncMock, patch
 import httpx
 from langchain_core.messages import AIMessage
 
-from app.utils import skills, planner, long_video
+from app.agent.videoGenerator import skills
+from app.agent.videoGenerator.generator import plan_video
+from app.agent.videoGenerator.nodes import plan_scenes as planner
+from app.agent.videoGenerator.jobs import long_video
 from app.config import settings
 
 settings.SKILL_ROUTER = "keyword"  # offline tests: no skill-router LLM call (tested with a mock in test_skills)
@@ -77,7 +80,8 @@ class SelectionTests(unittest.TestCase):
             self.assertEqual(list(skills.discover()), ['custom'])
 
     def test_ai_lecture_selects_the_subject_guide_and_discoverable_scenes(self):
-        from app.utils import catalog, cues
+        from app.agent.videoGenerator.tools import catalog
+        from app.utils import cues
 
         chosen = skills.select("Beginner lecture on neural networks and backpropagation")
         self.assertIn("teach-lecture", chosen)
@@ -111,20 +115,20 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         model = AsyncMock()
         model.ainvoke.return_value = AIMessage('{}')
         with patch.object(planner, 'get_llm', return_value=model), patch.object(planner, '_check', AsyncMock(return_value=({'scenes': []}, ''))):
-            plan = await planner.plan_video('How Node.js works', mode='catalog')
+            plan = await plan_video('How Node.js works', mode='catalog')
             prompt = model.ainvoke.call_args.args[0][0].content
             self.assertIn('Teaching guide: teach-code', prompt)
             self.assertIn('### CodeScene', prompt)
             self.assertIn('highlightLines', prompt)
             self.assertIn('overlay "terminal"', prompt)
             self.assertEqual(plan.skills, ['video-foundation', 'make-explainer', 'iso-diagrams', 'teach-code'])  # house style by default
-            await planner.plan_video('How Node.js works', mode='catalog', skills=[])
+            await plan_video('How Node.js works', mode='catalog', skills=[])
             self.assertNotIn('Teaching guide:', model.ainvoke.call_args.args[0][0].content)
 
     async def test_nontech_catalog_and_original_long_brief(self):
         model = AsyncMock(); model.ainvoke.return_value = AIMessage('{}')
         with patch.object(planner, 'get_llm', return_value=model), patch.object(planner, '_check', AsyncMock(return_value=({'scenes': []}, ''))):
-            plan = await planner.plan_video('An ad for a local bakery', mode='catalog')
+            plan = await plan_video('An ad for a local bakery', mode='catalog')
             self.assertEqual(plan.skills, ['video-foundation', 'make-ad', 'iso-diagrams'])
             prompt = model.ainvoke.call_args.args[0][0].content
             self.assertIn('Teaching guide: make-ad', prompt)
@@ -145,7 +149,7 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(planner, 'get_tool_llm') as get, patch.object(planner, '_check', AsyncMock(return_value=({'scenes': []}, ''))) as check, \
                 patch.object(settings, 'PLANNER_DEFAULT_STYLE', ''):  # no house style: only the two guides below
             get.return_value.bind_tools.return_value = model
-            result = await planner.plan_video('Node.js', mode='tools')
+            result = await plan_video('Node.js', mode='tools')
         self.assertEqual(result.skills, ['teach-code', 'video-foundation'])
         self.assertEqual(result.llm_calls, 3)
         check.assert_awaited_once()
@@ -156,7 +160,7 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         model = AsyncMock(); model.ainvoke.return_value = AIMessage('{}')
         with patch.object(planner, 'get_tool_llm') as get, patch.object(planner, '_check', AsyncMock(return_value=({'scenes': []}, ''))):
             get.return_value.bind_tools.return_value = model
-            result = await planner.plan_video('Node.js', mode='tools', skills=[])
+            result = await plan_video('Node.js', mode='tools', skills=[])
             self.assertNotIn('load_skill', [t.name for t in get.return_value.bind_tools.call_args.args[0]])
             self.assertEqual(result.skills, [])
 
@@ -176,11 +180,11 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn('Teaching guide:', llm.ainvoke.call_args.args[0][0].content)
 
     async def test_component_agent_exposes_and_loads_component_guide(self):
-        from app.agent.component_agent import build_component
+        from app.agent.videoGenerator.components.component_agent import build_component
         model = AsyncMock()
         model.ainvoke.return_value = AIMessage('', tool_calls=[
             {'name': 'load_skill', 'args': {'name': 'write-scene'}, 'id': 'guide', 'type': 'tool_call'}])
-        with patch.object(settings, 'AGENT_MAX_STEPS', 1), patch('app.agent.component_agent.get_tool_llm') as get:
+        with patch.object(settings, 'AGENT_MAX_STEPS', 1), patch('app.agent.videoGenerator.components.component_agent.get_tool_llm') as get:
             get.return_value.bind_tools.return_value = model
             result = await build_component('A clear diagram scene', skills=['write-scene'])
             self.addCleanup(shutil.rmtree, settings.WORKSPACE_DIR / 'jobs' / result.job_id)
@@ -203,7 +207,7 @@ if __name__ == '__main__':
 
 class StyleSelectionTests(unittest.TestCase):
     def test_house_style_for_any_topic_and_media_beats_side_mentions(self):
-        from app.utils import skills
+        from app.agent.videoGenerator import skills
         picked = skills.select("Explain mass communication: print, radio, television, internet and social media, journalism")
         self.assertIn("iso-diagrams", picked)
         self.assertIn("teach-media", picked)
@@ -215,7 +219,7 @@ class StyleSelectionTests(unittest.TestCase):
 class SkillSizeTests(unittest.TestCase):
     def test_every_skill_loads(self):
         """A skill over the size limit refuses to load and every plan that picks it fails."""
-        from app.utils import skills
+        from app.agent.videoGenerator import skills
         for role in ("planner", "component"):
             for name in skills.discover(role):
                 with self.subTest(skill=name):
@@ -226,10 +230,10 @@ class RouterTests(unittest.IsolatedAsyncioTestCase):
     """SKILL_ROUTER=llm: the LLM picks guides by meaning; keyword matches fill free slots; failures fall back."""
 
     async def route(self, topic, reply):
-        from app.utils import skill_router
+        from app.agent.videoGenerator.nodes import select_skills as skill_router
         llm = AsyncMock()
         llm.ainvoke.side_effect = reply if isinstance(reply, Exception) else [AIMessage(reply)]
-        with patch.object(settings, "SKILL_ROUTER", "llm"), patch("app.utils.skill_router.get_llm", return_value=llm):
+        with patch.object(settings, "SKILL_ROUTER", "llm"), patch("app.agent.videoGenerator.nodes.select_skills.get_llm", return_value=llm):
             return await skill_router.route(topic)
 
     async def test_llm_finds_what_keywords_miss(self):
@@ -250,6 +254,6 @@ class RouterTests(unittest.IsolatedAsyncioTestCase):
     async def test_failure_or_requested_skips_the_llm(self):
         r = await self.route("How HTTPS keeps data private", RuntimeError("gateway down"))
         self.assertEqual((r.source, r.skills), ("keyword (llm failed)", skills.select("How HTTPS keeps data private")))
-        from app.utils import skill_router
+        from app.agent.videoGenerator.nodes import select_skills as skill_router
         r = await skill_router.route("anything", ["teach-code"])
         self.assertEqual((r.source, r.skills, r.calls), ("requested", ["teach-code"], 0))

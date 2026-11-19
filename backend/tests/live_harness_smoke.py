@@ -11,7 +11,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from langchain_core.tools import StructuredTool
 from langchain_openai import ChatOpenAI
 
-from app.agent.history import History
+from app.agent.videoGenerator.components.history import History
 from app.config import PROJECT_ROOT
 from app.utils.llm import usage_of
 

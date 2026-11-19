@@ -14,22 +14,13 @@ import logging
 import re
 from dataclasses import dataclass, field
 
+from app.agent.videoGenerator import skills as teaching_skills
+from ..prompts.catalog import PROMPT
+from ..state.video import VideoState
 from app.config import settings
-from app.utils import skills as teaching_skills
 from app.utils.llm import get_llm, text_of, usage_of
 
 log = logging.getLogger(__name__)
-
-PROMPT = """You choose the teaching guides for an explainer-video planner.
-Pick the guides whose subject or format really fits the topic. A guide fits when the video will be
-ABOUT that subject (a video about HTTPS is networking; a React video is programming; an Instagram feed is
-media). Do not pick a guide for a word that is only mentioned in passing. Pick none when nothing fits.
-
-Guides:
-{guides}
-
-Reply with ONLY JSON: {{"format": "<format guide or null>", "style": "<style guide or null>", "subjects": ["<up to 2 subject guides, best first>"]}}"""
-
 
 @dataclass
 class Route:
@@ -97,3 +88,10 @@ async def route(topic: str, requested: list[str] | None = None, *, long_video: b
     chosen = merge(keyword, pick, available, long_video=long_video)
     log.info("skills topic=%r keyword=%s llm=%s -> %s", topic[:80], keyword, pick, chosen)
     return Route(chosen, "llm", 1, tin, tout, pick)
+
+
+async def select_skills(state: VideoState) -> dict:
+    requested = state["skills"]
+    chosen = await route(state["topic"], requested, model=state["model"])
+    return {"selected": chosen.skills, "allowed": chosen.skills if requested is not None else None,
+            "route_usage": (chosen.calls, chosen.input_tokens, chosen.output_tokens)}

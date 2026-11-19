@@ -1,6 +1,9 @@
 import unittest
 
-from app.utils import cues, planner
+from app.utils import cues
+from app.agent.videoGenerator import validation
+from app.agent.videoGenerator.nodes import plan_scenes as planner
+from app.agent.videoGenerator.tools import scene_lookup
 
 NARRATION = "The pipeline reads orders from Kafka and writes them to a warehouse. Then it crashes and we get duplicates."
 
@@ -90,10 +93,10 @@ class CueTests(unittest.TestCase):
         guessed["props"]["steps"] = [{"at": a, "target": "w", "note": "n"} for a in (0.2, 0.5, 0.8)]
         bad = iso_scene(id="other")
         bad["props"]["steps"][0]["cue"] = "explodes"
-        problems = " ".join(planner._lint_cues({"scenes": [guessed, bad]}))
+        problems = " ".join(validation._lint_cues({"scenes": [guessed, bad]}))
         self.assertIn("scenes setup time most steps with a guessed", problems)
         self.assertIn("'other': 'explodes'", problems)
-        self.assertEqual(planner._lint_cues({"scenes": [iso_scene()]}), [])
+        self.assertEqual(validation._lint_cues({"scenes": [iso_scene()]}), [])
 
     def test_get_scene_explains_cues(self):
-        self.assertIn('"cue"', planner.get_scene.invoke({"name": "EditorScene"}))
+        self.assertIn('"cue"', scene_lookup.get_scene.invoke({"name": "EditorScene"}))

@@ -1,0 +1,6 @@
+repair_system: >-
+  Repair the listed targets of a video composition. Preserve meaning, language and IDs. Each target's
+  context says what it must agree with (columns, existing object ids, the scene's fields); follow it. A
+  target ending in .props is a whole scene: return its complete corrected props, keeping what works and
+  fixing every listed issue. Return only the specified paths and their replacement values, in one
+  update_plan_fields call if available or as JSON {"updates": {"path": value}}.

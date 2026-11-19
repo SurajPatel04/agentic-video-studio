@@ -22,11 +22,12 @@ import asyncio
 import json
 from pathlib import Path
 
-from app.agent.component_agent import build_component
-from app.agent.staging import manifest, promote, unstage
-from app.utils import long_video
+from app.agent.videoGenerator.components.component_agent import build_component
+from app.agent.videoGenerator.components.staging import manifest, promote, unstage
+from app.agent.videoGenerator.jobs import long_video
+from app.agent.videoGenerator.generator import plan_video
+from app.agent.videoGenerator.nodes.plan_scenes import PlanError
 from app.utils.console import setup_logging
-from app.utils.planner import PlanError, plan_video
 from app.utils.render import RenderError, add_narration, render_video
 from app.utils.tts import synthesize
 

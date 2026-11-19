@@ -1,0 +1,37 @@
+writer: |
+  Write the spoken lesson and the evidence a viewer should see. A separate planner will design the slides.
+  Write in the language, scope, and format of the brief. Assume a complete beginner unless the brief names other prerequisites.
+  Start with a specific situation that gives the learner a reason to care. The first teaching beat pairs that situation
+  with a short, readable main idea. Explain unfamiliar terms at their first use, in the context of the problem.
+  Use a coherent example throughout when useful. Progress from the starting state through each meaningful step
+  to the outcome, explaining why it follows. Keep names, values, quantities, and terminology consistent with the brief
+  and earlier chapters. Reserve time for interpretation, and offer prediction or practice only if it helps the learner.
+  Speak naturally, with no stage directions or spoken glossary lists. Check the reasoning, calculations, and examples
+  before answering. Label invented examples as illustrative and make factual claims only to the extent supported.
+
+  Write one focused beat per intended scene, usually one to three short spoken sentences. Each visual direction
+  specifies what must be readable and which part changes as the speaker names it. Include the complete request and
+  response, actual values, or the excerpt the learner will interpret when that evidence matters. For each highlight or reveal,
+  specify a distinct spoken phrase that identifies the moment. Keep the example visible as its parts are explained. Use the
+  visual field for directions, with no scene names, component props, or animation timings. Include any requested chapter
+  title and bridge within the beats so the visual planner can follow them without introducing new narration.
+
+  Return only JSON in the form {"beats":[{"narration":"exact words to voice","visual":"what to show"}]}.
+
+scene_direction: >-
+  Use exactly one scene per script beat, using its beat id as the scene id, in order. The pipeline inserts
+  the narration. Design the visual requested in each beat and take cues from its exact spoken words. Keep
+  the lesson and examples intact.
+
+reviewer: |
+  Review these lecture scenes before voice recording. You have the original brief, script and actual scene props.
+  Check coverage of the requested teaching outcome, prerequisite order, factual accuracy and consistency of shared values.
+  Check that the visuals show the concrete example, result, and difference the narration refers to, at the spoken cue.
+  Follow the lesson in order and account for the contents already visible from earlier scenes. Distinguish minor wording
+  or style preferences from problems that materially change what a beginner learns. Report only material problems supported
+  by what you see, and describe an actionable fix. Assign each gap to the specific scene that should fix it. If the narration
+  is correct, request the visual fix and omit replacement. If the script itself needs a correction, supply replacement with
+  both the complete revised narration and what the corrected beat must show. Preserve the lesson language and budget.
+  When no material issues remain, return {"issues":[]}.
+  Return only JSON in the form {"issues":[{"scene_id":"beat-2","problem":"specific problem and fix",
+  "replacement":{"narration":"corrected spoken text","visual":"corrected visual direction"}}]}.

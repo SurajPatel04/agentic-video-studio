@@ -11,8 +11,9 @@ import httpx
 
 from app.config import settings
 from app.main import app
-from app.utils import planner, video_jobs
-from app.utils.planner import Plan
+from app.agent.videoGenerator.nodes import plan_scenes as planner
+from app.agent.videoGenerator.jobs import video_jobs
+from app.agent.videoGenerator.schemas.plan import Plan
 from app.utils.render import RenderResult
 
 settings.SKILL_ROUTER = "keyword"
@@ -48,8 +49,8 @@ class VideosApiTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_short_mobile_runs_in_background_and_serves_files(self):
         plan = Plan({"fps": 30, "width": 1920, "height": 1080, "scenes": []}, 1, "catalog", 2, 100, 50, ["video-foundation"])
-        with patch("app.utils.video_jobs.plan_video", AsyncMock(return_value=plan)) as pv, \
-                patch("app.utils.video_jobs.render_video", AsyncMock(side_effect=fake_render)):
+        with patch("app.agent.videoGenerator.jobs.video_jobs.plan_video", AsyncMock(return_value=plan)) as pv, \
+                patch("app.agent.videoGenerator.jobs.video_jobs.render_video", AsyncMock(side_effect=fake_render)):
             r = await self.client.post("/videos", json={"prompt": "How HTTPS works", "layout": "mobile"})
             self.assertEqual(r.status_code, 202)
             job = r.json()
@@ -62,7 +63,7 @@ class VideosApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Hello", (await self.client.get(done["transcript_url"])).text)
 
     async def test_failure_is_reported_and_files_are_refused(self):
-        with patch("app.utils.video_jobs.plan_video", AsyncMock(side_effect=RuntimeError("gateway down"))):
+        with patch("app.agent.videoGenerator.jobs.video_jobs.plan_video", AsyncMock(side_effect=RuntimeError("gateway down"))):
             job = (await self.client.post("/videos", json={"prompt": "Anything at all"})).json()
             done = await self.wait(job["id"])
         self.assertEqual(done["status"], "failed")
@@ -76,7 +77,7 @@ class VideosApiTests(unittest.IsolatedAsyncioTestCase):
             await gate.wait()
             raise RuntimeError("outline failed")
 
-        with patch("app.utils.long_video.create_long_video", side_effect=slow_outline) as create:
+        with patch("app.agent.videoGenerator.jobs.long_video.create_long_video", side_effect=slow_outline) as create:
             job = (await self.client.post("/videos", json={"prompt": "Full course on networks", "length": "long", "minutes": 12})).json()
             self.assertEqual((job["length"], job["status"], job["step"]), ("long", "running", "writing the outline"))
             self.assertEqual(len(job["id"]), 10)

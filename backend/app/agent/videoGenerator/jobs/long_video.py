@@ -33,88 +33,25 @@ from pathlib import Path
 from typing import Any, Literal
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 
+from app.agent.videoGenerator import skills as teaching_skills
+from app.agent.videoGenerator.nodes import select_skills as skill_router
+from app.agent.videoGenerator.generator import plan_video
+from app.agent.videoGenerator.nodes.plan_scenes import PlanError, _extract_json, apply_layout
+from app.agent.videoGenerator.prompts.catalog import BRIEF_GUIDANCE, OUTLINE_RULES
+from app.agent.videoGenerator.schemas.outline import ChapterOutline, Outline
+from app.agent.videoGenerator.state.long_video import ChapterState, LongState
 from app.config import settings
-from app.utils import skill_router, skills as teaching_skills
+from app.utils import cues, subtitles
 from app.utils.console import step
 from app.utils.iso import expand_continuations
 from app.utils.llm import get_llm, text_of, usage_of
-from app.utils.planner import BRIEF_GUIDANCE, PlanError, _extract_json, apply_layout, plan_video
-from app.utils import cues, subtitles
 from app.utils.render import RenderError, captions_enabled, default_caption_mode, render_video, validate, without_intro
 
 log = logging.getLogger(__name__)
 
 ID_RE = re.compile(r"^[a-f0-9]{10}$")
-
-
-# --------------------------------------------------------------------------- models
-
-
-class Term(BaseModel):
-    term: str
-    meaning: str
-
-
-class ChapterOutline(BaseModel):
-    title: str = Field(min_length=2, max_length=120)
-    goal: str = Field(min_length=5)  # intended viewer outcome for this chapter
-    key_points: list[str] = Field(min_length=1, max_length=8)
-    code_demo: str = ""  # required source-code demonstration, empty when optional
-    minutes: float = Field(gt=0, le=20)
-    words: int = 0  # narration budget, set by us from minutes
-
-
-class Outline(BaseModel):
-    title: str
-    audience: str = "beginners"
-    style: str = ""  # visual conventions every chapter follows
-    glossary: list[Term] = Field(default_factory=list)
-    examples: list[str] = Field(default_factory=list)  # running examples reused across chapters
-    chapters: list[ChapterOutline] = Field(min_length=1, max_length=24)
-
-
-class ChapterState(BaseModel):
-    n: int
-    status: Literal["pending", "planned", "rendered", "failed"] = "pending"
-    failed_stage: Literal["", "plan", "render"] = ""
-    error: str = ""
-    scenes: int = 0
-    words: int = 0  # narration words actually planned
-    seconds: float = 0  # length of the rendered chapter
-    handoff: str = ""  # what this chapter covered, given to the next chapters
-    llm_calls: int = 0
-    input_tokens: int = 0
-    output_tokens: int = 0
-    job_id: str = ""
-
-
-class LongState(BaseModel):
-    id: str
-    topic: str
-    minutes: float
-    captions: bool = True
-    scale: float = 1.0
-    mode: str | None = None  # planner mode
-    model: str | None = None
-    skills: list[str] | None = None  # None migrates older jobs; [] explicitly disables guides
-    layout: Literal["desktop", "mobile", "square"] = "desktop"  # frame size of every chapter
-    max_minutes: float = 0  # the limit asked for; ``minutes`` is what the outline planned (content decides, up to the limit)
-    status: Literal["outlined", "running", "planned", "done", "failed"] = "outlined"
-    step: str = ""  # what it is doing / did last, for progress
-    progress: float = 0  # 0..1
-    error: str = ""
-    outline: Outline
-    chapters: list[ChapterState]
-    llm_calls: int = 0
-    input_tokens: int = 0
-    output_tokens: int = 0
-    video: str = ""
-    seconds: float = 0
-    timestamps: list[str] = Field(default_factory=list)
-    created: float = Field(default_factory=time.time)
-    updated: float = Field(default_factory=time.time)
 
 
 # ---------------------------------------------------------------------------- state
@@ -202,38 +139,6 @@ def plan_file(job_id: str, n: int) -> Path:
 
 
 # -------------------------------------------------------------------------- outline
-
-
-OUTLINE_RULES = """You plan a LONG narrated video on any subject, split into purposeful chapters. Follow the requested format and audience.
-Reply with ONLY one JSON object, no prose, no code fences:
-{{
-  "title": "video title",
-  "audience": "who it is for",
-  "style": "visual conventions every chapter keeps: one colour per recurring thing, the diagram that keeps coming back",
-  "glossary": [{{"term": "...", "meaning": "one line"}}],
-  "examples": ["running example followed through the whole video"],
-  "chapters": [{{"title": "...", "goal": "one sentence: the intended viewer outcome, appropriate to the format",
-                 "key_points": ["3-6 concrete things to explain, show or demonstrate"],
-                 "code_demo": "", "minutes": 5}}]
-}}
-Rules:
-{length_rule}
-- Order chapters to serve the requested purpose. For lectures, specify the short readable takeaway for each main idea before its worked case. Build from prerequisites to explanation,
-  examples and application. For explainers, develop the central answer. For promotional videos, connect
-  needs, benefits, supported evidence and a next action. Do not force teaching exercises into other formats.
-- Open with relevant context and end by delivering the promised outcome. Use a quiz only when it helps learning.
-- glossary: shared terms when terminology matters (otherwise empty). examples: recurring examples or situations
-  when relevant. Establish the people, facts or sample data shared across chapters. For data examples,
-  specify stable identifiers, field names, types and values. Use examples from the requested subject.
-- In a lesson's visual conventions, keep the same worked evidence on screen across steps. Describe
-  what to reveal as the narrator names it. In a process diagram, treat messages and results as what
-  moves between participants and label where each result becomes visible.
-- Decide code_demo for each chapter from its viewer outcome. If viewers need to read, write, trace
-  or debug source code to meet that goal, describe the specific code demonstration in one short
-  sentence. Use an empty string when source code is optional, including when interfaces, sample
-  inputs and outputs, or diagrams can teach the goal. Apply this rule regardless of subject or guide.
-- No chapter overlaps another; no filler.
-"""
 
 
 def length_rule(minutes: float, chapters: int | None, fixed: bool) -> str:

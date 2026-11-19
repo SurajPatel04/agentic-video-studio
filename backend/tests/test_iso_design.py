@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from langchain_core.messages import AIMessage
-from app.utils import iso_design
+from app.agent.videoGenerator.tools import iso_design
 
 CUP = {"aliases": ["coffee", "mug"], "parts": [
     {"shape": "cylinder", "at": [5, 5, 0], "radius": 4.6, "height": 0.5, "color": "cream"},

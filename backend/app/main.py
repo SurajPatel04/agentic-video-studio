@@ -11,13 +11,16 @@ from fastapi.responses import FileResponse
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
+from app.agent.videoGenerator import skills as teaching_skills
+from app.agent.videoGenerator.components.component_agent import build_component
+from app.agent.videoGenerator.components.staging import manifest, promote, unstage
+from app.agent.videoGenerator.jobs import long_video, video_jobs
+from app.agent.videoGenerator.generator import plan_video
+from app.agent.videoGenerator.nodes.plan_scenes import PlanError
 from app.config import settings
+from app.utils import subtitles
 from app.utils.console import fmt_seconds, paint, request_id, setup_logging
 from app.utils.llm import call_model, resolve_base_url
-from app.agent.component_agent import build_component
-from app.agent.staging import manifest, promote, unstage
-from app.utils import long_video, skills as teaching_skills, subtitles, video_jobs
-from app.utils.planner import PlanError, plan_video
 from app.utils.render import RenderError, render_video
 from app.utils.tts import MAX_CHARS, synthesize
 

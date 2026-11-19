@@ -9,6 +9,8 @@ from typing import Any
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 
+from ..prompts.catalog import REPAIR_SYSTEM
+
 
 @tool
 def update_plan_fields(updates: dict[str, Any]) -> dict[str, Any]:
@@ -27,12 +29,7 @@ class Repair:
 
     def messages(self):
         return [
-            SystemMessage("Repair the listed targets of a video composition. Preserve meaning, language and IDs. "
-                          "Each target's context says what it must agree with (columns, existing object ids, the "
-                          "scene's fields); follow it. A target ending in .props is a whole scene: return its complete "
-                          "corrected props, keeping what works and fixing every listed issue. "
-                          "Return only the specified paths and their replacement values, in one update_plan_fields "
-                          'call if available or as JSON {"updates": {"path": value}}.'),
+            SystemMessage(REPAIR_SYSTEM),
             HumanMessage(json.dumps({key: details for key, (_, details) in self.targets.items()}, ensure_ascii=False)),
         ]
 

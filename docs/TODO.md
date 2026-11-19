@@ -133,14 +133,14 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] Built-in sounds: pointer clicks, device pop-in, ✓ ding / ✗ error, badge / callout / chat pop, toast notify, toggle click, lock, typing (terminal, text field, typewriter), progress success, whoosh on transitions
 - [x] JSON: composition `audio` (effects on/off + volume, transitions, voice, voiceVolume, `music` with ducking under narration); scene `voice` (own recording works too) and `sfx` cues
 - [x] Captions from the narration: word timings via Deepgram speech-to-text on our own clip (estimate fallback), word-by-word highlight; on/off + style from JSON `captions`, API (`captions: true/false` on `/render` and `/video`), CLI (`--captions` / `--no-captions`)
-- [x] Planner (`app/utils/planner.py`): LLM writes the composition with narration per scene from a compact scene catalog; validated, errors fed back (3 tries). API `POST /plan`, `POST /video` (prompt → plan → voice → captions → MP4); CLI `plan`, `video`
+- [x] Planner (`app/agent/videoGenerator/nodes/plan_scenes.py`): LLM writes the composition with narration per scene from a compact scene catalog; validated, errors fed back (3 tries). API `POST /plan`, `POST /video` (prompt → plan → voice → captions → MP4); CLI `plan`, `video`
 - [x] Transcripts: every render writes `transcript.json` (per scene, sentences with start/end seconds) + `transcript.txt` (`[mm:ss]` lines); `GET /render/{id}/transcript`; older jobs get them on first request
 - [x] Deepgram limits: per-loop semaphore (`DEEPGRAM_CONCURRENCY`) + backoff on 429 (`DEEPGRAM_RETRIES`)
 - [x] **Word-synced animation** (`app/utils/cues.py`): steps/actions/messages take `"cue": "<spoken word>"`, objects/links `"appearCue"`; resolved from Deepgram word times after TTS (text estimate for validation). Only 0-1 timing fields from the registry are filled. Live test: 7/7 changes land on their word
   - [ ] Scenes with a fixed built-in animation (Transaction, Summary, Timeline…) have no cue-able steps yet
 - [ ] Long renders: move `/render` onto the job queue (now it waits for the MP4)
 
-### Long videos (20-40 min) — `app/utils/long_video.py`
+### Long videos (20-40 min) — `app/agent/videoGenerator/jobs/long_video.py`
 - [x] Outline (1 LLM call): chapters, goals, key points, minutes → word budgets (150 wpm), glossary, running examples, visual style
 - [x] Each chapter planned by the normal planner + context (whole outline, glossary, examples, what earlier chapters covered, budget); re-planned once if >35% off its word budget; fails with a retryable chapter error if both attempts miss the budget
 - [x] Saved, resumable state (`workspace/long/<id>/state.json`, `chNN.plan.json`): pending → planned → rendered / failed; a rerun skips finished chapters
@@ -175,7 +175,7 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 
 ## 6. Planner agent (LLM → JSON)
 
-- [x] Planner prompt + call through the gateway; validate with the scene contracts, retry with the errors (`app/utils/planner.py`)
+- [x] Planner prompt + call through the gateway; validate with the scene contracts, retry with the errors (`app/agent/videoGenerator/nodes/plan_scenes.py`)
 - [x] LLM writes `composition.json` directly from a compact catalog built from `registry.json` (no separate script.json step)
 - [x] Durations: planner gives a rough length, the narration step stretches each scene to fit its speech
 - [x] Topic filter: only core + matching scenes go in the prompt (LAN/MAN/WAN plan: ~5.3K input tokens, was ~9–10K)
@@ -193,7 +193,7 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] IsoScene objects like a real harness: no flat 179-name list when the guide covers them; `find_iso_objects(idea)` tool (kinds → Lucide icons → saved designs)
 - [x] Plan repair (`plan_repair.py`): scoped field edits; context shows what a field must match (table columns, existing object ids); a scene still broken is repaired whole; last resort replaces ≤ 25% invalid scenes with title cards keeping their narration
 
-### Custom iso designs (`app/utils/iso_design.py`)
+### Custom iso designs (`app/agent/videoGenerator/tools/iso_design.py`)
 - [x] Order: built-in kind → Lucide icon (no LLM call) → saved design → designer
 - [x] Designer returns 3D shapes (box, cylinder, sphere, flat detail); code projects at 30°, shades like built-ins, fits the frame; may answer with an icon for abstract ideas
 - [x] Unique aliases; designer sees only the concept + label; failures fall back to a plain tile; saved-design hint capped at 20
@@ -210,8 +210,8 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 
 ## 8. Agent writes new components
 
-- [x] Sandboxed file tools (`app/agent/sandbox.py`): list_dir, read_file, glob, grep (rendering/src, examples, library, docs; never .env / node_modules); write_file, edit_file, delete_file only in `workspace/jobs/<job>/`
-- [x] Checks (`app/agent/staging.py`): rules (import allow-list, no randomness / clock / timers / network) → typecheck → contract (registered, metadata, defaults) → render frames 10 / middle / last; the agent sees the frames
+- [x] Sandboxed file tools (`app/agent/videoGenerator/components/sandbox.py`): list_dir, read_file, glob, grep (rendering/src, examples, library, docs; never .env / node_modules); write_file, edit_file, delete_file only in `workspace/jobs/<job>/`
+- [x] Checks (`app/agent/videoGenerator/components/staging.py`): rules (import allow-list, no randomness / clock / timers / network) → typecheck → contract (registered, metadata, defaults) → render frames 10 / middle / last; the agent sees the frames
 - [x] Staging: passing scenes go to `rendering/src/staging/` (manifest + generated index), usable in videos and visible to the planner; failed drafts never enter `src/`
 - [x] Promote (→ `src/scenes/` + `registry.ts`, rolled back on failure) / unstage
 - [x] API: `POST /components`, `GET /components`, `POST /components/{name}/promote`, `DELETE /components/{name}`; CLI `component`, `staged`, `promote`, `unstage`

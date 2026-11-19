@@ -18,8 +18,9 @@ from typing import Annotated, Literal
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
+from app.agent.videoGenerator import skills
+from app.agent.videoGenerator.tools import catalog
 from app.config import PROJECT_ROOT, settings
-from app.utils import catalog, skills
 from app.utils.llm import get_llm, text_of, usage_of
 
 ROOT = PROJECT_ROOT / "library/iso/ai-designed"

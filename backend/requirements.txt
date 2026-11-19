@@ -3,6 +3,7 @@ uvicorn
 pydantic-settings
 langchain-core
 langchain-openai
+langgraph>=1.2.23,<2
 httpx
 
 PyYAML>=6.0

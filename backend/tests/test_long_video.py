@@ -13,8 +13,8 @@ from unittest.mock import AsyncMock, patch
 from langchain_core.messages import AIMessage
 
 from app.config import settings
-from app.utils import long_video as lv
-from app.utils.planner import Plan
+from app.agent.videoGenerator.jobs import long_video as lv
+from app.agent.videoGenerator.schemas.plan import Plan
 from app.utils.render import RenderResult
 
 settings.SKILL_ROUTER = "keyword"  # offline tests: no skill-router LLM call (tested with a mock in test_skills)
@@ -49,7 +49,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         llm = AsyncMock()
         llm.ainvoke.return_value = AIMessage(json.dumps(OUTLINE), usage_metadata={"input_tokens": 100, "output_tokens": 50, "total_tokens": 150})
-        with patch("app.utils.long_video.get_llm", return_value=llm):
+        with patch("app.agent.videoGenerator.jobs.long_video.get_llm", return_value=llm):
             self.state = await lv.create_long_video("Node.js", minutes=10)
         self.addCleanup(shutil.rmtree, settings.WORKSPACE_DIR / "long" / self.state.id, True)
         self.contexts: list[str] = []
@@ -87,8 +87,8 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("GET /books/42 → " + response, lv.chapter_context(self.state, 2))
 
     async def test_full_run_handoffs_join_and_resume(self):
-        with patch("app.utils.long_video.plan_video", side_effect=self.fake_plan), \
-                patch("app.utils.long_video.render_video", side_effect=self.fake_render):
+        with patch("app.agent.videoGenerator.jobs.long_video.plan_video", side_effect=self.fake_plan), \
+                patch("app.agent.videoGenerator.jobs.long_video.render_video", side_effect=self.fake_render):
             state = await lv.run_long_video(self.state.id)
         self.assertEqual(state.status, "done", state.error)
         # chapter 3 knew what chapters 1 and 2 covered, and everything shared
@@ -116,8 +116,8 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         lv.redo_chapter(state.id, 2, "render")
         self.contexts.clear()
         self.rendered.clear()
-        with patch("app.utils.long_video.plan_video", side_effect=self.fake_plan), \
-                patch("app.utils.long_video.render_video", side_effect=self.fake_render):
+        with patch("app.agent.videoGenerator.jobs.long_video.plan_video", side_effect=self.fake_plan), \
+                patch("app.agent.videoGenerator.jobs.long_video.render_video", side_effect=self.fake_render):
             state = await lv.run_long_video(state.id)
         self.assertEqual(state.status, "done")
         self.assertEqual(self.contexts, [])
@@ -133,7 +133,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
                 raise RuntimeError("gateway down")
             return await self.fake_plan(topic, **kw)
 
-        with patch("app.utils.long_video.plan_video", side_effect=flaky):
+        with patch("app.agent.videoGenerator.jobs.long_video.plan_video", side_effect=flaky):
             state = await lv.run_long_video(self.state.id, render=False)
         self.assertEqual(state.status, "failed")
         self.assertEqual([c.status for c in state.chapters], ["planned", "failed", "pending"])
@@ -141,7 +141,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("gateway down", lv.load(state.id).chapters[1].error)  # saved to disk
 
         self.contexts.clear()
-        with patch("app.utils.long_video.plan_video", side_effect=self.fake_plan):
+        with patch("app.agent.videoGenerator.jobs.long_video.plan_video", side_effect=self.fake_plan):
             state = await lv.run_long_video(state.id, render=False)
         self.assertEqual(state.status, "planned")
         self.assertEqual(len(self.contexts), 2)  # chapter 1 was not planned again
@@ -154,7 +154,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
             seen.append(context)
             return Plan(plans[len(seen) - 1], 1, "catalog", 1, 10, 10)
 
-        with patch("app.utils.long_video.plan_video", side_effect=short_then_ok):
+        with patch("app.agent.videoGenerator.jobs.long_video.plan_video", side_effect=short_then_ok):
             spec = await lv.plan_chapter(self.state, 1)
         self.assertEqual(len(seen), 2)
         self.assertIn("Make it longer", seen[1])
@@ -269,8 +269,8 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
             active -= 1
             return await self.fake_render(spec, job_id=job_id, **kw)
 
-        with patch("app.utils.long_video.plan_video", side_effect=slow_plan), \
-                patch("app.utils.long_video.render_video", side_effect=slow_render), \
+        with patch("app.agent.videoGenerator.jobs.long_video.plan_video", side_effect=slow_plan), \
+                patch("app.agent.videoGenerator.jobs.long_video.render_video", side_effect=slow_render), \
                 patch.object(settings, "LONG_RENDER_WORKERS", 1):
             state = await lv.run_long_video(self.state.id)
         self.assertEqual(state.status, "done", state.error)
@@ -283,8 +283,8 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
                 raise RuntimeError("bad plan")
             return await self.fake_plan(topic, **kw)
 
-        with patch("app.utils.long_video.plan_video", side_effect=plan), \
-                patch("app.utils.long_video.render_video", side_effect=self.fake_render):
+        with patch("app.agent.videoGenerator.jobs.long_video.plan_video", side_effect=plan), \
+                patch("app.agent.videoGenerator.jobs.long_video.render_video", side_effect=self.fake_render):
             state = await lv.run_long_video(self.state.id)
         self.assertEqual(state.status, "failed")
         self.assertEqual([c.status for c in state.chapters], ["rendered", "failed", "pending"])
@@ -301,7 +301,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
             running -= 1
             return await self.fake_plan(topic, **kw)
 
-        with patch("app.utils.long_video.plan_video", side_effect=plan), \
+        with patch("app.agent.videoGenerator.jobs.long_video.plan_video", side_effect=plan), \
                 patch.object(settings, "LONG_PARALLEL_PLANNING", True):
             state = await lv.run_long_video(self.state.id, render=False)
         self.assertEqual(state.status, "planned", state.error)

@@ -6,7 +6,14 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from langchain_core.messages import AIMessage
 
-from app.utils import catalog, long_video, planner, skills
+from app.agent.videoGenerator.tools import catalog
+from app.agent.videoGenerator.generator import plan_video
+from app.agent.videoGenerator import validation
+from app.agent.videoGenerator.nodes import plan_scenes as planner
+from app.agent.videoGenerator.tools import scene_lookup
+from app.agent.videoGenerator.jobs import long_video
+from app.agent.videoGenerator import skills
+from app.utils import cues
 from app.config import settings
 
 settings.SKILL_ROUTER = "keyword"  # offline tests: no skill-router LLM call (tested with a mock in test_skills)
@@ -26,7 +33,7 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
             ("What is a collection?", "A collection groups resources a client can request together."),
             ("What is a primary source?", "A diary records a participant’s view of an event."),
         ]:
-            with self.subTest(heading=heading), patch.object(planner, "validate", AsyncMock()):
+            with self.subTest(heading=heading), patch.object(validation, "validate", AsyncMock()):
                 plan = spec(["TitleScene", "ExplainScene", "StepsScene"])
                 card = plan["scenes"][1]
                 card.update(durationInFrames=90, props={"heading": heading, "body": body})
@@ -56,7 +63,7 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         link = {"from": "client", "to": "catalog"}
         plan["scenes"][2]["props"] = {"objects": [client, catalog, response], "links": [link]}
         plan["scenes"][3]["props"] = {"objects": [client, {**catalog, "kind": "table"}], "links": [link]}
-        with patch.object(planner, "validate", AsyncMock()):
+        with patch.object(validation, "validate", AsyncMock()):
             checked, error = await planner._check(json.dumps(plan), lecture=True)
             self.assertIsNone(checked)
             self.assertIn("'s1' is a title-only diagram", error)
@@ -90,8 +97,8 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(edited["scenes"][1], original["scenes"][1])
 
     def test_lint_counts_runs(self):
-        self.assertIn("6 text-only scenes in a row", planner._lint(TEXTY))
-        self.assertEqual(planner._lint(GOOD), "")
+        self.assertIn("6 text-only scenes in a row", validation._lint(TEXTY))
+        self.assertEqual(validation._lint(GOOD), "")
 
     def test_new_lecture_layouts_are_discoverable_and_cueable(self):
         choices = [
@@ -109,14 +116,14 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(query=query):
                 self.assertEqual(catalog.search_scenes(query, limit=1)[0][0], expected)
                 self.assertIn(expected, catalog.catalog_text(query))
-                self.assertIn(field, planner.cues.timing_paths()[expected])
+                self.assertIn(field, cues.timing_paths()[expected])
         self.assertEqual(catalog.search_scenes("newsroom org chart", limit=1)[0][0], "TreeScene")
 
     async def run_catalog(self, replies, **kwargs):
         llm = AsyncMock()
         llm.ainvoke.side_effect = [AIMessage(json.dumps(r)) for r in replies]
-        with patch("app.utils.planner.get_llm", return_value=llm), \
-                patch("app.utils.planner.validate", AsyncMock()):  # every reply is "valid"
+        with patch("app.agent.videoGenerator.nodes.plan_scenes.get_llm", return_value=llm), \
+                patch("app.agent.videoGenerator.validation.validate", AsyncMock()):  # every reply is "valid"
             plan = await planner._plan_catalog("topic", "", None, **kwargs)
         return plan, llm
 
@@ -145,12 +152,12 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         term = {"type": "terminal", "lines": [{"text": "hi"}]}
         bad = spec(["TitleScene", "ExplainScene"]); bad["scenes"][1]["overlays"] = [term]
         ok = spec(["TitleScene", "BlankScene"]); ok["scenes"][1]["overlays"] = [term, {"type": "badge"}]
-        self.assertIn("'s1' (ExplainScene: terminal)", planner._lint(bad))
-        self.assertEqual(planner._lint(ok), "")
+        self.assertIn("'s1' (ExplainScene: terminal)", validation._lint(bad))
+        self.assertEqual(validation._lint(ok), "")
         self.assertIn("chat, terminal", planner._rules())
 
     def test_example_footers_are_blanked_unless_set(self):
-        s = planner._normalize({"scenes": [{"component": "CodeScene", "props": {}},
+        s = validation._normalize({"scenes": [{"component": "CodeScene", "props": {}},
                                            {"component": "ChartScene", "props": {"footer": "mine"}},
                                            {"component": "TitleScene", "props": {}}]})
         self.assertEqual(s["scenes"][0]["props"]["footer"], "")
@@ -160,29 +167,29 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
     def test_topic_must_show_its_mechanism(self):
         topic = "INNER JOIN vs LEFT JOIN"
         plan = spec(["TitleScene", "IsoScene", "FlowchartScene", "QuizScene"])
-        problem = planner._lint(plan, ["teach-data"], topic)
+        problem = validation._lint(plan, ["teach-data"], topic)
         self.assertIn('mentions "join"', problem)
         self.assertIn("JoinScene or PipelineScene", problem)
-        self.assertIn("JoinScene", planner._visual_hint(topic, ["teach-data"]))
+        self.assertIn("JoinScene", validation._visual_hint(topic, ["teach-data"]))
         plan["scenes"][1]["component"] = "JoinScene"
-        self.assertEqual(planner._lint(plan, ["teach-data"], topic), "")
-        self.assertEqual(planner._lint(spec(["IsoScene"]), ["teach-data"], "Python list basics"), "")  # nothing required
-        self.assertEqual(planner._visual_hint(topic, []), "")  # rules come only from the selected guides
+        self.assertEqual(validation._lint(plan, ["teach-data"], topic), "")
+        self.assertEqual(validation._lint(spec(["IsoScene"]), ["teach-data"], "Python list basics"), "")  # nothing required
+        self.assertEqual(validation._visual_hint(topic, []), "")  # rules come only from the selected guides
 
     def test_text_share_and_code_density(self):
         mostly_text = spec(["TitleScene", "ExplainScene", "FlowchartScene", "DefinitionScene", "ChartScene",
                             "ExplainScene", "FlowchartScene", "DefinitionScene", "SummaryScene", "QuizScene"])
-        self.assertIn("4 of 10 scenes are text-only", planner._lint(mostly_text))
+        self.assertIn("4 of 10 scenes are text-only", validation._lint(mostly_text))
         one_code = spec(["TitleScene", "CodeScene", "FlowchartScene", "ExplainScene", "ChartScene",
                          "FlowchartScene", "ComparisonTableScene", "BlankScene", "SummaryScene", "QuizScene"])
-        self.assertEqual(planner._lint(one_code), "")  # not a programming topic: fine
-        self.assertIn("at least 2 code scenes", planner._lint(one_code, ["teach-code"]))
+        self.assertEqual(validation._lint(one_code), "")  # not a programming topic: fine
+        self.assertIn("at least 2 code scenes", validation._lint(one_code, ["teach-code"]))
         one_code["scenes"][5]["component"] = "EditorScene"  # paper videos show code in the editor
-        self.assertEqual(planner._lint(one_code, ["teach-code"]), "")
+        self.assertEqual(validation._lint(one_code, ["teach-code"]), "")
         self.assertIn("30%", planner._rules())
 
     def test_title_with_panel_becomes_blank_scene(self):
-        s = planner._normalize({"scenes": [{"component": "TitleScene", "props": {"title": "Output", "subtitle": "x"},
+        s = validation._normalize({"scenes": [{"component": "TitleScene", "props": {"title": "Output", "subtitle": "x"},
                                             "overlays": [{"type": "terminal"}]}]})
         self.assertEqual(s["scenes"][0]["component"], "BlankScene")
         self.assertEqual(s["scenes"][0]["props"], {"title": "Output", "titleAt": "top"})
@@ -201,13 +208,13 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
                 "objects": [{"id": "lb", "kind": "loadbalancer", "at": [0, 0]}, {"id": "a", "kind": "server", "at": [3.5, -3.5]},
                             {"id": "b", "kind": "server", "at": list(at), "label": label}], "links": links, "steps": []}}
         fan = [{"from": "lb", "to": "a"}, {"from": "lb", "to": "b"}]
-        chained = planner._lint({"scenes": [iso(0, [{"from": "lb", "to": "a"}, {"from": "a", "to": "b"}])]})
+        chained = validation._lint({"scenes": [iso(0, [{"from": "lb", "to": "a"}, {"from": "a", "to": "b"}])]})
         self.assertIn("a->b chains servers", chained)
-        self.assertIn("labels name the object", planner._lint({"scenes": [iso(0, fan, label="Request 3")]}))
+        self.assertIn("labels name the object", validation._lint({"scenes": [iso(0, fan, label="Request 3")]}))
         same = [iso(i, fan) for i in range(3)]
-        self.assertIn("s0, s1, s2 rewrite the same layout", planner._lint({"scenes": same}))
+        self.assertIn("s0, s1, s2 rewrite the same layout", validation._lint({"scenes": same}))
         varied = [iso(0, fan), iso(1, fan), iso(2, fan, at=(9, -4))]
-        self.assertEqual(planner._lint({"scenes": varied}), "")
+        self.assertEqual(validation._lint({"scenes": varied}), "")
 
     def test_catalog_shows_number_limits(self):
         self.assertIn("300..", catalog.overlay_text("terminal"))
@@ -248,7 +255,7 @@ class LessonScriptTests(unittest.IsolatedAsyncioTestCase):
         ]]
 
         with patch.object(planner, "get_llm", return_value=model):
-            plan = await planner.plan_video("A beginner lecture on GET requests. Use watch w-104.",
+            plan = await plan_video("A beginner lecture on GET requests. Use watch w-104.",
                                             mode="catalog", skills=["teach-lecture"])
 
         self.assertEqual(plan.llm_calls, 6)
@@ -258,7 +265,7 @@ class LessonScriptTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(plan.spec["scenes"][2]["props"], repaired["props"])
         self.assertEqual(set(json.loads(model.ainvoke.call_args_list[2].args[0][-1].content)), {"scenes[1].props"})
         self.assertEqual(set(json.loads(model.ainvoke.call_args_list[4].args[0][-1].content)), {"scenes[2]"})
-        self.assertEqual(planner.cues.resolve(plan.spec)[1], {})
+        self.assertEqual(cues.resolve(plan.spec)[1], {})
 
     async def test_long_nontechnical_lesson_uses_script_in_tools_mode(self):
         beats = [
@@ -296,7 +303,7 @@ class LessonScriptTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("A beginner journalism lesson", writer.ainvoke.call_args_list[0].args[0][-1].content)
         self.assertIn("Adjust the script", writer.ainvoke.call_args_list[1].args[0][-1].content)
         self.assertEqual([scene["narration"]["text"] for scene in planned["scenes"]], [beat["narration"] for beat in beats])
-        self.assertEqual(planner.cues.resolve(planned)[1], {})
+        self.assertEqual(cues.resolve(planned)[1], {})
 
 
 if __name__ == "__main__":
@@ -320,7 +327,7 @@ class KindListTests(unittest.TestCase):
         short = catalog.kind_legend(iso, known=guide)
         self.assertLess(len(short), 200)
         self.assertNotIn("podcastbooth", short)
-        self.assertIn("find_iso_objects", planner.get_scene.invoke({"name": "IsoScene"}))  # tools mode searches
+        self.assertIn("find_iso_objects", scene_lookup.get_scene.invoke({"name": "IsoScene"}))  # tools mode searches
 
     def test_find_iso_objects_by_idea(self):
         top = lambda q: [k for k, _ in catalog.find_iso_objects(q)]
@@ -329,7 +336,7 @@ class KindListTests(unittest.TestCase):
         self.assertEqual(top("reporter")[0], "reporter")
         self.assertEqual(top("broadcast")[0], "tower")  # not "road" (inside the word)
         self.assertIn("ambulance", top("hospital emergency"))
-        self.assertIn("pressconference", planner.find_iso_objects.invoke({"query": "press conference"}))
+        self.assertIn("pressconference", scene_lookup.find_iso_objects.invoke({"query": "press conference"}))
 
 
 class DidYouMeanTests(unittest.IsolatedAsyncioTestCase):
@@ -369,10 +376,10 @@ class VarietyTests(unittest.TestCase):
 
     def test_long_run_of_one_scene_is_flagged_with_guide_alternatives(self):
         scenes = [_iso(i, kinds=("client", "api", f"k{i}")) for i in range(7)]
-        tech = " ".join(planner._lint_variety(scenes, ["video-foundation", "teach-code"]))
+        tech = " ".join(validation._lint_variety(scenes, ["video-foundation", "teach-code"]))
         self.assertIn("7 IsoScenes in a row", tech)
         self.assertIn("TerminalScene", tech)
-        media = " ".join(planner._lint_variety(scenes, ["video-foundation", "teach-media"]))
+        media = " ".join(validation._lint_variety(scenes, ["video-foundation", "teach-media"]))
         self.assertIn("TimelineScene", media)
         self.assertNotIn("TerminalScene", media)
 
@@ -381,23 +388,23 @@ class VarietyTests(unittest.TestCase):
         for i in range(9):
             scenes.append(_iso(i, kinds=("client", "api", f"k{i}")) if i % 3 else
                           {"id": f"t{i}", "component": "TimelineScene", "props": {}, "narration": {"text": "x"}})
-        self.assertEqual(planner._lint_variety(scenes, ["video-foundation"]), [])
+        self.assertEqual(validation._lint_variety(scenes, ["video-foundation"]), [])
 
     def test_one_component_filling_most_of_the_plan(self):
         scenes = []
         for i in range(10):
             scenes.append({"id": f"c{i}", "component": "ChartScene" if i in (4, 8) else "QuoteScene", "props": {},
                            "narration": {"text": "x"}})
-        self.assertTrue(any("of 10 scenes are QuoteScene" in p for p in planner._lint_variety(scenes, [])))
+        self.assertTrue(any("of 10 scenes are QuoteScene" in p for p in validation._lint_variety(scenes, [])))
 
     def test_same_picture_drawn_again_and_again(self):
         scenes = []
         for i in range(4):
             scenes += [_iso(i), {"id": f"q{i}", "component": "QuoteScene", "props": {}, "narration": {"text": "x"}}]
-        problems = planner._lint_variety(scenes, [])
+        problems = validation._lint_variety(scenes, [])
         self.assertTrue(any("same objects from scratch 4 times" in p for p in problems))
         scenes[2]["props"]["continue"] = True  # a continuation is the cheap, correct way to reuse it
-        self.assertFalse(any("from scratch" in p for p in planner._lint_variety(scenes, [])))
+        self.assertFalse(any("from scratch" in p for p in validation._lint_variety(scenes, [])))
 
 
 class NarrationTests(unittest.TestCase):
@@ -409,14 +416,14 @@ class NarrationTests(unittest.TestCase):
             "So the method signals what the client wants to do now.",
             "Propaganda = persuasion aimed at a mass audience.",
         ])]
-        problems = " ".join(planner._lint_narration(scenes))
+        problems = " ".join(validation._lint_narration(scenes))
         self.assertIn("s0, s4", problems)
         self.assertIn('"the method signals what the client"', problems)
 
     def test_teacher_style_narration_passes(self):
         scenes = [{"id": "a", "narration": {"text": "Why did your app break overnight? Let's find out."}},
                   {"id": "b", "narration": {"text": "A resource is simply a thing the API lets you reach, like one watch."}}]
-        self.assertEqual(planner._lint_narration(scenes), [])
+        self.assertEqual(validation._lint_narration(scenes), [])
 
 
 class ShowTheRealThingTests(unittest.TestCase):

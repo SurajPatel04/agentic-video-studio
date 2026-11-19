@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
-from app.agent.history import History, reserve_tokens
-from app.agent.component_agent import build_component
-from app.agent.sandbox import Sandbox, SandboxError
+from app.agent.videoGenerator.components.history import History, reserve_tokens
+from app.agent.videoGenerator.components.component_agent import build_component
+from app.agent.videoGenerator.components.sandbox import Sandbox, SandboxError
 from app.config import PROJECT_ROOT, settings
 
 
@@ -61,7 +61,7 @@ class HistoryTests(unittest.TestCase):
 class HarnessTests(unittest.IsolatedAsyncioTestCase):
     async def test_budget_stops_before_first_call(self):
         model = AsyncMock()
-        with patch('app.agent.component_agent.get_tool_llm') as get, patch.object(settings, 'AGENT_MAX_INPUT_TOKENS', 1):
+        with patch('app.agent.videoGenerator.components.component_agent.get_tool_llm') as get, patch.object(settings, 'AGENT_MAX_INPUT_TOKENS', 1):
             get.return_value.bind_tools.return_value = model
             result = await build_component('test reservation')
         self.addCleanup(shutil.rmtree, settings.WORKSPACE_DIR / 'jobs' / result.job_id)
@@ -71,7 +71,7 @@ class HarnessTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('reservation', result.summary)
 
     async def test_finish_must_wait_for_frame_review(self):
-        from app.agent.staging import CheckReport
+        from app.agent.videoGenerator.components.staging import CheckReport
         call = lambda name, args, ident: {'name': name, 'args': args, 'id': ident, 'type': 'tool_call'}
         calls = 0
         async def respond(messages):
@@ -93,8 +93,8 @@ class HarnessTests(unittest.IsolatedAsyncioTestCase):
         model = AsyncMock()
         model.ainvoke.side_effect = respond
         pub = AsyncMock(return_value='published TestScene')
-        with patch('app.agent.component_agent.get_tool_llm') as get, patch('app.agent.component_agent.check_draft', side_effect=check), \
-                patch('app.agent.component_agent.publish', pub), patch.object(settings, 'AGENT_VISION', True):
+        with patch('app.agent.videoGenerator.components.component_agent.get_tool_llm') as get, patch('app.agent.videoGenerator.components.component_agent.check_draft', side_effect=check), \
+                patch('app.agent.videoGenerator.components.component_agent.publish', pub), patch.object(settings, 'AGENT_VISION', True):
             get.return_value.bind_tools.return_value = model
             result = await build_component('test review')
         self.addCleanup(shutil.rmtree, settings.WORKSPACE_DIR / 'jobs' / result.job_id)
@@ -103,7 +103,7 @@ class HarnessTests(unittest.IsolatedAsyncioTestCase):
         pub.assert_awaited_once()  # published exactly once, at the reviewed finish
 
     async def test_nothing_published_when_run_stops_before_finish(self):
-        from app.agent.staging import CheckReport
+        from app.agent.videoGenerator.components.staging import CheckReport
         call = lambda name, args, ident: {'name': name, 'args': args, 'id': ident, 'type': 'tool_call'}
         async def respond(messages):
             job = messages[0].content.split('Your draft folder: ')[1].split('/   ')[0]
@@ -114,8 +114,8 @@ class HarnessTests(unittest.IsolatedAsyncioTestCase):
         model = AsyncMock()
         model.ainvoke.side_effect = respond
         pub = AsyncMock()
-        with patch('app.agent.component_agent.get_tool_llm') as get, patch('app.agent.component_agent.check_draft', side_effect=check), \
-                patch('app.agent.component_agent.publish', pub), patch.object(settings, 'AGENT_MAX_STEPS', 2):
+        with patch('app.agent.videoGenerator.components.component_agent.get_tool_llm') as get, patch('app.agent.videoGenerator.components.component_agent.check_draft', side_effect=check), \
+                patch('app.agent.videoGenerator.components.component_agent.publish', pub), patch.object(settings, 'AGENT_MAX_STEPS', 2):
             get.return_value.bind_tools.return_value = model
             result = await build_component('test early stop')
         self.addCleanup(shutil.rmtree, settings.WORKSPACE_DIR / 'jobs' / result.job_id)
@@ -123,7 +123,7 @@ class HarnessTests(unittest.IsolatedAsyncioTestCase):
         pub.assert_not_awaited()  # checks passed, but no finish -> never live
 
     async def test_failed_publish_does_not_finish(self):
-        from app.agent.staging import CheckReport
+        from app.agent.videoGenerator.components.staging import CheckReport
         call = lambda name, args, ident: {'name': name, 'args': args, 'id': ident, 'type': 'tool_call'}
         n = 0
         async def respond(messages):
@@ -138,8 +138,8 @@ class HarnessTests(unittest.IsolatedAsyncioTestCase):
             return CheckReport(True, name)
         model = AsyncMock()
         model.ainvoke.side_effect = respond
-        with patch('app.agent.component_agent.get_tool_llm') as get, patch('app.agent.component_agent.check_draft', side_effect=check), \
-                patch('app.agent.component_agent.publish', AsyncMock(side_effect=RuntimeError('typecheck failed at publish'))), \
+        with patch('app.agent.videoGenerator.components.component_agent.get_tool_llm') as get, patch('app.agent.videoGenerator.components.component_agent.check_draft', side_effect=check), \
+                patch('app.agent.videoGenerator.components.component_agent.publish', AsyncMock(side_effect=RuntimeError('typecheck failed at publish'))), \
                 patch.object(settings, 'AGENT_MAX_STEPS', 3), patch.object(settings, 'AGENT_VISION', False):
             get.return_value.bind_tools.return_value = model
             result = await build_component('test publish failure')
@@ -149,7 +149,7 @@ class HarnessTests(unittest.IsolatedAsyncioTestCase):
     async def test_missing_usage_is_charged_and_tools_expose_arguments(self):
         model = AsyncMock()
         model.ainvoke.return_value = AIMessage('continue')
-        with patch('app.agent.component_agent.get_tool_llm') as get, patch.object(settings, 'AGENT_MAX_INPUT_TOKENS', 25000):
+        with patch('app.agent.videoGenerator.components.component_agent.get_tool_llm') as get, patch.object(settings, 'AGENT_MAX_INPUT_TOKENS', 25000):
             get.return_value.bind_tools.return_value = model
             result = await build_component('test missing usage')
             schemas = {t.name: t.args for t in get.return_value.bind_tools.call_args.args[0]}
