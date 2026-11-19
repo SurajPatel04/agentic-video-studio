@@ -1,0 +1,496 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "brand": {
+    "intro": false,
+    "watermark": false
+  },
+  "audio": {
+    "effects": false
+  },
+  "defaultTransition": {
+    "type": "fade",
+    "durationInFrames": 15
+  },
+  "scenes": [
+    {
+      "id": "aida",
+      "component": "LayersScene",
+      "durationInFrames": 150,
+      "props": {}
+    },
+    {
+      "id": "sales-funnel",
+      "component": "LayersScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "From viewing a promotion to buying",
+        "subtitle": "Illustrative counts of people at each stage",
+        "mode": "funnel",
+        "unit": "people",
+        "levels": [
+          {
+            "label": "Views",
+            "value": 1200,
+            "at": 0
+          },
+          {
+            "label": "Product page visits",
+            "value": 420,
+            "at": 0.23
+          },
+          {
+            "label": "Added to cart",
+            "value": 95,
+            "at": 0.45
+          },
+          {
+            "label": "Completed purchase",
+            "value": 48,
+            "at": 0.66
+          }
+        ]
+      }
+    },
+    {
+      "id": "pyramid",
+      "component": "LayersScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Five levels in Maslow’s hierarchy",
+        "mode": "pyramid",
+        "levels": [
+          {
+            "label": "Self-actualization",
+            "detail": "Develop your potential.",
+            "at": 0.0
+          },
+          {
+            "label": "Esteem",
+            "detail": "Feel capable and respected.",
+            "at": 0.12
+          },
+          {
+            "label": "Belonging",
+            "detail": "Connect with others.",
+            "at": 0.24
+          },
+          {
+            "label": "Safety",
+            "detail": "Feel secure.",
+            "at": 0.36
+          },
+          {
+            "label": "Physiological needs",
+            "detail": "Meet basic bodily needs.",
+            "at": 0.48
+          }
+        ]
+      }
+    },
+    {
+      "id": "inverted-pyramid",
+      "component": "LayersScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Put the most important news first",
+        "mode": "inverted",
+        "levels": [
+          {
+            "label": "Lead",
+            "detail": "Open with the essential facts.",
+            "at": 0.0
+          },
+          {
+            "label": "Supporting details",
+            "detail": "Explain what happened and why it matters.",
+            "at": 0.12
+          },
+          {
+            "label": "Background",
+            "detail": "Add context readers can use to understand the story.",
+            "at": 0.24
+          }
+        ]
+      }
+    },
+    {
+      "id": "osi-stack",
+      "component": "LayersScene",
+      "durationInFrames": 270,
+      "props": {
+        "title": "The seven OSI layers",
+        "mode": "stack",
+        "levels": [
+          {
+            "label": "7 Application",
+            "at": 0.0,
+            "detail": "Gives applications access to network services."
+          },
+          {
+            "label": "6 Presentation",
+            "at": 0.1,
+            "detail": "Formats data so the receiving application can interpret it."
+          },
+          {
+            "label": "5 Session",
+            "at": 0.2,
+            "detail": "Manages the conversation between applications."
+          },
+          {
+            "label": "4 Transport",
+            "at": 0.3,
+            "detail": "Transfers data between the end systems."
+          },
+          {
+            "label": "3 Network",
+            "at": 0.4,
+            "detail": "Routes packets between networks."
+          },
+          {
+            "label": "2 Data link",
+            "at": 0.5,
+            "detail": "Moves frames across a local link."
+          },
+          {
+            "label": "1 Physical",
+            "at": 0.6,
+            "detail": "Sends bits as electrical, optical, or radio signals."
+          }
+        ]
+      }
+    },
+    {
+      "id": "quadrants",
+      "component": "MatrixScene",
+      "durationInFrames": 150,
+      "props": {}
+    },
+    {
+      "id": "spectrum",
+      "component": "MatrixScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Match the tone to the audience",
+        "mode": "spectrum",
+        "xAxis": {
+          "label": "Writing tone",
+          "low": "Informal",
+          "high": "Formal"
+        },
+        "markers": [
+          {
+            "label": "Group chat",
+            "x": 0.14,
+            "at": 0.16
+          },
+          {
+            "label": "Customer update",
+            "x": 0.36,
+            "at": 0.31,
+            "moves": [
+              {
+                "x": 0.57,
+                "at": 0.68
+              }
+            ]
+          },
+          {
+            "label": "Official notice",
+            "x": 0.87,
+            "at": 0.47
+          }
+        ]
+      }
+    },
+    {
+      "id": "hotspots",
+      "component": "ImageScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "Find landmarks on a world image",
+        "src": "earth/blue-marble.png",
+        "alt": "World satellite image",
+        "caption": "The numbered markers stay with the image as it zooms.",
+        "credit": "NASA Blue Marble",
+        "fit": "contain",
+        "motion": "zoom-in",
+        "zoom": 1.18,
+        "hotspots": [
+          {
+            "x": 0.5,
+            "y": 0.214,
+            "label": "London",
+            "detail": "A city near the Greenwich meridian.",
+            "at": 0.13
+          },
+          {
+            "x": 0.509,
+            "y": 0.464,
+            "label": "Lagos",
+            "detail": "A coastal city near the Gulf of Guinea.",
+            "at": 0.36
+          },
+          {
+            "x": 0.703,
+            "y": 0.394,
+            "label": "Mumbai",
+            "detail": "A city on India’s western coast.",
+            "at": 0.61
+          }
+        ]
+      }
+    },
+    {
+      "id": "fact-check",
+      "component": "FactCheckScene",
+      "durationInFrames": 150,
+      "props": {}
+    },
+    {
+      "id": "case-study",
+      "component": "CaseStudyScene",
+      "durationInFrames": 150,
+      "props": {}
+    },
+    {
+      "id": "profile",
+      "component": "ProfileScene",
+      "durationInFrames": 150,
+      "props": {}
+    },
+    {
+      "id": "analogy",
+      "component": "AnalogyScene",
+      "durationInFrames": 150,
+      "props": {
+        "limitation": {
+          "text": "An API can apply the same rules to many requests at once. A café analogy leaves that out.",
+          "at": 0.76
+        }
+      }
+    },
+    {
+      "id": "concept-map",
+      "component": "ConceptMapScene",
+      "durationInFrames": 240,
+      "props": {
+        "title": "Connect a story to its reporting decisions",
+        "center": "story",
+        "nodes": [
+          {
+            "id": "story",
+            "label": "News story",
+            "at": 0
+          },
+          {
+            "id": "source",
+            "label": "Primary source",
+            "at": 0.17
+          },
+          {
+            "id": "editor",
+            "label": "Editor",
+            "at": 0.37
+          },
+          {
+            "id": "audience",
+            "label": "Readers",
+            "at": 0.61
+          }
+        ],
+        "links": [
+          {
+            "from": "story",
+            "to": "source",
+            "label": "uses"
+          },
+          {
+            "from": "editor",
+            "to": "story",
+            "label": "reviews"
+          },
+          {
+            "from": "story",
+            "to": "audience",
+            "label": "informs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "org-chart",
+      "component": "TreeScene",
+      "durationInFrames": 150,
+      "props": {
+        "title": "How a small newsroom reports",
+        "kind": "tree",
+        "sound": false,
+        "tree": {
+          "label": "Editor-in-chief",
+          "children": [
+            {
+              "label": "News editor",
+              "children": [
+                {
+                  "label": "Reporter"
+                }
+              ]
+            },
+            {
+              "label": "Photo editor",
+              "children": [
+                {
+                  "label": "Photographer"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "git-merge",
+      "component": "GitGraphScene",
+      "durationInFrames": 180,
+      "props": {
+        "commits": [
+          {
+            "id": "a1",
+            "parents": [],
+            "lane": 0,
+            "message": "Start the project",
+            "at": 0
+          },
+          {
+            "id": "b2",
+            "parents": [
+              "a1"
+            ],
+            "lane": 0,
+            "message": "Update the readme",
+            "at": 0.18
+          },
+          {
+            "id": "c3",
+            "parents": [
+              "a1"
+            ],
+            "lane": 1,
+            "message": "Add the feature",
+            "at": 0.38
+          },
+          {
+            "id": "d4",
+            "parents": [
+              "b2",
+              "c3"
+            ],
+            "lane": 0,
+            "message": "Merge the feature",
+            "at": 0.68
+          }
+        ],
+        "refs": {
+          "main": "a1"
+        },
+        "head": "main",
+        "steps": [
+          {
+            "at": 0.22,
+            "refs": {
+              "main": "b2"
+            },
+            "note": "main advances to b2."
+          },
+          {
+            "at": 0.42,
+            "refs": {
+              "main": "b2",
+              "feature": "c3"
+            },
+            "head": "feature",
+            "note": "HEAD follows feature after switching branches."
+          },
+          {
+            "at": 0.72,
+            "refs": {
+              "main": "d4",
+              "feature": "c3"
+            },
+            "head": "main",
+            "note": "The merge commit has two parents, b2 and c3."
+          }
+        ]
+      }
+    },
+    {
+      "id": "git-rebase",
+      "component": "GitGraphScene",
+      "durationInFrames": 180,
+      "props": {
+        "title": "Rebase puts a new commit on a new parent",
+        "commits": [
+          {
+            "id": "a1",
+            "message": "Shared base",
+            "at": 0
+          },
+          {
+            "id": "b2",
+            "parents": [
+              "a1"
+            ],
+            "message": "Advance main",
+            "at": 0
+          },
+          {
+            "id": "c3",
+            "parents": [
+              "a1"
+            ],
+            "lane": 1,
+            "message": "Original feature commit",
+            "at": 0
+          },
+          {
+            "id": "e5",
+            "parents": [
+              "b2"
+            ],
+            "lane": 1,
+            "message": "Rewritten feature commit",
+            "at": 0.47
+          }
+        ],
+        "refs": {
+          "main": "b2",
+          "feature": "c3"
+        },
+        "head": "feature",
+        "steps": [
+          {
+            "at": 0,
+            "note": "Before rebase, the branches diverge at a1."
+          },
+          {
+            "at": 0.52,
+            "refs": {
+              "main": "b2",
+              "feature": "e5"
+            },
+            "note": "The rewritten commit has a new ID, e5, and parent b2."
+          },
+          {
+            "at": 0.77,
+            "hide": [
+              "c3"
+            ],
+            "note": "feature now points to e5. The old commit is outside this view."
+          }
+        ]
+      }
+    }
+  ]
+}

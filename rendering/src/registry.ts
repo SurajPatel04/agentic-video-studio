@@ -1,3 +1,20 @@
+import * as RAG from './scenes/RAGScene';
+import {mlFoundations} from './scenes/MLFoundations';
+import {llmMechanics} from './scenes/LLMMechanics';
+import * as Neural from './scenes/NeuralNetworkScene';
+import * as MLScatter from './scenes/MLScatterScene';
+import * as AIWorkflow from './scenes/AIWorkflowScene';
+import * as WorkedExample from './scenes/WorkedExampleScene';
+import * as AnnotatedText from './scenes/AnnotatedTextScene';
+import * as OutcomeComparison from './scenes/OutcomeComparisonScene';
+import * as Layers from './scenes/LayersScene';
+import * as Matrix from './scenes/MatrixScene';
+import * as FactCheck from './scenes/FactCheckScene';
+import * as CaseStudy from './scenes/CaseStudyScene';
+import * as Profile from './scenes/ProfileScene';
+import * as Analogy from './scenes/AnalogyScene';
+import * as ConceptMap from './scenes/ConceptMapScene';
+import * as GitGraph from './scenes/GitGraphScene';
 import {algorithmLessons} from './scenes/AlgorithmLessons';
 import {mathLessons} from './scenes/MathLessons';
 import * as TransactionDB from './scenes/TransactionScene';
@@ -80,6 +97,23 @@ import * as MapTracking from './scenes/MapTrackingScene';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type SceneEntry = {component: ComponentType<any>; schema: ZodType; description: string; tags: string[]};
 const baseCatalog: Record<string, SceneEntry> = {
+  ...mlFoundations,
+  RAGScene: {...RAG, component: RAG.RAGScene, schema: RAG.ragSceneSchema},
+  NeuralNetworkScene: {...Neural, component: Neural.NeuralNetworkScene, schema: Neural.neuralNetworkSceneSchema},
+  MLScatterScene: {...MLScatter, component: MLScatter.MLScatterScene, schema: MLScatter.mlScatterSceneSchema},
+  ...llmMechanics,
+  AIWorkflowScene: {...AIWorkflow, component: AIWorkflow.AIWorkflowScene, schema: AIWorkflow.aiWorkflowSceneSchema},
+  WorkedExampleScene: {...WorkedExample, component: WorkedExample.WorkedExampleScene, schema: WorkedExample.workedExampleSceneSchema},
+  AnnotatedTextScene: {...AnnotatedText, component: AnnotatedText.AnnotatedTextScene, schema: AnnotatedText.annotatedTextSceneSchema},
+  OutcomeComparisonScene: {...OutcomeComparison, component: OutcomeComparison.OutcomeComparisonScene, schema: OutcomeComparison.outcomeComparisonSceneSchema},
+  LayersScene: {...Layers, component: Layers.LayersScene, schema: Layers.layersSceneSchema},
+  MatrixScene: {...Matrix, component: Matrix.MatrixScene, schema: Matrix.matrixSceneSchema},
+  FactCheckScene: {...FactCheck, component: FactCheck.FactCheckScene, schema: FactCheck.factCheckSceneSchema},
+  CaseStudyScene: {...CaseStudy, component: CaseStudy.CaseStudyScene, schema: CaseStudy.caseStudySceneSchema},
+  ProfileScene: {...Profile, component: Profile.ProfileScene, schema: Profile.profileSceneSchema},
+  AnalogyScene: {...Analogy, component: Analogy.AnalogyScene, schema: Analogy.analogySceneSchema},
+  ConceptMapScene: {...ConceptMap, component: ConceptMap.ConceptMapScene, schema: ConceptMap.conceptMapSceneSchema},
+  GitGraphScene: {...GitGraph, component: GitGraph.GitGraphScene, schema: GitGraph.gitGraphSceneSchema},
   TitleScene: {...Title, component: Title.TitleScene, schema: Title.titleSceneSchema},
   BulletListScene: {...Bullet, component: Bullet.BulletListScene, schema: Bullet.bulletListSceneSchema},
   QuoteScene: {...Quote, component: Quote.QuoteScene, schema: Quote.quoteSceneSchema},

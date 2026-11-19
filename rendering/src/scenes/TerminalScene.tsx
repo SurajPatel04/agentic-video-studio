@@ -95,11 +95,21 @@ const LINE_H = 50, FONT = 31;
 type Ev = Action & {start: number; end: number; typeEnd: number};
 export const terminalTimeline = (acts: Action[], len: number, fps: number, speed = 1): Ev[] => {
   let t = 0;
-  const ordered = [...acts].sort((a, b) => a.at - b.at);
+  const ordered = acts.map((action, i) => {
+    const next = acts[i + 1];
+    // Keep an authored request/response pair together when the spoken cues are reversed.
+    // The response keeps its cue; the completed request is ready to read first.
+    if (action.do === 'run' && next?.do === 'output' && /^HTTP\/\d/.test(next.text ?? '') && action.at >= next.at) {
+      return {...action, at: next.at};
+    }
+    return action;
+  }).sort((a, b) => a.at - b.at);
   return ordered.map((a, i) => {
     const next = ordered[i + 1];
-    const preparedRequest = a.do === 'run' && next?.do === 'output' && /^HTTP\/\d/.test(next.text ?? '');
-    const start = preparedRequest && i === 0 ? 0 : Math.max(Math.round(a.at * len), t);
+    const fullStatus = /^HTTP\/\d/.test(next?.text ?? '');
+    const curlStatus = /^curl\s/.test(a.text ?? '') && /^[1-5]\d\d\s/.test(next?.text ?? '');
+    const preparedRequest = a.do === 'run' && next?.do === 'output' && (fullStatus || curlStatus);
+    const start = preparedRequest && fullStatus && i === 0 ? 0 : Math.max(Math.round(a.at * len), t);
     let end = start, typeEnd = start;
     if (a.do === 'run') {
       typeEnd = start + 4 + Math.ceil(((a.text ?? '').length / (CPS * speed)) * fps);
@@ -153,7 +163,7 @@ export const TerminalScene: FC<z.input<typeof terminalSceneSchema>> = (input) =>
     if (e.do === 'run') {
       const fractionTyped = f >= e.typeEnd ? 1 : clamp01((k - 4) / Math.max(1, e.typeEnd - e.start - 4));
       const n = Math.floor(e.text!.length * fractionTyped);
-      rows.push(<div key={`r${i}`}>{promptNode} <span>{e.text!.slice(0, n)}</span>{f < e.typeEnd + 3 ? caret(f < e.typeEnd) : null}</div>);
+      rows.push(<div key={`r${i}`} style={{overflowWrap: 'anywhere'}}>{promptNode} <span>{e.text!.slice(0, n)}</span>{f < e.typeEnd + 3 ? caret(f < e.typeEnd) : null}</div>);
     }
     if (e.do === 'output') {
       e.text!.split('\n').forEach((line, j) => {

@@ -1,4 +1,4 @@
-import {createContext, useContext} from 'react';
+import {createContext, useContext, useId} from 'react';
 import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {z} from 'zod';
 import {Sfx, sfxNames} from '../audio';
@@ -155,7 +155,7 @@ const objectSchema = z.object({
   count: z.number().int().min(1).max(60).optional(), // people
   status: z.number().min(0).max(100).optional(), // shows a ⚙ ▬ 59% pill
   appearAt: fraction.optional(), // default: objects drop in one after another in the first third
-  enter: z.enum(['drop', 'none']).default('drop'), // none: already on screen (carried over from the previous scene)
+  enter: z.enum(['drop', 'none']).default('drop'), // none: reveal settled at appearAt, or from the start
   ghost: z.boolean().default(false), // keeps its place in the layout but is not drawn (continuations)
   highlight: z.boolean().default(false), // starts highlighted (carried over from the previous scene)
   design: z.string().max(64).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
@@ -182,7 +182,7 @@ const linkSchema = z.object({
   bidirectional: z.boolean().optional(), // a return lane from the target to the source
   dashed: z.boolean().default(false),
   appearAt: fraction.optional(), // default: when both ends have landed
-  enter: z.enum(['draw', 'none']).default('draw'), // none: already drawn (carried over)
+  enter: z.enum(['draw', 'none']).default('draw'), // carried links are already drawn; an explicit cue starts a new connection
 }).strict();
 
 type DiagramLink = z.output<typeof linkSchema>;
@@ -374,12 +374,21 @@ export const isoSceneSchema = z.object({
   links: z.array(linkSchema).max(30).default(() => EXAMPLE_LINKS),
   steps: z.array(stepSchema).max(40).default(() => EXAMPLE_STEPS),
   points: z.array(z.string().max(70)).max(4).optional(), // short note cards beside the diagram
+  exampleLines: z.array(z.object({
+    text: z.string().min(1).max(72), at: fraction,
+  }).strict()).min(1).max(4).optional(),
   zoom: z.number().min(0.5).max(1.6).default(1),
   sound: z.boolean().default(true),
   continued: z.boolean().optional(), // set by the backend: this scene continues the previous picture
   continue: z.boolean().optional(), // planner shorthand, expanded by the backend before rendering
   remove: z.array(z.string()).optional(), // with continue: ids to drop from the previous picture
 }).strict().superRefine((p, ctx) => {
+  p.exampleLines?.forEach((line, i, lines) => {
+    if ((i === 0 && line.at !== 0) || (i > 0 && line.at < lines[i - 1].at)) {
+      ctx.addIssue({code: 'custom', path: ['exampleLines', i, 'at'],
+        message: 'Start the written example at frame zero and reveal later lines in reading order.'});
+    }
+  });
   const ids = new Set<string>();
   p.objects.forEach((o, i) => {
     if (ids.has(o.id)) ctx.addIssue({code: 'custom', path: ['objects', i, 'id'], message: `duplicate id "${o.id}"`});
@@ -581,6 +590,7 @@ export const IsoRegion = createContext<{left: number; right: number; top: number
 
 export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const region = useContext(IsoRegion);
+  const stageId = useId();
   const p = isoSceneSchema.parse(input);
   const links = linkLegs(p.links);
   const f = useCurrentFrame();
@@ -590,16 +600,19 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const sw = 3 * u;
 
   const hasTitle = !region && Boolean(p.title || p.eyebrow);
-  const cards = region ? [] : p.points ?? [];
+  const example = !region && p.objects.length ? p.exampleLines : undefined;
+  const stacked = Boolean(example && W <= H);
+  const cards = region || example ? [] : p.points ?? [];
   const onlyCard = !region && p.objects.length === 0;
 
   // ---------- layout: fit every object (+ room for pills/notes) into the free area
   const tall = p.objects.map(() => true); // pill room for every object, so the layout depends only on positions (continued scenes match)
   const geos = separate(p.objects.map(geometry), tall, p.objects.map((ob) => ob.id));
-  const top = region ? region.top : hasTitle ? (p.subtitle ? 250 : 205) * u : 80 * u;
+  const headingBottom = region ? region.top : hasTitle ? (p.subtitle ? 250 : 205) * u : 80 * u;
+  const top = stacked ? headingBottom + 320 * u : headingBottom;
   const bottom = H - 200 * u; // captions live below
   const right = region ? region.right : cards.length ? W - 600 * u : W - 90 * u;
-  const left = region ? region.left : 90 * u;
+  const left = region ? region.left : example && !stacked ? W * 0.46 : 90 * u;
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   geos.forEach((g, i) => {
     for (const [a, b] of [[g.x, g.y], [g.x + g.w, g.y], [g.x + g.w, g.y + g.d], [g.x, g.y + g.d]]) {
@@ -621,13 +634,17 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const byId = Object.fromEntries(p.objects.map((ob, i) => [ob.id, i]));
   const fresh = p.objects.filter((ob) => ob.enter === 'drop' && !ob.ghost);
   const startOf = p.objects.map((ob) => ob.enter === 'none' ? -1000
+    : example && ob.appearAt !== undefined ? Math.round(ob.appearAt * len) - 12
     : Math.round((ob.appearAt ?? 0.03 + Math.max(0, fresh.indexOf(ob)) * Math.min(0.065, 0.3 / Math.max(1, fresh.length))) * len));
+  // A motionless object is already settled when its cue makes it visible.
+  const revealAt = p.objects.map((ob, i) => ob.enter === 'none' && ob.appearAt !== undefined
+    ? Math.round(ob.appearAt * len) : startOf[i]);
   const stepsFor = (id: string) => p.steps.filter((s) => s.target === id).map((s) => ({...s, f: Math.round(s.at * len)})).sort((a, b) => a.f - b.f);
 
   const state = p.objects.map((ob, i) => {
     const s = stepsFor(ob.id);
     const drop = spring({frame: f - startOf[i], fps, config: {damping: 11, stiffness: 150, mass: 0.7}});
-    const shown = !ob.ghost && f >= startOf[i];
+    const shown = !ob.ghost && f >= revealAt[i];
     const hide = track(0, s.filter((x) => x.hide !== undefined).map((x) => ({f: x.f, v: x.hide ? 1 : 0})), f, fps, num);
     const hl = track(ob.highlight ? 1 : 0, s.filter((x) => x.highlight !== undefined).map((x) => ({f: x.f, v: x.highlight ? 1 : 0})), f, fps, num);
     const status = ob.status === undefined && !s.some((x) => x.status !== undefined) ? undefined
@@ -653,7 +670,7 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
       lookupFrame: lookupStep?.f ?? Math.max(0, startOf[i]),
       cycleOpacity: cycleStep ? 0.2 + 0.8 * Math.min(1, newsCycleRemaining(cycleStep, f, fps) * 4) : 1};
   });
-  const landed = (i: number) => startOf[i] + 12;
+  const landed = (i: number) => Math.max(revealAt[i], startOf[i] + 12);
 
   // notes: only the latest one is on screen
   const notes = p.steps.filter((s) => s.note).map((s) => ({...s, f: Math.round(s.at * len)})).filter((s) => f >= s.f).sort((a, b) => a.f - b.f);
@@ -673,12 +690,18 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const zoom = push * (1 + 0.22 * focusAmt);
   const F = {x: centre.x + (fp.x - centre.x) * focusAmt, y: centre.y + (fp.y - centre.y) * focusAmt};
   const camera = `translate(${centre.x} ${centre.y}) scale(${zoom}) translate(${-F.x} ${-F.y})`;
-  const stageTop = hasTitle && !onlyCard ? top - 55 * u : 0;
+  const stageTop = region ? region.top : stacked || (hasTitle && !onlyCard) ? top - 55 * u : 0;
+  const clipLeft = example && !stacked ? left : 0;
+  const stageLeft = region?.left ?? clipLeft;
+  const stageRight = region?.right ?? (cards.length ? right : W);
   const cueBounds = {
-    left: F.x + ((region?.left ?? 0) + 18 * u - centre.x) / zoom,
-    right: F.x + ((region?.right ?? W) - 18 * u - centre.x) / zoom,
-    top: F.y + (Math.max(stageTop, region?.top ?? 0) + 12 * u - centre.y) / zoom,
+    left: F.x + (stageLeft + 18 * u - centre.x) / zoom,
+    right: F.x + (stageRight - 18 * u - centre.x) / zoom,
+    top: F.y + (stageTop + 12 * u - centre.y) / zoom,
+    bottom: F.y + (H - 170 * u - centre.y) / zoom,
   };
+  const outside = (r: Rect) => Math.max(0, cueBounds.left - r.l) + Math.max(0, r.r - cueBounds.right)
+    + Math.max(0, cueBounds.top - r.t) + Math.max(0, r.b - cueBounds.bottom);
 
   // ---------- draw order: platforms first, then links, then everything else back-to-front
   const order = p.objects.map((_, i) => i).sort((a, b) => {
@@ -795,9 +818,10 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   /** Frame a link starts drawing. A new link between objects already on screen (continued scene) draws early on. */
   const linkStart = (l: Props['links'][number]) => {
     const ia = byId[l.from], ib = byId[l.to];
-    if (l.enter === 'none') return -1000;
-    if (l.appearAt !== undefined) return Math.round(l.appearAt * len);
-    const after = Math.max(landed(ia), landed(ib)) + 4;
+    const endpointsReady = Math.max(landed(ia), landed(ib));
+    if (l.appearAt !== undefined) return Math.max(Math.round(l.appearAt * len), endpointsReady);
+    if (l.enter === 'none') return endpointsReady;
+    const after = endpointsReady + 4;
     return after < 0 ? Math.round(0.08 * len) : after;
   };
   const viaDelays = new Map<number,number>();
@@ -805,7 +829,7 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   let legIndex = 0;
   for (const link of p.links) {
     if (link.via) {
-      if (link.enter !== 'none') {
+      if (link.enter !== 'none' || link.appearAt !== undefined) {
         viaDelays.set(legIndex+1,Math.max(0,linkStart(links[legIndex]))+18+Math.round(fps*0.85));
         viaLegs.add(legIndex);
         viaLegs.add(legIndex+1);
@@ -862,8 +886,10 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     const activeLane = switchFrame === undefined ? undefined : f < switchFrame ? 'request' : 'reply';
     const phaseStart = activeLane === 'reply' ? switchFrame! : start;
     const phaseEnd = activeLane === 'request' ? switchFrame! : len;
-    const drawFrames = activeLane ? Math.max(1, Math.min(18, Math.floor((phaseEnd - Math.max(0, phaseStart)) / 3))) : 18;
-    const prog = interpolate(f - phaseStart, [0, drawFrames], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: (t) => 1 - Math.pow(1 - t, 3)});
+    // On the lecture board, give the viewer time to follow the line from source to target.
+    const strokeFrames = example ? Math.round(fps * 0.95) : 18;
+    const drawFrames = activeLane ? Math.max(1, Math.min(strokeFrames, Math.floor((phaseEnd - Math.max(0, phaseStart)) / 3))) : strokeFrames;
+    const prog = interpolate(f - phaseStart, [0, drawFrames], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: (t) => example ? t : 1 - Math.pow(1 - t, 3)});
     const fade = 1 - Math.max(state[ia].hide, state[ib].hide);
     if (labelOnly) {
       // Older plans may use a single “request / reply” caption for both lanes.
@@ -884,7 +910,7 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
           return {x: p.x - side * Math.sin(angle) * gap, y: p.y + side * Math.cos(angle) * gap};
         }));
         const box = (p: Pt) => ({l: p.x - tw / 2, r: p.x + tw / 2, t: p.y - th / 2, b: p.y + th / 2});
-        const cost = (p: Pt) => obstacles.reduce((sum, rect) => sum + overlapArea(rect, box(p)), 0);
+        const cost = (p: Pt) => obstacles.reduce((sum, rect) => sum + overlapArea(rect, box(p)), 0) + outside(box(p)) * th * 40;
         const at = spots.reduce((best, p) => cost(p) < cost(best) - 1 ? p : best);
         placedTags.push(box(at));
         return <Tag key={lane} opacity={lane === 0 && activeLane === 'reply' ? 1 : prog} at={at} text={text} u={labelUnit} fill={twoWay ? (lane === 0 ? '#ded4f0' : '#c9e8d9') : undefined} />;
@@ -965,8 +991,8 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     <AbsoluteFill style={{background: region ? 'transparent' : `radial-gradient(ellipse at 50% 45%, ${PAPER.bgCenter} 0%, ${PAPER.bg} 70%)`, fontFamily: PAPER.sans}}>
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', inset: 0}}>
         {region ? null : <path d={gridLines.join('')} stroke={PAPER.grid} strokeWidth={1.2 * u} fill="none" opacity={gridIn} />}
-        <defs><clipPath id="iso-stage"><rect x={0} y={stageTop} width={W} height={H} /></clipPath></defs>
-        <g clipPath="url(#iso-stage)"><g transform={camera}>
+        <defs><clipPath id={stageId}><rect x={clipLeft} y={stageTop} width={W - clipLeft} height={H} /></clipPath></defs>
+        <g clipPath={`url(#${stageId})`}><g transform={camera}>
           {slabs.map(renderObject)}
           {[...waveSources].map(([index,{start,radius}]) => <BroadcastWaves key={index} origin={anchor(index)} radius={radius} seconds={(f-start)/fps} u={u}/>)}
           {links.map((l, k) => renderLink(l, k))}
@@ -981,7 +1007,7 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
             const cx = (box.l + box.r) / 2, cy = (box.t + box.b) / 2;
             const others2 = [...others, ...geos.map((gg, j) => (j !== i && state[j].shown && state[j].status !== undefined ? (() => {const r = rectOf(outline(gg, T, o)); return {l: r.l, r: r.r, t: r.t - 70 * u, b: r.t};})() : null)).filter(Boolean) as Rect[]];
             // above, slid inward so it stays on screen near the frame edge (the pointer still lands on the object)
-            const ax = Math.min(Math.max(cx, 30 * u + nw / 2, box.l + 14 * u), W - 30 * u - nw / 2, box.r - 14 * u);
+            const ax = Math.max(cueBounds.left + nw / 2, Math.min(cx, cueBounds.right - nw / 2));
             const options = [
               {side: 'above' as const, at: {x: cx, y: box.t - pillRoom}, r: {l: cx - nw / 2, r: cx + nw / 2, t: box.t - pillRoom - nh - 16 * u, b: box.t - pillRoom}},
               {side: 'above' as const, at: {x: ax, y: box.t - pillRoom}, r: {l: ax - nw / 2, r: ax + nw / 2, t: box.t - pillRoom - nh - 16 * u, b: box.t - pillRoom}},
@@ -990,14 +1016,12 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
               {side: 'right' as const, at: {x: box.r - 10 * u, y: box.t + 20 * u}, r: {l: box.r + 6 * u, r: box.r + 6 * u + nw, t: box.t + 20 * u - nh / 2, b: box.t + 20 * u + nh / 2}},
               {side: 'left' as const, at: {x: box.l + 10 * u, y: box.t + 20 * u}, r: {l: box.l - 6 * u - nw, r: box.l - 6 * u, t: box.t + 20 * u - nh / 2, b: box.t + 20 * u + nh / 2}},
             ];
-            const titleLine = hasTitle ? 170 * u : 20 * u;
-            const outside = (r: Rect) => Math.max(0, 30 * u - r.l) + Math.max(0, r.r - (W - 30 * u)) + Math.max(0, titleLine - r.t) + Math.max(0, r.b - (H - 170 * u));
             // text over text is the worst overlap: link labels ("data", "resource") and object names count double
             const texts = [...placedTags, ...labelRects];
             const cost = (r: Rect) => others2.reduce((acc, x) => acc + overlapArea(x, r), 0) + 2 * texts.reduce((acc, x) => acc + overlapArea(x, r), 0)
               + outside(r) * nh * 40; // off-screen is worse than touching
             const pick = options.reduce((best, c) => (cost(c.r) < cost(best.r) - 1 ? c : best), options[0]);
-            return <Note at={pick.at} side={pick.side} text={note.note ?? ''} u={u} scale={Math.min(1, noteScale)} />;
+            return <Note at={pick.at} side={pick.side} tipOffset={cx - pick.at.x} text={note.note ?? ''} u={u} scale={Math.min(1, noteScale)} />;
           })() : null}
         </g></g>
       </svg>
@@ -1010,6 +1034,20 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
         </div>
       ) : null}
 
+      {example ? (
+        <div style={{position: 'absolute', left: 80 * u, top: stacked ? headingBottom : top,
+          width: stacked ? W - 160 * u : left - 110 * u,
+          height: stacked ? 310 * u : bottom - top, display: 'flex', flexDirection: 'column',
+          justifyContent: 'center', gap: (stacked ? 8 : 20) * u, color: PAPER.ink}}>
+          {example.map((line, i) => (
+            <div key={i} style={{visibility: f >= Math.round(line.at * len) ? 'visible' : 'hidden',
+              borderLeft: `${4 * u}px solid ${ISO_COLORS.lavender}`, padding: `0 ${20 * u}px`,
+              fontSize: (stacked ? 29 : 40) * u, lineHeight: 1.2, fontWeight: 600, overflowWrap: 'anywhere'}}>
+              {line.text}
+            </div>
+          ))}
+        </div>
+      ) : null}
       {onlyCard ? (
         <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: `0 ${140 * u}px ${160 * u}px`, textAlign: 'center'}}>
           {p.eyebrow ? <div style={{fontFamily: PAPER.font, fontWeight: 700, fontSize: 26 * u, letterSpacing: 4 * u, color: '#8a6fd1', textTransform: 'uppercase', opacity: titleIn}}>{p.eyebrow}</div> : null}

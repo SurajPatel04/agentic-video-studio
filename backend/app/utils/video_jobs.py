@@ -116,6 +116,13 @@ def kind(job_id: str) -> str | None:
 
 
 def view(job_id: str) -> dict[str, Any] | None:
+    job = _job_status(job_id)
+    if job is not None:
+        job["progress_percent"] = f'{job["progress"] * 100:.1f}'.removesuffix(".0") + "%"
+    return job
+
+
+def _job_status(job_id: str) -> dict[str, Any] | None:
     """The same shape for both lengths: status = queued | running | done | failed (| paused for a long job
     that stopped and can be resumed with POST /long/{id}/run)."""
     k = kind(job_id)
@@ -166,5 +173,5 @@ def list_jobs(limit: int = 50) -> list[dict[str, Any]]:
     ids += [p.parent.name for p in (settings.WORKSPACE_DIR / "long").glob("*/state.json")] + list(_starting)
     views = [v for v in (view(i) for i in dict.fromkeys(ids)) if v]
     views.sort(key=lambda v: v.get("created", 0), reverse=True)
-    keep = ("id", "length", "layout", "prompt", "status", "step", "progress", "created")
+    keep = ("id", "length", "layout", "prompt", "status", "step", "progress", "progress_percent", "created")
     return [{k: v.get(k) for k in keep} for v in views[:limit]]

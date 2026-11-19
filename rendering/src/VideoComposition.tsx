@@ -21,7 +21,8 @@ const UnknownScene: React.FC<{name: string}> = ({name}) => (
 
 const textCards = new Set(['TitleScene', 'ExplainScene', 'BulletListScene', 'QuoteScene']);
 /** Every scene shares the paper canvas, including scenes from older compositions. */
-const SceneFrame: React.FC<{scene: SceneSpec; audio: AudioSettings; captions: CaptionsSettings; fps: number}> = ({scene, audio, captions, fps}) => {
+const SceneFrame: React.FC<{scene: SceneSpec; audio: AudioSettings; captions: CaptionsSettings; captionFrames: number; fps: number}> =
+  ({scene, audio, captions, captionFrames, fps}) => {
   const Scene = registry[scene.component];
   const parsed = useMemo(() => Scene ? sceneCatalog[scene.component].schema.safeParse(scene.props ?? {}) : null, [Scene, scene.component, scene.props]);
   if (parsed && !parsed.success) throw new Error(`Scene ${scene.id} (${scene.component}): ${parsed.error.message}`);
@@ -55,7 +56,11 @@ const SceneFrame: React.FC<{scene: SceneSpec; audio: AudioSettings; captions: Ca
         {overlays?.success && overlays.data.length ? <Overlays items={overlayItems} scene={content} /> : null}
         {voice?.success ? <Voice voice={voice.data} volume={audio.voiceVolume} /> : null}
         {cues?.success ? <SfxCues cues={cues.data} /> : null}
-        {voice?.success && voice.data.words ? <Captions words={voice.data.words} settings={captions} fps={fps} /> : null}
+        {voice?.success && voice.data.words ? (
+          <Sequence durationInFrames={captionFrames} layout="none" showInTimeline={false}>
+            <Captions words={voice.data.words} settings={captions} fps={fps} />
+          </Sequence>
+        ) : null}
       </AbsoluteFill>
      </SceneLengthProvider>
     </ThemeProvider>
@@ -105,16 +110,19 @@ export const VideoComposition: React.FC<CompositionSpec> = (spec) => {
       <TransitionSeries>
         {spec.scenes.map((scene, i) => {
           const frames = transitionFrames(spec, i);
+          const transition = transitionInto(spec, i);
+          const hideOutgoingCaptions = i + 1 < spec.scenes.length && ['fade', 'wipe'].includes(transitionInto(spec, i + 1).type);
+          const captionFrames = scene.durationInFrames - (hideOutgoingCaptions ? transitionFrames(spec, i + 1) : 0);
           return (
             <Fragment key={scene.id}>
               {frames > 0 ? (
                 <TransitionSeries.Transition
-                  presentation={presentationFor(transitionInto(spec, i))}
+                  presentation={presentationFor(transition)}
                   timing={linearTiming({durationInFrames: frames})}
                 />
               ) : null}
               <TransitionSeries.Sequence durationInFrames={scene.durationInFrames}>
-                <SceneFrame scene={scene} audio={audio} captions={shownCaptions} fps={spec.fps} />
+                <SceneFrame scene={scene} audio={audio} captions={shownCaptions} captionFrames={captionFrames} fps={spec.fps} />
               </TransitionSeries.Sequence>
             </Fragment>
           );

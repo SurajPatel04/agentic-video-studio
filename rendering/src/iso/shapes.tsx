@@ -154,20 +154,21 @@ export const noteSize = (text: string, u: number) => {
 };
 
 /** Speech bubble pointing at `at`: above it (pointer down), or to its right / left (pointer sideways). */
-export const Note: FC<{at: Pt; text: string; u: number; scale: number; side?: 'above' | 'right' | 'left'; accent?: string}> = ({
-  at, text, u, scale, side = 'above', accent = '#f6d28b',
+export const Note: FC<{at: Pt; text: string; u: number; scale: number; side?: 'above' | 'right' | 'left'; tipOffset?: number; accent?: string}> = ({
+  at, text, u, scale, side = 'above', tipOffset = 0, accent = '#f6d28b',
 }) => {
   if (scale <= 0.01) return null;
   const {lines, fs, lh, w, h} = noteSize(text, u);
   const sw = 2.6 * u, gap = 16 * u;
   // bubble's top-left corner relative to `at`, and the pointer triangle
   const box = side === 'above' ? {x: -w / 2, y: -h - gap} : side === 'right' ? {x: gap, y: -h / 2} : {x: -w - gap, y: -h / 2};
+  const base = Math.max(-w / 2 + 28 * u, Math.min(tipOffset, w / 2 - 28 * u));
   const tri = side === 'above'
-    ? [{x: -12 * u, y: -gap - 1}, {x: 12 * u, y: -gap - 1}, {x: 0, y: -1}]
+    ? [{x: base - 12 * u, y: -gap - 1}, {x: base + 12 * u, y: -gap - 1}, {x: tipOffset, y: -1}]
     : side === 'right'
       ? [{x: gap + 1, y: -12 * u}, {x: gap + 1, y: 12 * u}, {x: 1, y: 0}]
       : [{x: -gap - 1, y: -12 * u}, {x: -gap - 1, y: 12 * u}, {x: -1, y: 0}];
-  const cover = side === 'above' ? {x: -13 * u, y: -gap - 4 * u, w: 26 * u, h: 5 * u}
+  const cover = side === 'above' ? {x: base - 13 * u, y: -gap - 4 * u, w: 26 * u, h: 5 * u}
     : side === 'right' ? {x: gap - 1 * u, y: -13 * u, w: 5 * u, h: 26 * u} : {x: -gap - 4 * u, y: -13 * u, w: 5 * u, h: 26 * u};
   return (
     <g transform={`translate(${at.x} ${at.y}) scale(${scale})`}>

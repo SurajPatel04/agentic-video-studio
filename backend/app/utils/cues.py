@@ -69,18 +69,16 @@ def _find(tokens: list[str], cue: str, start: int) -> int | None:
     if not want:
         return None
 
-    def match(i: int) -> bool:
-        if i + len(want) > len(tokens):
-            return False
-        if len(want) == 1 and len(want[0]) >= 4:
-            t = tokens[i]
-            return t == want[0] or (len(t) >= 4 and (t.startswith(want[0]) or want[0].startswith(t)))
-        return tokens[i:i + len(want)] == want
-
-    for begin in (start, 0):
-        for i in range(begin, len(tokens)):
-            if match(i):
+    for order in (range(start, len(tokens)), range(start)):
+        for i in order:
+            if tokens[i:i + len(want)] == want:
                 return i
+        # Prefer the actual word to a prefix such as /watches/w-104.
+        if len(want) == 1 and len(want[0]) >= 4:
+            for i in order:
+                t = tokens[i]
+                if len(t) >= 4 and (t.startswith(want[0]) or want[0].startswith(t)):
+                    return i
     return None
 
 
@@ -102,10 +100,11 @@ def resolve_scene(scene: dict[str, Any]) -> list[str]:
         [_norm(w) for w in str((scene.get("narration") or {}).get("text", "")).split()]
     tokens = [t for t in tokens if t] if not words else tokens
     missing: list[str] = []
-    cursor = 0
+    # Objects, arrows, annotations and written lines can refer to the same utterance.
+    # Advance only within a track so traversal order cannot change another track's timing.
+    cursors: dict[str, int] = {}
 
     def visit(node: Any, path: str) -> None:
-        nonlocal cursor
         if isinstance(node, list):
             for item in node:
                 visit(item, path + "[]")
@@ -120,12 +119,12 @@ def resolve_scene(scene: dict[str, Any]) -> list[str]:
             target = field if f"{path}.{field}" in allowed else "appearAt" if f"{path}.appearAt" in allowed else None
             if target is None or not isinstance(cue, str):
                 continue
-            i = _find(tokens, cue, cursor)
+            i = _find(tokens, cue, cursors.get(path, 0))
             if i is None:
                 missing.append(cue)
                 node.setdefault(target, 0.5)  # keep it valid; the planner is told the cue is not in the narration
                 continue
-            cursor = i + 1
+            cursors[path] = i + 1
             node[target] = _fraction(scene, i, len(tokens))
         for key, value in node.items():
             visit(value, f"{path}.{key}")

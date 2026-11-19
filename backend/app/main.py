@@ -337,7 +337,7 @@ def _video_job(job_id: str) -> dict[str, Any]:
 @app.get("/videos/{job_id}")
 def get_video(job_id: str) -> dict[str, Any]:
     """status: queued | running | done | failed (| paused: a long video that stopped; POST /long/{id}/run resumes).
-    step = what it is doing now, progress = 0..1, error when failed; the file URLs appear when done."""
+    step = what it is doing now, progress = 0..1, progress_percent = display percentage (e.g. "45%"), error when failed; the file URLs appear when done."""
     return _video_job(job_id)
 
 

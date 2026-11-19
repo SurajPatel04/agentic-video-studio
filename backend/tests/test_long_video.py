@@ -102,6 +102,13 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         chapters = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_chapters", "-of", "json", state.video],
                                              capture_output=True, text=True, check=True).stdout)["chapters"]
         self.assertEqual([c["tags"]["title"] for c in chapters], ["What is Node.js", "Event loop", "Streams"])
+        streams = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,start_time",
+                                            "-of", "json", state.video], capture_output=True, text=True, check=True).stdout)["streams"]
+        starts = {s["codec_type"]: float(s["start_time"]) for s in streams}
+        self.assertAlmostEqual(starts["video"], 0, delta=0.001)
+        self.assertAlmostEqual(starts["audio"], 0, delta=0.001)
+        join_log = Path(state.video).with_name("join.log").read_text()
+        self.assertNotIn("Non-monotonic DTS", join_log)
 
         # redo only chapter 2's render: nothing is planned again, only ch02 is rendered, video re-joined
         lv.redo_chapter(state.id, 2, "render")

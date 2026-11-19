@@ -20,8 +20,8 @@ OVERLAYS = PROJECT_ROOT / "library" / "overlays.json"
 
 # Always offered in catalog mode: the general teaching scenes that fit any subject.
 CORE_SCENES = [
-    "TitleScene", "ExplainScene", "DefinitionScene", "ExampleCardScene", "StepsScene", "BulletListScene",
-    "ComparisonTableScene", "ChartScene", "FlowchartScene", "QuizScene", "SummaryScene",
+    "TitleScene", "ExplainScene", "DefinitionScene", "ExampleCardScene", "AnnotatedTextScene", "WorkedExampleScene", "StepsScene", "BulletListScene",
+    "ComparisonTableScene", "OutcomeComparisonScene", "ChartScene", "FlowchartScene", "QuizScene", "SummaryScene",
 ]
 # Words that mean the same topic (expands the search a little).
 SYNONYMS = {

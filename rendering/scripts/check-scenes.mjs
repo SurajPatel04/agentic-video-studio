@@ -6,8 +6,8 @@ import assert from 'node:assert/strict';
 const root = path.resolve(import.meta.dirname, '..');
 await mkdir(path.join(root, 'out'), {recursive: true});
 const output = path.join(root, 'out', 'catalog-check.mjs');
-await build({stdin: {contents: `export {terminalTimeline} from './src/scenes/TerminalScene'; export {sceneCatalog, overlaySchema} from './src/registry'; export {networkLayout} from './src/components/networkLayout'; export {algorithmLessons} from './src/scenes/AlgorithmLessons'; export {mathLessons} from './src/scenes/MathLessons';`, resolveDir: root, loader: 'ts'}, outfile: output, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: {'.css': 'empty'}, plugins: [{name:'bundle-world-map',setup(b){b.onResolve({filter:/^world-atlas\//},args=>({path:path.join(root,'node_modules',args.path),external:false}));}}], logLevel: 'silent'});
-const {sceneCatalog, overlaySchema, networkLayout, algorithmLessons, mathLessons, terminalTimeline} = await import(pathToFileURL(output));
+await build({stdin: {contents: `export {terminalTimeline} from './src/scenes/TerminalScene'; export {formatJsonExample} from './src/components/JsonExample'; export {sceneCatalog, overlaySchema} from './src/registry'; export {networkLayout} from './src/components/networkLayout'; export {algorithmLessons} from './src/scenes/AlgorithmLessons'; export {mathLessons} from './src/scenes/MathLessons';`, resolveDir: root, loader: 'ts'}, outfile: output, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: {'.css': 'empty'}, plugins: [{name:'bundle-world-map',setup(b){b.onResolve({filter:/^world-atlas\//},args=>({path:path.join(root,'node_modules',args.path),external:false}));}}], logLevel: 'silent'});
+const {sceneCatalog, overlaySchema, networkLayout, algorithmLessons, mathLessons, terminalTimeline, formatJsonExample} = await import(pathToFileURL(output));
 const {existsSync} = await import('node:fs');
 const {z} = await import('zod');
 for (const [name, entry] of Object.entries(sceneCatalog)) {
@@ -57,8 +57,116 @@ const [command, response] = terminalTimeline([
 assert(command.typeEnd < response.start);
 assert.equal(response.start, Math.round(0.38 * 420));
 assert.equal(response.end, response.start);
+const [post, created] = terminalTimeline([
+  {at: 0.1, do: 'run', text: 'curl -X POST /watches'},
+  {at: 0.4, do: 'output', text: '201 Created\n{"id":"w-104"}'},
+], 300, 30);
+assert.equal(post.typeEnd, 30);
+assert.equal(created.start, 120);
+const [pageRequest, pageResponse] = terminalTimeline([
+  {at: 0.8, do: 'run', text: "curl -i '/watches?limit=2'"},
+  {at: 0.18, do: 'output', text: 'HTTP/1.1 200 OK\n{"data":[]}'},
+], 342, 30);
+assert.equal(pageRequest.do, 'run');
+assert.equal(pageRequest.typeEnd, 0);
+assert.equal(pageResponse.start, 62);
 const ed = sceneCatalog.EditorScene.schema.parse({code: ['a = 1', 'print(b)'], actions: [{action: 'underline', lineNumber: '2', message: 'b is not defined'}]});
 assert.deepEqual([ed.actions[0].do, ed.actions[0].line], ['error', 2]);
+const annotation = sceneCatalog.AnnotatedTextScene.schema;
+const request = {text: 'GET /watches', steps: [
+  {at: 0.2, focus: 'GET', explanation: 'Read.'},
+  {at: 0.5, focus: '/watches', explanation: 'The watch list.'},
+  {at: 0.75, explanation: 'Read the watch list.'},
+]};
+assert(annotation.safeParse(request).success);
+assert(!annotation.safeParse({...request, text: 'GET /watchs'}).success);
+assert(!annotation.safeParse({...request, steps: [...request.steps].reverse()}).success);
+const repeated = {layout: 'text', text: 'The rain stopped, then the rain returned.', steps: [
+  {at: 0.3, focus: 'rain', occurrence: 2, explanation: 'The rain returned.'},
+]};
+assert(annotation.safeParse(repeated).success);
+assert(!annotation.safeParse({...repeated, steps: [{...repeated.steps[0], occurrence: 3}]}).success);
+const requestWithJson = 'POST /watches\n{"model":"5 Sports","price_cents":-1,"amount":9007199254740993}';
+const prettyRequest = formatJsonExample(requestWithJson);
+assert.equal(prettyRequest.header, 'POST /watches');
+assert.deepEqual(prettyRequest.lines, ['{', '  "model": "5 Sports",', '  "price_cents": -1,', '  "amount": 9007199254740993', '}']);
+assert.equal(prettyRequest.pieces.find(piece => piece.text === '-1').start, requestWithJson.indexOf('-1'));
+assert(annotation.safeParse({layout:'editor', text:requestWithJson, steps:[{at:0.5, focus:'-1', explanation:'Check the price.'}]}).success);
+assert.deepEqual(formatJsonExample('200 OK\n{"data":[{"ok":true}],"meta":{}}').lines,
+  ['{','  "data": [','    {','      "ok": true','    }','  ],','  "meta": {}','}']);
+const responseWithHeaders = 'HTTP/1.1 200 OK\nContent-Type: application/json\n\n{\n  "id": 42,\n  "name": "Trail Bottle",\n  "price": 24.99,\n  "currency": "USD"\n}';
+const prettyResponse = formatJsonExample(responseWithHeaders);
+assert.equal(prettyResponse.header, 'HTTP/1.1 200 OK\nContent-Type: application/json');
+assert.equal(prettyResponse.pieces.find(piece => piece.text === '"Trail Bottle"').start, responseWithHeaders.indexOf('"Trail Bottle"'));
+assert(annotation.safeParse({layout:'editor', text:responseWithHeaders, steps:[
+  {at:0.1, focus:'HTTP/1.1 200 OK', explanation:'Check the status.'},
+  {at:0.5, focus:'"Trail Bottle"', explanation:'Read the product name.'},
+]}).success);
+assert.equal(formatJsonExample('Use {sample} to see the idea'), null);
+assert.equal(formatJsonExample('{"id": ...}'), null);
+const outcome = sceneCatalog.OutcomeComparisonScene.schema;
+const comparison = {
+  rows: [{parts: [{text: 'GET /watches'}], result: '[]'},
+    {parts: [{text: 'GET /watches'}, {text: '/w-104'}], result: '{"id":"w-104"}'}],
+  steps: [{at: 0.1, row: 0, reveal: true}, {at: 0.5, row: 1, part: 1, reveal: true}],
+};
+assert(outcome.safeParse(comparison).success);
+assert(!outcome.safeParse({...comparison, steps: [{at: 0.5, row: 0, part: 1}]}).success);
+assert(!outcome.safeParse({...comparison, steps: [...comparison.steps].reverse()}).success);
+assert(outcome.safeParse({...comparison, steps: [{at: 0.5, row: 1, reveal: true, resultFocus: 'w-104'}]}).success);
+assert(!outcome.safeParse({...comparison, steps: [{at: 0.5, row: 1, reveal: true, resultFocus: 'w-105'}]}).success);
+const layers = sceneCatalog.LayersScene.schema;
+assert(!sceneCatalog.DatasetScene.schema.safeParse({features:['Area','Rooms']}).success);
+assert(!sceneCatalog.ModelTrainingScene.schema.safeParse({rate:0.5}).success);
+assert(!sceneCatalog.NeuralNetworkScene.schema.safeParse({steps:[
+  {at:0.8,mode:'backward',layer:0,neuron:0},
+]}).success);
+assert(sceneCatalog.NeuralNetworkScene.schema.safeParse({target:3,steps:[
+  {at:0.62,mode:'backward',layer:0,neuron:0},{at:0.8,mode:'update',layer:0,neuron:0},
+]}).success);
+assert(!sceneCatalog.TreeScene.schema.safeParse({tree:{label:'Question',children:['Yes']},
+  decisionPath:[{at:0,reason:'Root'},{at:0.6,child:1,reason:'Choose a missing child'}]}).success);
+assert(!sceneCatalog.MLScatterScene.schema.safeParse({mode:'clustering'}).success);
+assert(!sceneCatalog.TextGenerationScene.schema.safeParse({turns:[
+  {at:0.1,selection:{at:0.3},selected:0,choices:[{text:'x',prob:0.5},{text:'y',prob:0.6}]},
+]}).success);
+assert(!sceneCatalog.AttentionScene.schema.safeParse({queryIndex:4}).success);
+assert(sceneCatalog.RAGScene.schema.safeParse({evidenceFocus:'6 p.m.'}).success);
+assert(!sceneCatalog.RAGScene.schema.safeParse({evidenceFocus:'three weeks'}).success);
+assert(!sceneCatalog.RAGScene.schema.safeParse({queryVector:[0,0,0]}).success);
+assert(!sceneCatalog.RAGScene.schema.safeParse({search:{at:0.2}}).success);
+assert(layers.safeParse({levels:[{label:'Views',value:120},{label:'Orders',value:0}]}).success);
+assert(!layers.safeParse({levels:[{label:'Views',value:120},{label:'Orders',value:121}]}).success);
+assert(!layers.safeParse({levels:[{label:'Views',value:120},{label:'Orders'}]}).success);
+assert(sceneCatalog.MatrixScene.schema.safeParse({mode:'spectrum',markers:[
+  {label:'Message',x:0.2,at:0,moves:[{x:0.8,at:0.4}]},
+]}).success);
+assert(!sceneCatalog.MatrixScene.schema.safeParse({markers:[
+  {label:'Message',x:0.2,at:0.4,moves:[{x:0.8,at:0.2}]},
+]}).success);
+assert(!sceneCatalog.ImageScene.schema.safeParse({hotspots:[{x:0.4,y:0.6,at:0.2,label:'Feature'}]}).success);
+assert(sceneCatalog.ImageScene.schema.safeParse({src:'earth/blue-marble.png',hotspots:[
+  {x:0.4,y:0.6,at:0.2,label:'Feature'},
+]}).success);
+assert(!sceneCatalog.FactCheckScene.schema.safeParse({verdict:{status:'supported',reason:'See evidence',at:0.1}}).success);
+assert(!sceneCatalog.CaseStudyScene.schema.safeParse({lesson:{text:'Read the case',at:0.1}}).success);
+assert(!sceneCatalog.AnalogyScene.schema.safeParse({limitation:{text:'Where it breaks down',at:0.32}}).success);
+assert(!sceneCatalog.ConceptMapScene.schema.safeParse({links:[{from:'media',to:'missing'}]}).success);
+const commitHistory = sceneCatalog.GitGraphScene.schema;
+const commits = [{id:'a'}, {id:'b',parents:['a']}, {id:'c',parents:['a'],lane:1},
+  {id:'d',parents:['b','c'],at:0.6}];
+assert(commitHistory.safeParse({commits,refs:{main:'b'},head:'main',
+  steps:[{at:0.7,refs:{main:'d'},head:'d'}]}).success);
+assert(!commitHistory.safeParse({commits,refs:{main:'d'}}).success);
+assert(!commitHistory.safeParse({commits,steps:[{at:0.25,hide:['b']}]}).success);
+assert(!commitHistory.safeParse({commits:[{id:'a',parents:['b']},{id:'b',parents:['a']}]}).success);
+assert(sceneCatalog.TreeScene.schema.safeParse({kind:'tree',tree:{label:'Editor',children:['Reporter']}}).success);
+const numericChart = {chartType: 'line', categories: ['1,000', '2,000'], xValues: [1000, 2000],
+  series: [{name: 'Known prices', values: [200, 350]}], markers: [{at: 0.4, x: 1800, y: 320, label: 'Prediction'}],
+  growFrames: 0};
+assert(sceneCatalog.ChartScene.schema.safeParse(numericChart).success);
+assert(!sceneCatalog.ChartScene.schema.safeParse({...numericChart, xValues: [1000, 1200]}).success);
+assert(!sceneCatalog.ChartScene.schema.safeParse({...numericChart, xValues: [2000, 1000]}).success);
 const ph = sceneCatalog.PhoneScene.schema.parse({screens: [{id: 'a', blocks: [{id: 'go', type: 'button', label: 'Go'}]}, {id: 'b', blocks: [{type: 'heading', label: 'Done'}]}], actions: [{action: 'click', target: 'go'}, {action: 'navigate', to: 'b'}, {action: 'loading', duration: 1500}]});
 assert.deepEqual(ph.actions.map((x) => x.do), ['tap', 'open', 'wait']);
 assert.equal(ph.actions[2].seconds, 1.5);
@@ -67,6 +175,12 @@ assert.deepEqual(scr.actions.map((x) => x.do), ['type', 'click']);
 assert.equal(sceneCatalog.ScreenScene.schema.parse({page: [{type: 'heading', label: 'Own page'}]}).actions.length, 0); // own page: no demo script
 assert(!sceneCatalog.FormScene.schema.safeParse({fields: [{id: 'p', label: 'P', type: 'password'}], actions: [{at: 0.2, do: 'submit', errors: [{to: 'p', text: 'short'}]}, {at: 0.5, do: 'submit', text: 'ok'}]}).success); // success before the fix
 // A valid row index can still update the wrong logical record.
+const worked = sceneCatalog.WorkedExampleScene.schema;
+const initial = {at:0, action:'Select', explanation:'Read row A.', rows:[['A','12']], focusRow:0, focusColumn:1};
+assert(worked.safeParse({columns:['ID','Value'], stages:[initial]}).success);
+assert(!worked.safeParse({columns:['ID'], stages:[initial]}).success);
+assert(!worked.safeParse({columns:['ID','Value'], stages:[{...initial,focusRow:1}]}).success);
+assert(!worked.safeParse({columns:['ID','Value'], stages:[initial,initial]}).success);
 const transaction = sceneCatalog.TransactionScene.schema;
 for (const outcome of ['commit', 'rollback']) {
   const change = {
@@ -134,6 +248,8 @@ assert(sceneCatalog.MapTrackingScene.schema.safeParse({route: [[0, 0], [0, 0], [
 const sceneSources = {
   BuildingScene:'InfrastructureScene', TechnologyScene:'InfrastructureScene',
   CircuitScene:'ConnectionScene', WirelessScene:'ConnectionScene', GraphScene:'TreeScene',
+  DatasetScene:'MLFoundations', ModelTrainingScene:'MLFoundations', ModelEvaluationScene:'MLFoundations',
+  TokenizationScene:'LLMMechanics', TextGenerationScene:'LLMMechanics', AttentionScene:'LLMMechanics',
   ...Object.fromEntries(Object.keys(algorithmLessons).map(name => [name,'AlgorithmLessons'])),
   ...Object.fromEntries(Object.keys(mathLessons).map(name => [name,'MathLessons'])),
 };

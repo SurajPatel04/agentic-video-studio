@@ -5,7 +5,7 @@ Prompt → LLM plans the video → React/Remotion scenes → MP4.
 
 Legend: `[x]` done · `[~]` partly done · `[ ]` not started
 
-_Last updated: 2026-11-18 (73 scene contracts; database table scenes, iso status cues, paper lesson scenes, transcripts)_
+_Last updated: 2026-11-19 (89 scene contracts; word-synced cues, 3D iso designs, lecture-style plans, plan repair + salvage)_
 
 ---
 
@@ -110,18 +110,21 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [~] 1. Shared: `GraphScene` (nodes/edges, spread), `TreeScene` (BST/heap/org chart), `TableScene` (SQL, truth/DP tables)
   - [x] `GraphScene` (BFS/DFS/Dijkstra), `TreeScene` (BST/AVL/general tree)
   - [x] Database tables: `QueryScene`, `PipelineScene`, `TableScene` (insert / update / delete), `JoinScene`, `SchemaScene` (ER), `TransactionScene` (commit / rollback)
-  - [ ] Truth tables, DP tables
-- [~] 2. DSA: `ArrayScene` (indices, swaps, i/j pointers), `SortingScene` (bubble/selection/insertion/merge/quick from `{algorithm, input}`), linked list, stack/queue, hash table, BFS/DFS/Dijkstra, recursion call stack, Big-O race, code trace with variables
-  - [x] `ArrayScene` (bubble/selection/insertion, binary/linear search), `LinkedListScene`, `StackScene` (stack/queue), `HashScene`, BFS/DFS/Dijkstra, `EventLoopScene` (call stack + heap + queues)
-  - [ ] merge/quick sort, recursion call stack, Big-O race, code trace with variables
-- [~] 3. Maths: `PlotScene` (y = f(x), tangent, area), `GeometryScene`, number line, unit circle, vectors, matrix multiply, probability (coin/dice/tree), fractions, algebra steps
+  - [x] Truth tables (`TruthTableScene`), DP tables (`DPTableScene`)
+- [x] 2. DSA: `ArrayScene` (indices, swaps, i/j pointers), `SortingScene` (bubble/selection/insertion/merge/quick from `{algorithm, input}`), linked list, stack/queue, hash table, BFS/DFS/Dijkstra, recursion call stack, Big-O race, code trace with variables
+  - [x] `ArrayScene` (bubble/selection/insertion/merge/quick, binary/linear search), `LinkedListScene`, `StackScene` (stack/queue), `HashScene`, BFS/DFS/Dijkstra, `EventLoopScene` (call stack + heap + queues)
+  - [x] `RecursionScene` (call stack), `BigORaceScene`, `CodeTraceScene` (code + variables); `BubbleSortScene` staged by the agent
+- [x] 3. Maths: `PlotScene` (y = f(x), tangent, area), `GeometryScene`, number line, unit circle, vectors, matrix multiply, probability (coin/dice/tree), fractions, algebra steps
   - [x] `PlotScene` (formulas, live params, trace, tangent, area, zoom) + `LiveChartScene` (bar/line/race charts recalculated from data or a formula)
-  - [ ] `GeometryScene`, number line, unit circle, vectors, matrix multiply, probability, fractions, algebra steps
+  - [x] `GeometryScene`, `NumberLineScene`, `UnitCircleScene`, `VectorScene`, `MatrixMultiplyScene`, `ProbabilityScene`, `FractionScene`, `AlgebraStepsScene`, `RaceScene`
 - [ ] 4. CS: `SequenceScene` (HTTP/DNS/TCP handshake), `LayerStackScene` (OSI, encapsulation), `LogicGateScene` + truth table, binary/hex, CPU fetch-decode-execute, Gantt scheduling, memory/paging
 - [~] 5. Mass communication: communication models (Shannon–Weaver, SMCR, Lasswell with noise + feedback), generic media mockups (newspaper, breaking-news ticker, social post, video player, podcast), viral spread, camera shots / rule of thirds, agenda-setting funnel
   - [x] `MediaTheoryScene` (Shannon–Weaver with noise + feedback, agenda setting, two-step flow), `FrontPageScene`, `StudioScene`, `FeedScene`, `SpreadScene`, `NewsCycleScene`, iso media objects (video player, podcast booth, social post)
+  - [x] `PrintDeliveryScene`, `SatelliteNewsScene`, `SignalHomesScene`, `RadioTuningScene`, `CreatorWorkflowScene`; ~110 media / PR / politics / newsroom iso objects
   - [ ] SMCR / Lasswell models, breaking-news ticker, camera shots / rule of thirds
+- [~] Lecture scenes: `WorkedExampleScene` (cued stages beside a live table), `OutcomeComparisonScene`, `AnnotatedTextScene` (request / sentence / excerpt with notes)
 - [ ] Common: `MindMapScene`, `PyramidScene` / `FunnelScene`, `CharacterScene` (avatars + speech bubbles), `WhiteboardScene` (hand-drawn)
+- [ ] `LayersScene.tsx` exists in `src/scenes/` but is not registered yet
 
 ### Audio
 - [x] Deepgram TTS in the backend: `app/utils/tts.py` (cached WAV clips in `rendering/public/audio/tts/`), `app/utils/render.py` (narration → voice + scene lengths, validate, Remotion render to `workspace/jobs/<id>/video.mp4`)
@@ -132,6 +135,9 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] Captions from the narration: word timings via Deepgram speech-to-text on our own clip (estimate fallback), word-by-word highlight; on/off + style from JSON `captions`, API (`captions: true/false` on `/render` and `/video`), CLI (`--captions` / `--no-captions`)
 - [x] Planner (`app/utils/planner.py`): LLM writes the composition with narration per scene from a compact scene catalog; validated, errors fed back (3 tries). API `POST /plan`, `POST /video` (prompt → plan → voice → captions → MP4); CLI `plan`, `video`
 - [x] Transcripts: every render writes `transcript.json` (per scene, sentences with start/end seconds) + `transcript.txt` (`[mm:ss]` lines); `GET /render/{id}/transcript`; older jobs get them on first request
+- [x] Deepgram limits: per-loop semaphore (`DEEPGRAM_CONCURRENCY`) + backoff on 429 (`DEEPGRAM_RETRIES`)
+- [x] **Word-synced animation** (`app/utils/cues.py`): steps/actions/messages take `"cue": "<spoken word>"`, objects/links `"appearCue"`; resolved from Deepgram word times after TTS (text estimate for validation). Only 0-1 timing fields from the registry are filled. Live test: 7/7 changes land on their word
+  - [ ] Scenes with a fixed built-in animation (Transaction, Summary, Timeline…) have no cue-able steps yet
 - [ ] Long renders: move `/render` onto the job queue (now it waits for the MP4)
 
 ### Long videos (20-40 min) — `app/utils/long_video.py`
@@ -147,10 +153,17 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] Parallel chapter rendering (bounded): `LONG_RENDER_WORKERS`, planning overlaps rendering
 - [x] Planner variety: `teach-code` hard rules (CodeScene per chapter + terminal output), style check `PLANNER_MAX_TEXT_RUN=3` (one retry, valid plan never lost), catalog shows number limits (`width: num 300..1800`)
 - [x] More CodeScenes per chapter: planner check asks for one per concept (`PLANNER_CODE_EVERY`)
+- [x] Length: `minutes` is a ceiling (default 30), content decides; `fixed_length` makes it exact
+- [x] A stubborn invalid scene no longer fails the chapter (plan repair + salvage, see §6); failed job `53c8dfcd2d` re-planned fine
+
+### One video API
+- [x] `POST /videos` (`length`: short | long, `layout`: desktop | mobile | square), `GET /videos/{id}`, transcript + captions; old jobs readable (`video_jobs.py`); Postman collection in `docs/postman/`
 
 ## 5. Library contract & registry
 
-- [x] Zod props schema + description + tags for every scene (73 entries) in `src/registry.ts` → `sceneCatalog`
+- [x] Zod props schema + description + tags for every scene (89 entries) in `src/registry.ts` → `sceneCatalog`
+- [x] `check:scenes` also exports `library/lucide-icons.json` (2,091 icon names for the backend)
+- [x] Validator "did you mean": wrong kind / icon / component names get the closest matches instead of the full list
 - [x] Schemas are strict: unknown props (typos like `"titel"`) are errors, not silently dropped
 - [x] `library/registry.json` generated by `npm run check:scenes` (Zod 4 `z.toJSONSchema()`, defaults as example)
 - [x] Props validated in `VideoComposition` (render fails with the exact message)
@@ -171,6 +184,21 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [~] Planner quality: few-shot example videos, per-subject guidance, scene variety checks
   - [x] Per-subject guidance (`skills/`), scene variety checks (text-run / text-share limits)
   - [ ] Few-shot example videos
+- [x] Skill router: one LLM call picks the guides (`SKILL_ROUTER=llm|keyword`); `visuals` rules in skill frontmatter (topic words → required scenes, checked)
+- [x] Lecture-style plans for tech AND non-tech: max 5 of one scene in a row, one scene ≤ 70% of a plan, same iso picture ≤ 3 times (`PLANNER_MAX_SAME_*`); suggestions come from the selected guides
+  - [x] "Show the real thing" rule (code/JSON, headline, date/map, chart, equation); teacher voice (hook, "you", questions, recap) in `video-foundation`
+  - [x] Narration lint: "Term = meaning" glossary lines, phrases repeated across scenes
+  - [x] Required scenes for history, geography, newspapers, social media, statistics, speeches; REST/API → Terminal/Editor
+  - [ ] Narration still reads disclaimers aloud ("this is an illustrative front page") — move them to a small on-screen tag
+- [x] IsoScene objects like a real harness: no flat 179-name list when the guide covers them; `find_iso_objects(idea)` tool (kinds → Lucide icons → saved designs)
+- [x] Plan repair (`plan_repair.py`): scoped field edits; context shows what a field must match (table columns, existing object ids); a scene still broken is repaired whole; last resort replaces ≤ 25% invalid scenes with title cards keeping their narration
+
+### Custom iso designs (`app/utils/iso_design.py`)
+- [x] Order: built-in kind → Lucide icon (no LLM call) → saved design → designer
+- [x] Designer returns 3D shapes (box, cylinder, sphere, flat detail); code projects at 30°, shades like built-ins, fits the frame; may answer with an icon for abstract ideas
+- [x] Unique aliases; designer sees only the concept + label; failures fall back to a plain tile; saved-design hint capped at 20
+- [ ] 7 old flat-style designs left (`api-request`, `http-method`, `watch-*`…); delete to redraw in 3D
+- [ ] Job-local new scenes (opt-in `allow_new_scenes`) or a "missing scenes" report for the component agent
 
 ## 7. API, queue, storage
 
@@ -198,7 +226,7 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 - [x] Render still frames (first / middle / last)
 - [x] Feed errors back to the agent (max `AGENT_MAX_CHECKS` = 6 checks, `AGENT_MAX_STEPS` = 40 calls)
 - [x] Promote passing components from staging → library, update registry
-- [ ] Fallback to a generic scene when the agent gives up
+- [ ] Fallback to a generic scene when the agent gives up (the planner already salvages invalid scenes as title cards)
 
 ## 10. Production
 
@@ -220,7 +248,7 @@ Order: 1 → 5. Every scene fully JSON-controlled; algorithm scenes compute thei
 
 ## Known issues
 
-- `skills/iso-diagrams` and `skills/teach-media` bodies are over the 7000-character limit: default plans and 14 backend tests fail until they are trimmed.
+- `skills/teach-media` body is over the 7000-character limit: topics routed to it fail to plan (the planner then retries `load_skill` until its call limit) and 1 backend test fails. `iso-diagrams` is back under the limit.
 - MLflow route `summary` is shared with another service's usage tracking.
 - Scene durations are typed by hand in JSON; a too-short scene cuts animations off.
 - Survey of India outline is for visualization, not a certified survey map.

@@ -32,6 +32,8 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
                 card.update(durationInFrames=90, props={"heading": heading, "body": body})
                 checked, error = await planner._check(json.dumps(plan), lecture=True)
                 self.assertFalse(error)
+                self.assertEqual(checked["defaultTransition"], {"type": "fade",
+                                                                "durationInFrames": 15})
                 card = checked["scenes"][1]
                 self.assertEqual(card["props"]["textAnimation"], "none")
                 self.assertGreaterEqual(card["durationInFrames"], 120)
@@ -41,6 +43,29 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("before showing its example", error)
                 checked, error = await planner._check(json.dumps(plan))
                 self.assertFalse(error)
+
+    async def test_lecture_requires_visible_work_and_attached_replies(self):
+        plan = spec(["ExplainScene", "IsoScene", "IsoScene", "IsoScene"])
+        for scene in plan["scenes"]:
+            scene["durationInFrames"] = 150
+        plan["scenes"][0]["props"] = {"heading": "Read a catalog", "body": "Follow the request and the result."}
+        plan["scenes"][1]["props"] = {"title": "Worked calculation", "objects": [], "links": []}
+        catalog = {"id": "catalog", "kind": "database", "table": {"rows": [["w-104"]]}}
+        client = {"id": "client", "kind": "client"}
+        response = {"id": "payload", "label": "Response"}
+        link = {"from": "client", "to": "catalog"}
+        plan["scenes"][2]["props"] = {"objects": [client, catalog, response], "links": [link]}
+        plan["scenes"][3]["props"] = {"objects": [client, {**catalog, "kind": "table"}], "links": [link]}
+        with patch.object(planner, "validate", AsyncMock()):
+            checked, error = await planner._check(json.dumps(plan), lecture=True)
+            self.assertIsNone(checked)
+            self.assertIn("'s1' is a title-only diagram", error)
+            self.assertIn("'s2' keeps the example rows inside icons", error)
+            self.assertIn("'s2' has detached replies", error)
+            self.assertNotIn("'s3'", error)
+            checked, error = await planner._check(json.dumps(plan))
+            self.assertIsNotNone(checked)
+            self.assertFalse(error)
 
     async def test_scoped_tool_repair(self):
         original = spec(["IsoScene", "TitleScene"])
@@ -67,6 +92,25 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
     def test_lint_counts_runs(self):
         self.assertIn("6 text-only scenes in a row", planner._lint(TEXTY))
         self.assertEqual(planner._lint(GOOD), "")
+
+    def test_new_lecture_layouts_are_discoverable_and_cueable(self):
+        choices = [
+            ("AIDA sales funnel", "LayersScene", ".levels[].at"),
+            ("urgent important 2x2 quadrant", "MatrixScene", ".markers[].moves[].at"),
+            ("ad anatomy image hotspots", "ImageScene", ".hotspots[].at"),
+            ("fact check verdict", "FactCheckScene", ".verdict.at"),
+            ("campaign case study", "CaseStudyScene", ".result.at"),
+            ("audience persona", "ProfileScene", ".fields[].at"),
+            ("analogy mapping", "AnalogyScene", ".pairs[].at"),
+            ("mind map", "ConceptMapScene", ".links[].at"),
+            ("git rebase branch", "GitGraphScene", ".steps[].at"),
+        ]
+        for query, expected, field in choices:
+            with self.subTest(query=query):
+                self.assertEqual(catalog.search_scenes(query, limit=1)[0][0], expected)
+                self.assertIn(expected, catalog.catalog_text(query))
+                self.assertIn(field, planner.cues.timing_paths()[expected])
+        self.assertEqual(catalog.search_scenes("newsroom org chart", limit=1)[0][0], "TreeScene")
 
     async def run_catalog(self, replies, **kwargs):
         llm = AsyncMock()
@@ -334,9 +378,11 @@ class RepairContextTests(unittest.IsolatedAsyncioTestCase):
         row = details["scenes[1].props.rows[0]"]["context"]
         self.assertEqual(row["columns"], ["Resource-oriented", "Ad hoc"])
         self.assertIn("exactly 2 cells", row["rule"])
-        link = next(d for k, d in details.items() if k.startswith("scenes[3]"))["context"]
-        self.assertEqual(link["object_ids"], ["page"])
-        # the same scenes are still broken after that repair: now the whole scene, with its field list
+        flow = details["scenes[3].props"]
+        self.assertIn('no object with id "watches"', flow["issue"])
+        self.assertEqual(flow["current"]["links"], [{"from": "watches", "to": "page"}])
+        self.assertIn("distinct arrow endpoints", flow["context"]["rule"])
+        # The table is still broken after a field edit, so it also receives a whole-scene repair.
         again = planner._repair_for("", spec, problem, repair)
         self.assertEqual(set(again.targets), {"scenes[1].props", "scenes[3].props"})
         whole = dict(again.targets["scenes[3].props"][1])

@@ -2,7 +2,7 @@
 // Usage: node scripts/validate-composition.mjs <file.json> [more.json ...]
 // Exit code 0 = all valid, 1 = errors (printed one per line, with the exact JSON path).
 import {build} from 'esbuild';
-import {mkdir, readFile} from 'node:fs/promises';
+import {mkdir, mkdtemp, readFile, rm} from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 
@@ -14,24 +14,32 @@ if (files.length === 0) {
 
 const root = path.resolve(import.meta.dirname, '..');
 await mkdir(path.join(root, 'out'), {recursive: true});
-const bundled = path.join(root, 'out', 'validate-catalog.mjs');
-await build({
-  stdin: {contents: `export {sceneCatalog, overlaysSchema} from './src/registry'; export {brandSchema} from './src/brand'; export {audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} from './src/audio';`, resolveDir: root, loader: 'ts'},
-  outfile: bundled,
-  bundle: true,
-  platform: 'node',
-  format: 'esm',
-  packages: 'external',
-  loader: {'.css': 'empty'},
-  plugins: [{
-    name: 'bundle-world-map',
-    setup(b) {
-      b.onResolve({filter: /^world-atlas\//}, (args) => ({path: path.join(root, 'node_modules', args.path), external: false}));
-    },
-  }],
-  logLevel: 'silent',
-});
-const {sceneCatalog, overlaysSchema, brandSchema, audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} = await import(pathToFileURL(bundled));
+const bundleDir = await mkdtemp(path.join(root, 'out', 'validate-'));
+const bundled = path.join(bundleDir, 'catalog.mjs');
+const loadCatalog = async () => {
+  try {
+    await build({
+      stdin: {contents: `export {sceneCatalog, overlaysSchema} from './src/registry'; export {brandSchema} from './src/brand'; export {audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} from './src/audio';`, resolveDir: root, loader: 'ts'},
+      outfile: bundled,
+      bundle: true,
+      platform: 'node',
+      format: 'esm',
+      packages: 'external',
+      loader: {'.css': 'empty'},
+      plugins: [{
+        name: 'bundle-world-map',
+        setup(b) {
+          b.onResolve({filter: /^world-atlas\//}, (args) => ({path: path.join(root, 'node_modules', args.path), external: false}));
+        },
+      }],
+      logLevel: 'silent',
+    });
+    return await import(pathToFileURL(bundled));
+  } finally {
+    await rm(bundleDir, {recursive: true, force: true});
+  }
+};
+const {sceneCatalog, overlaysSchema, brandSchema, audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} = await loadCatalog();
 
 const fmtPath = (parts) => parts.map((p) => (typeof p === 'number' ? `[${p}]` : `.${p}`)).join('');
 

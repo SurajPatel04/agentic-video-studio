@@ -37,6 +37,36 @@ class CueTests(unittest.TestCase):
         self.assertAlmostEqual(scene["props"]["steps"][1]["at"], (said["duplicates"] - cues.LEAD) / 300, places=3)
         self.assertAlmostEqual(scene["props"]["links"][0]["appearAt"], (said["writes"] - cues.LEAD) / 300, places=3)
 
+    def test_written_example_follows_spoken_word(self):
+        scene = iso_scene(voice={"src": "x.wav", "words": heard(NARRATION + " Return to the warehouse.")})
+        scene["props"]["exampleLines"] = [{"at": 0, "text": "Orders arrive."},
+                                         {"cue": "warehouse", "text": "Rows enter the warehouse."}]
+        self.assertEqual(cues.resolve_scene(scene), [])
+        line = scene["props"]["exampleLines"][1]
+        self.assertEqual(line["at"], scene["props"]["objects"][1]["appearAt"])
+        self.assertNotIn("cue", line)
+
+    def test_parallel_tracks_match_the_same_utterance(self):
+        narration = "The client gets the collection and the result goes to the client."
+        scene = iso_scene(voice={"words": heard(narration)})
+        scene["props"] = {
+            "objects": [{"appearCue": "collection"}, {"appearCue": "result"}],
+            "links": [{"appearCue": "collection"}, {"appearCue": "result"}],
+            "steps": [{"cue": "client"}, {"cue": "collection"}, {"cue": "client"}],
+        }
+        self.assertEqual(cues.resolve_scene(scene), [])
+        objects, links, steps = (scene["props"][k] for k in ("objects", "links", "steps"))
+        self.assertEqual(objects[0]["appearAt"], links[0]["appearAt"])
+        self.assertEqual(objects[0]["appearAt"], steps[1]["at"])
+        self.assertLess(steps[0]["at"], steps[1]["at"])
+        self.assertGreater(steps[2]["at"], steps[1]["at"])
+
+    def test_exact_word_wins_over_an_endpoint_prefix(self):
+        scene = iso_scene(voice={"words": heard("GET /watches/w-104 retrieves the watch.")})
+        scene["props"] = {"objects": [{"appearCue": "watch"}]}
+        self.assertEqual(cues.resolve_scene(scene), [])
+        self.assertEqual(scene["props"]["objects"][0]["appearAt"], (58 - cues.LEAD) / 300)
+
     def test_phrases_plurals_order_and_missing(self):
         scene = {"id": "t", "component": "TerminalScene", "durationInFrames": 200,
                  "narration": {"text": "Run the tests. Two tests fail, then the second run of the tests passes."},

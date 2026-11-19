@@ -33,6 +33,8 @@ Hard rules (they override softer advice):
 - Use diagrams after the lecture concept card. A comparison is two labelled groups side by side; a definition is a title + subtitle over a small scene that shows it.
 - Title and chapter cards are IsoScene too, with "objects": [], "links": [], "steps": [] (ALWAYS write the three empty lists: when left out, an example diagram appears) plus eyebrow, title, subtitle and up to 4 short "points". Use at most one such card per chapter.
 - Diagram scenes: a short eyebrow and title at the top; 3-5 objects (fewer objects are drawn bigger); links for what goes where; steps that follow the narration.
+- In HTTP diagrams, draw the participants such as the browser, server and data store. Write requests and responses as readable text using `exampleLines` and link labels. Show the actual method and path (such as `GET /products/42`) or status (such as `200 OK`). Messages, methods, status codes, headers and JSON are text on the board. Use a separate editor view for a longer payload.
+- Match the artwork to the participant: use `kind: "server"` for the server that receives and handles the HTTP request, `kind: "api"` for a distinct API interface, and `kind: "router"` for a device that routes network traffic.
 
 Objects (kinds are drawn as what they are; pick the real thing):
 - Tech: server, database, storage, cache, cloud, loadbalancer, router, api, queue, client (monitor), laptop, phone, cpu, memory, globe, lock, file, code, box.

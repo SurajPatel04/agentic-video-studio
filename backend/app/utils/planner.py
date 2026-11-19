@@ -85,9 +85,37 @@ For lectures and study lessons in any subject, introduce each new main idea befo
 example. Use ExplainScene with a plain-language heading and one short body sentence saying what
 to notice. Use textAnimation:"none", startAt:0, no animated points or decoration. Hold the words
 while the instructor explains them. Begin with this card, or put it immediately after the title.
+When a lesson explains parts of a single example, show it intact in AnnotatedTextScene. Put the exact
+request, equation or excerpt in text, then use steps with cue, a verbatim focus substring and a brief
+explanation. End with a step without focus when the narration puts the parts together. Use layout
+"editor" for literal requests and commands and "text" for reading prose or equations.
+When two examples differ in one important detail and produce different outcomes, use
+OutcomeComparisonScene. Align the complete examples, cue attention to their differing part,
+and reveal each outcome when named. Preserve the same entities and notation across both rows.
+If the example continues through another scene, put both rows on the first board and give the
+later row hidden:true. Use OutcomeComparisonScene again with props {"continue":true,"steps":[...]}
+containing only the new cues. The first board and its revealed result carry over automatically.
+For a worked lecture example with an IsoScene diagram, keep the concrete evidence beside it:
+supply exampleLines (1-4 short lines with text and at:0 for the first, cue for subsequent lines).
+Write the actual request, calculation, observation, quotation or date that the speaker is interpreting.
+Keep one starting object visible (enter:"none"); introduce each new object with appearCue from the
+narration. Preserve previously shown objects in continuations. Give each connection time to be read.
+Use nodes for participants or places. Show a message or result on its route to the recipient or in
+a labeled panel next to that recipient. In an HTTP read, the API reads an existing record from
+the catalog and sends a status and body to the client. Show writes as a separate example, after validation.
+Use WorkedExampleScene for narrated rows and intermediate calculations. An isometric icon or a
+table tucked inside a closed database object does not show the values the learner needs to follow.
+For a worked example, map each important verb to an observable result. If the instructor says select,
+create, rename or reject, show the selected row, the new entry, the failing lookup or the unchanged
+stored value at that cue. WorkedExampleScene can hold an instruction beside these before/after states.
+Use identical field paths and units whenever the same contract is demonstrated.
 Then demonstrate the idea and invite the learner to predict the next result, then reveal it. Each subsequent scene
-should advance the example or apply the idea to a new decision. Cue terminal output at or before
-the first spoken reference to its contents, and hold it while explaining the result.
+should advance the example or apply the idea to a new decision. For a terminal request followed by
+its output, use at:0 or an early cue for the request, then cue the output at its first spoken
+reference. Hold the completed command and output while explaining the result.
+Show JSON payloads in editor layout with the HTTP request line above the body. Use the actual
+JSON, and cue the field or value that matters. Use a short cross-dissolve by default when changing lecture
+boards. When continuing a board, use the scene's continuation so only the new content enters.
 Match each visual to the point being narrated at that moment. During a comparison, make both sides
 and the relevant difference visible. During a process, show the change as the narrator describes it.
 
@@ -149,7 +177,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 
 def _normalize(spec: dict[str, Any]) -> dict[str, Any]:
-    expand_continuations(spec)  # IsoScene "continue": carry the previous picture over
+    expand_continuations(spec)  # carry the previous picture over on supported boards
     paper_code_scenes(spec)  # paper-style video: no dark CodeScene
     spec.setdefault("fps", 30)
     spec.setdefault("width", 1920)
@@ -203,6 +231,9 @@ async def _check(reply: str, code_demo: str | None = None, *, lecture: bool = Fa
         first_lesson = scenes[1:2] if title else scenes[:1]
         if not first_lesson or not _concept_card(first_lesson[0]):
             return None, "Open the lesson with ExplainScene (or place it immediately after the title). Supply heading and body explaining the idea before showing its example."
+        if evidence := _lecture_evidence(scenes):
+            return None, "Fix the lesson's visible examples:\n- " + "\n- ".join(evidence)
+        spec.setdefault("defaultTransition", {"type": "fade", "durationInFrames": 15})
         for scene in filter(_concept_card, scenes):
             props = scene["props"]
             props.update(textAnimation="none", startAt=0)
@@ -288,7 +319,7 @@ def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic:
     problems += _lint_variety(scenes, skills)
     problems += _lint_narration(scenes)
     problems += _lint_cues(spec)
-    problems += _lint_iso(scenes)
+    problems += _lint_iso(scenes, lecture="teach-lecture" in skills)
     if not problems:
         return ""
     return "The plan is valid, but:\n- " + "\n- ".join(problems) + "\nReply with ONLY the full corrected JSON."
@@ -429,9 +460,36 @@ class _Best:
 
 HUBS = {"loadbalancer", "router", "api"}  # these send to each target directly
 EVENT_LABEL = re.compile(r"^(request|req|response|packet|call|turn)\b", re.I)
+REPLY_LABEL = re.compile(r"^(?:(?:HTTP|JSON) )?(?:response|reply)(?: body)?$|^JSON$", re.I)
 
 
-def _lint_iso(scenes: list[dict[str, Any]]) -> list[str]:
+def _lecture_evidence(scenes: list[dict[str, Any]]) -> list[str]:
+    """Flag diagrams that hide the example or represent a reply as an orphan tile."""
+    problems = []
+    for i, scene in enumerate(scenes):
+        if scene.get("component") != "IsoScene":
+            continue
+        props = scene.get("props") or {}
+        objects = [obj for obj in props.get("objects") or [] if not obj.get("ghost")]
+        links = props.get("links") or []
+        if i > 0 and not objects and not props.get("points"):
+            problems.append(f"Scene '{scene['id']}' is a title-only diagram. Give the learner the actual example "
+                            "in WorkedExampleScene, AnnotatedTextScene, or a diagram with readable exampleLines.")
+        if links and not props.get("exampleLines"):
+            tables = [obj for obj in objects if obj.get("table")]
+            if tables and all(obj.get("kind") != "table" for obj in tables):
+                problems.append(f"Scene '{scene['id']}' keeps the example rows inside icons. "
+                                "Show the rows on screen when the narration reads them.")
+        connected = {link.get(key) for link in links for key in ("from", "to", "via")}
+        orphan_replies = [obj["id"] for obj in objects if links and obj["id"] not in connected
+                          and REPLY_LABEL.fullmatch(str(obj.get("label") or obj["id"]).strip())]
+        if orphan_replies:
+            problems.append(f"Scene '{scene['id']}' has detached replies {orphan_replies}. Show the result on the "
+                            "arrow to its recipient or next to that recipient as readable text.")
+    return problems
+
+
+def _lint_iso(scenes: list[dict[str, Any]], *, lecture: bool = False) -> list[str]:
     """IsoScene problems the validator can't see: chains behind a hub, one layout repeated, event labels."""
     problems: list[str] = []
     run: list[str] = []
@@ -442,6 +500,14 @@ def _lint_iso(scenes: list[dict[str, Any]]) -> list[str]:
             continue
         props = s.get("props") or {}
         objs = {o.get("id"): o for o in props.get("objects") or [] if isinstance(o, dict)}
+        visible_objects = [o for o in objs.values() if not o.get("ghost")]
+        if lecture and len(visible_objects) >= 2:
+            if not props.get("exampleLines"):
+                problems.append(f"Scene '{s.get('id')}': write the concrete example in exampleLines beside the diagram, starting at 0.")
+            untimed = [o.get("id") for o in visible_objects if o.get("enter") != "none" and
+                       o.get("appearCue") is None and o.get("appearAt") is None]
+            if untimed:
+                problems.append(f"Scene '{s.get('id')}': give new diagram objects {untimed} an appearCue from the narration; use enter:none for the starting context.")
         kinds = {i: o.get("kind") for i, o in objs.items()}
         if HUBS & set(kinds.values()):
             chain = [f"{l.get('from')}->{l.get('to')}" for l in props.get("links") or []
@@ -532,7 +598,7 @@ def _repair_for(reply: str, spec: dict | None, problem: str, previous: Repair | 
         if not problem.startswith("The JSON has these errors:"):
             return None
         spec = _normalize(_extract_json(reply))
-    repair = scoped_repair(spec, problem)
+    repair = scoped_repair(spec, problem, contract=catalog.scene_text)
     again = repair.scenes() & previous.scenes() if repair and previous else set()
     if again:
         log.info("planner.repair whole scenes=%s (still broken after a field repair)", sorted(again))

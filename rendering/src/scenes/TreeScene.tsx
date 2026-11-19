@@ -114,9 +114,26 @@ export const treeSceneSchema = z.preprocess(flexTree, z.object({
   values: z.array(z.union([z.number(), z.string().max(10)])).max(15).optional(), // inserted (instantly) at the start
   tree: z.union([z.string().max(18), z.object({label: z.union([z.string().max(18), z.number()]).optional(), children: z.array(z.unknown()).max(8).optional()}).catchall(z.unknown())]).optional(), // {label, children: [...]}
   steps: z.array(stepSchema).max(24).optional(),
+  decisionPath: z.array(z.object({at: z.number().min(0).max(1),
+    child: z.number().int().nonnegative().optional(), reason: z.string().min(1).max(90)}).strict()).min(1).max(10).optional(),
   showBalance: z.boolean().optional(), // AVL balance factors (default on for avl)
   sound: z.boolean().default(true),
 }).strict().superRefine((p, ctx) => {
+  if (p.decisionPath) {
+    if (!p.tree || (p.kind && p.kind !== 'tree') || p.steps?.length) {
+      ctx.addIssue({code:'custom',path:['decisionPath'],message:'Use a static general tree with a decision path.'});
+    } else {
+      const tree = nestedToTree(p.tree as Nested);
+      let current = tree.root;
+      p.decisionPath.forEach((entry, i) => {
+        if (i && current !== undefined && entry.child !== undefined) current = childrenOf(tree, current)[entry.child];
+        if (current === undefined || (i === 0 ? entry.child !== undefined :
+          entry.child === undefined || entry.at <= p.decisionPath![i - 1].at)) {
+          ctx.addIssue({code:'custom',path:['decisionPath',i],message:'Start at the root, then choose an existing child at each later cue.'});
+        }
+      });
+    }
+  }
   (p.steps ?? []).forEach((s, i) => {
     if (!Object.values(TREE_VERBS).includes(s.do)) ctx.addIssue({code: 'custom', path: ['steps', i, 'do'], message: 'use insert, delete, find, traverse (order), visit, note'});
     if (['insert', 'delete', 'find', 'visit'].includes(s.do) && valOf(s, 'value') === undefined) ctx.addIssue({code: 'custom', path: ['steps', i, 'value'], message: `${s.do} needs "value"`});
@@ -127,9 +144,10 @@ type TreeProps = z.output<typeof treeSceneSchema>;
 export const treeDescription =
   'A tree in the paper style. kind "bst": insert walks down comparing (7 > 5 → right) and the node pops in; "avl": after ' +
   'insert/delete the tree rebalances and nodes glide through each rotation; "tree": any hierarchy given as "tree": ' +
-  '{label, children:[...]} (file system, DOM, org chart). "values" are inserted at the start; "steps": insert {value, parent ' +
-  'for "tree"} | delete {value} | find {value} | traverse {order: inorder|preorder|postorder|bfs} | visit {value} | note.';
-export const treeTags = ['tree', 'binary tree', 'binary search tree', 'bst', 'avl', 'balanced tree', 'rotation', 'traversal', 'inorder', 'preorder', 'postorder', 'dom', 'hierarchy', 'dsa', 'recursion', 'file system'];
+  '{label, children:[...]} (file system, DOM, company or newsroom org chart). Omit steps for a static hierarchy. "values" are inserted at the start in BST/AVL mode; "steps": insert {value, parent ' +
+  'for "tree"} | delete {value} | find {value} | traverse {order: inorder|preorder|postorder|bfs} | visit {value} | note. ' +
+  'For a decision tree, use decisionPath with at and reason for the root, then add a zero-based child index to each following cue.';
+export const treeTags = ['tree', 'decision tree', 'decision path', 'binary tree', 'binary search tree', 'bst', 'avl', 'balanced tree', 'rotation', 'traversal', 'inorder', 'preorder', 'postorder', 'dom', 'hierarchy', 'org chart', 'organization chart', 'newsroom', 'reporting structure', 'dsa', 'recursion', 'file system'];
 
 type TMicro = {kind: 'compare' | 'place' | 'rotate' | 'mark' | 'remove' | 'visit' | 'found' | 'missing' | 'note' | 'clear'; id?: number; note?: string; tree?: Tree; out?: number};
 const DEFAULT_TREE_STEPS = (kind: string) => (kind === 'avl' ? [{do: 'insert', value: 10}, {do: 'insert', value: 20}, {do: 'insert', value: 30}, {do: 'insert', value: 25}, {do: 'insert', value: 28}] : [{do: 'insert', value: 6}, {do: 'find', value: 5}, {do: 'traverse', order: 'inorder'}]);
@@ -200,7 +218,14 @@ export const TreeScene: FC<z.input<typeof treeSceneSchema>> = (input) => {
 
   // micro steps
   const micros: TMicro[] = [];
-  const steps = (p.steps ?? DEFAULT_TREE_STEPS(kind)) as Step[];
+  if (p.decisionPath) {
+    let id = t.root!;
+    p.decisionPath.forEach(entry => {
+      if (entry.child !== undefined) id = childrenOf(t, id)[entry.child];
+      micros.push({kind:'visit', id, note:entry.reason, out:id, tree:t});
+    });
+  }
+  const steps = (p.steps ?? (generic ? [] : DEFAULT_TREE_STEPS(kind))) as Step[];
   const start = t;
   for (const s of steps) {
     const v = valOf(s, 'value') ?? (argsOf(s)[0] as V);
@@ -260,7 +285,9 @@ export const TreeScene: FC<z.input<typeof treeSceneSchema>> = (input) => {
     if (kind === 'avl') t = rebalance(t, micros);
   }
   const trees: Tree[] = [start, ...micros.map((m) => m.tree ?? start)];
-  const {starts, dur} = schedule(micros.length, len, fps, 0.1);
+  const {starts, dur} = p.decisionPath ? {
+    starts:p.decisionPath.map(s=>Math.min(len-1,Math.round(s.at*len))),dur:Math.max(1,Math.round(fps*0.26)),
+  } : schedule(micros.length, len, fps, 0.1);
   const {c, k} = playhead(f, starts, dur);
   const prevT = trees[c < 0 ? 0 : c], nextT = trees[c + 1] ?? prevT;
   const cur = c < 0 ? undefined : micros[c];
@@ -274,14 +301,15 @@ export const TreeScene: FC<z.input<typeof treeSceneSchema>> = (input) => {
     const pos = layoutT(tt);
     const vals = Object.values(pos);
     const cols = Math.max(1, ...vals.map((q) => q.x + 1)), depth = Math.max(1, ...vals.map((q) => q.d + 1));
-    const span = Math.min(W - 240 * u, cols * 170 * u);
+    const span = Math.min(W - (generic ? 150 : 240) * u, cols * (generic ? 290 : 170) * u);
     const lvl = Math.min(150 * u, (bottom - top) / Math.max(1, depth - 0.4));
     const res: Record<number, {x: number; y: number}> = {};
     for (const [id, q] of Object.entries(pos)) res[+id] = {x: W / 2 - span / 2 + (q.x + 0.5) * (span / cols), y: top + 40 * u + q.d * lvl};
-    return {res, r: Math.min(46 * u, (span / cols) * 0.36)};
+    return {res, slot: span / cols, r: Math.min(46 * u, (span / cols) * 0.36, generic ? lvl * 0.39 : Infinity)};
   };
   const A = place(prevT), B = place(nextT);
   const R = lerp(A.r, B.r, k);
+  const cardWidth = Math.min(235 * u, lerp(A.slot, B.slot, k) * 0.88);
   const posOf = (id: number) => { const a = A.res[id], b = B.res[id]; return a && b ? {x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k)} : (b ?? a); };
   const ids = new Set([...Object.keys(prevT.nodes), ...Object.keys(nextT.nodes)].map(Number));
   const edges = new Map<string, {a: number; b: number; inA: boolean; inB: boolean}>();
@@ -307,6 +335,11 @@ export const TreeScene: FC<z.input<typeof treeSceneSchema>> = (input) => {
             if (!a || !b) return null;
             const op = e.inA && e.inB ? 1 : e.inB ? k : 1 - k;
             const hot = visited.has(e.a) && visited.has(e.b);
+            if (generic) {
+              const middle = (a.y+b.y)/2;
+              return <path key={`${e.a}-${e.b}`} d={`M ${a.x} ${a.y} V ${middle} H ${b.x} V ${b.y}`}
+                fill="none" stroke={hot ? FILL.green : PAPER.inkSoft} strokeWidth={2.4 * u} opacity={op}/>;
+            }
             return <line key={`${e.a}-${e.b}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={hot ? FILL.green : PAPER.ink} strokeWidth={(hot ? 4 : 3) * u} opacity={op} />;
           })}
         </svg>
@@ -320,13 +353,18 @@ export const TreeScene: FC<z.input<typeof treeSceneSchema>> = (input) => {
           const scale = isNew ? spring({frame: f - starts[c], fps, config: {damping: 11, stiffness: 160}}) : gone ? 1 - k : 1;
           const ring = here && cur?.kind !== 'visit' ? (cur?.kind === 'found' ? 'rgba(63,154,87,0.4)' : cur?.kind === 'rotate' ? 'rgba(138,111,209,0.45)' : 'rgba(255,160,60,0.45)') : undefined;
           const label = show(n.v);
-          const pill = generic && label.length > 3;
-          const w = pill ? Math.max(R * 2, Math.min(220 * u, label.length * 16 * u + 30 * u)) : R * 2;
+          const w = generic ? cardWidth : R * 2;
+          const font = generic ? Math.min(26*u,R*0.64,w/(0.57*Math.min(17,Math.max(6,label.length)))) :
+            Math.min(30*u,R*0.8*(label.length>2?2.4/label.length:1));
           const b0 = showBf && tShow.nodes[id] ? bf(tShow, id) : undefined;
           return (
-            <div key={id} style={{position: 'absolute', left: q.x - w / 2, top: q.y - R, width: w, height: R * 2, borderRadius: 999, background: fill, border: `${3 * u}px solid ${PAPER.ink}`, boxSizing: 'border-box',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontWeight: 800, fontSize: Math.min(30 * u, R * (pill ? 0.62 : 0.8) * (label.length > 2 && !pill ? 2.4 / label.length : 1)), transform: `scale(${scale})`,
-              boxShadow: ring ? `0 0 0 ${6 * u}px ${ring}` : `0 ${5 * u}px ${10 * u}px rgba(70,50,30,0.14)`, whiteSpace: 'nowrap'}}>
+            <div key={id} style={{position: 'absolute', left: q.x - w / 2, top: q.y - R, width: w, height: R * 2,
+              borderRadius: generic ? 13 * u : 999, background: generic && fill === FILL.item ? PAPER.card : fill,
+              border: `${(generic?2:3) * u}px solid ${generic ? PAPER.inkSoft : PAPER.ink}`, boxSizing: 'border-box',
+              display: 'grid', placeItems: 'center', textAlign:'center', lineHeight:1.1, paddingInline:generic?6*u:0,
+              fontFamily:generic?PAPER.sans:MONO, fontWeight:800, fontSize:font, transform:`scale(${scale})`,
+              boxShadow: ring ? `0 0 0 ${6 * u}px ${ring}` : `0 ${5 * u}px ${10 * u}px rgba(70,50,30,0.14)`,
+              overflowWrap:generic?'anywhere':undefined,whiteSpace:generic?'normal':'nowrap'}}>
               {label}
               {b0 !== undefined ? <span style={{position: 'absolute', right: -R * 0.55, top: -R * 0.45, padding: `${1 * u}px ${7 * u}px`, borderRadius: 8 * u, background: Math.abs(b0) > 1 ? '#e5604f' : PAPER.card, color: Math.abs(b0) > 1 ? '#fff' : PAPER.inkSoft, border: `${1.5 * u}px solid ${PAPER.ink}`, fontSize: 15 * u}}>{b0 > 0 ? `+${b0}` : b0}</span> : null}
             </div>
@@ -334,7 +372,7 @@ export const TreeScene: FC<z.input<typeof treeSceneSchema>> = (input) => {
         })}
         {micros.some((m) => m.out !== undefined) ? (
           <div style={{position: 'absolute', left: 100 * u, right: 100 * u, top: H - 300 * u, display: 'flex', alignItems: 'center', gap: 10 * u, flexWrap: 'wrap'}}>
-            <span style={{fontWeight: 800, fontSize: 22 * u, color: PAPER.inkSoft, marginRight: 8 * u}}>visited:</span>
+            <span style={{fontWeight: 800, fontSize: 22 * u, color: PAPER.inkSoft, marginRight: 8 * u}}>{p.decisionPath ? 'Decision path' : 'visited:'}</span>
             {out.map((id, i) => <span key={i} style={{padding: `${6 * u}px ${14 * u}px`, borderRadius: 10 * u, background: FILL.done, border: `${2 * u}px solid ${PAPER.ink}`, fontFamily: MONO, fontWeight: 800, fontSize: 22 * u}}>{show((prevT.nodes[id] ?? nextT.nodes[id])?.v)}</span>)}
           </div>
         ) : null}

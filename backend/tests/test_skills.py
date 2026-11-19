@@ -76,6 +76,24 @@ class SelectionTests(unittest.TestCase):
             bad.write_text('---\ninvalid: [\n---\nOops')
             self.assertEqual(list(skills.discover()), ['custom'])
 
+    def test_ai_lecture_selects_the_subject_guide_and_discoverable_scenes(self):
+        from app.utils import catalog, cues
+
+        chosen = skills.select("Beginner lecture on neural networks and backpropagation")
+        self.assertIn("teach-lecture", chosen)
+        self.assertIn("teach-ai", chosen)
+        self.assertIn("NeuralNetworkScene", skills.load("teach-ai"))
+        for query, component, timing in [
+            ("neural network backpropagation", "NeuralNetworkScene", ".steps[].at"),
+            ("model evaluation confusion matrix", "ModelEvaluationScene", ".results[].at"),
+            ("next token generation", "TextGenerationScene", ".turns[].selection.at"),
+            ("retrieval augmented generation rag", "RAGScene", ".search.at"),
+            ("decision tree path", "TreeScene", ".decisionPath[].at"),
+        ]:
+            with self.subTest(query=query):
+                self.assertEqual(catalog.search_scenes(query, limit=1)[0][0], component)
+                self.assertIn(timing, cues.timing_paths()[component])
+
     def test_tools_enforce_role_and_allowlist(self):
         loaded = set()
         tools = {t.name: t for t in skills.tools(allowed=['teach-code'], loaded=loaded)}

@@ -87,6 +87,12 @@ def scoped_repair(draft: dict, problem: str, whole: set[int] | frozenset[int] = 
     repair) are repaired as a whole: their full props, every issue and, via ``contract(component)``,
     the scene's field list, so the model can also add an object or restructure a table."""
     scenes = draft.get("scenes", [])
+    # A field edit cannot add a missing diagram object. Repair its references together.
+    missing_object_scenes = {
+        int(match[1]) for line in problem.splitlines()
+        if (match := FIELD.fullmatch(line.strip())) and match[4].startswith("no object with id ")
+    }
+    whole = whole | missing_object_scenes
     targets = {}
     for line in problem.splitlines():
         line = line.strip()
@@ -124,9 +130,13 @@ def scoped_repair(draft: dict, problem: str, whole: set[int] | frozenset[int] = 
         context = {k: parent[k] for k in ("from", "to", "kind", "id") if isinstance(parent, dict) and k in parent}
         if keys != ["props"]:
             context.update(_related(scenes[i].get("props"), keys, issue))
-        elif contract:
-            context["fields"] = contract(scenes[i].get("component"))
+        else:
+            if contract:
+                context["fields"] = contract(scenes[i].get("component"))
             context["narration"] = (scenes[i].get("narration") or {}).get("text", "")
+            if i in missing_object_scenes:
+                context["rule"] = ("Draw the missing objects with their referenced IDs when they belong in the "
+                                   "diagram. Preserve the narrated roles and distinct arrow endpoints.")
         targets[path] = (["scenes", i, *keys], dict(scene=scene_id, component=scenes[i].get("component"),
                                                     current=value, issue=issue, context=context))
     # A parent replacement could invalidate the address of another edit in the same batch.

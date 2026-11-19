@@ -1,5 +1,4061 @@
 [
   {
+    "name": "DatasetScene",
+    "version": "1.0.0",
+    "description": "Reveal features, labels, training, validation and test rows. Optional leakage warning is timed separately.",
+    "tags": [
+      "machine learning",
+      "dataset",
+      "split",
+      "features",
+      "labels",
+      "data leakage"
+    ],
+    "path": "rendering/src/scenes/MLFoundations.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Split the examples before training",
+          "type": "string",
+          "maxLength": 78
+        },
+        "features": {
+          "default": [
+            "Floor area"
+          ],
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 22
+          }
+        },
+        "label": {
+          "default": "Known price",
+          "type": "string",
+          "maxLength": 26
+        },
+        "rows": {
+          "default": [
+            {
+              "features": [
+                "1,000 ft²"
+              ],
+              "label": "$200,000",
+              "split": "training",
+              "at": 0
+            },
+            {
+              "features": [
+                "1,500 ft²"
+              ],
+              "label": "$275,000",
+              "split": "training",
+              "at": 0.13
+            },
+            {
+              "features": [
+                "1,700 ft²"
+              ],
+              "label": "$302,000",
+              "split": "validation",
+              "at": 0.26
+            },
+            {
+              "features": [
+                "1,800 ft²"
+              ],
+              "label": "$320,000",
+              "split": "test",
+              "at": 0.39
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "features": {
+                "minItems": 1,
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 24
+                }
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 25
+              },
+              "split": {
+                "type": "string",
+                "enum": [
+                  "training",
+                  "validation",
+                  "test"
+                ]
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "features",
+              "label",
+              "split",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "split": {
+          "default": {
+            "at": 0.51
+          },
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "at"
+          ],
+          "additionalProperties": false
+        },
+        "leakage": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 134
+            }
+          },
+          "required": [
+            "at",
+            "text"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Split the examples before training",
+      "features": [
+        "Floor area"
+      ],
+      "label": "Known price",
+      "rows": [
+        {
+          "features": [
+            "1,000 ft²"
+          ],
+          "label": "$200,000",
+          "split": "training",
+          "at": 0
+        },
+        {
+          "features": [
+            "1,500 ft²"
+          ],
+          "label": "$275,000",
+          "split": "training",
+          "at": 0.13
+        },
+        {
+          "features": [
+            "1,700 ft²"
+          ],
+          "label": "$302,000",
+          "split": "validation",
+          "at": 0.26
+        },
+        {
+          "features": [
+            "1,800 ft²"
+          ],
+          "label": "$320,000",
+          "split": "test",
+          "at": 0.39
+        }
+      ],
+      "split": {
+        "at": 0.51
+      }
+    }
+  },
+  {
+    "name": "ModelTrainingScene",
+    "version": "1.0.0",
+    "description": "Compute real predictions, mean squared error and gradient updates for a single adjustable weight and fixed bias. Set mode gradient for a loss curve. Schedule update times in updates; keep examples small and scaled.",
+    "tags": [
+      "machine learning",
+      "model training",
+      "regression",
+      "gradient descent",
+      "loss",
+      "house price",
+      "parameter"
+    ],
+    "path": "rendering/src/scenes/MLFoundations.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Use the error to improve the prediction",
+          "type": "string",
+          "maxLength": 78
+        },
+        "units": {
+          "type": "string",
+          "maxLength": 95
+        },
+        "mode": {
+          "default": "training",
+          "type": "string",
+          "enum": [
+            "training",
+            "gradient"
+          ]
+        },
+        "examples": {
+          "default": [
+            {
+              "x": 1,
+              "y": 2
+            },
+            {
+              "x": 2,
+              "y": 4
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number",
+                "minimum": -100,
+                "maximum": 100
+              },
+              "y": {
+                "type": "number",
+                "minimum": -10000,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "x",
+              "y"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "initialWeight": {
+          "default": 0.5,
+          "type": "number",
+          "minimum": -100,
+          "maximum": 100
+        },
+        "bias": {
+          "default": 0,
+          "type": "number",
+          "minimum": -100,
+          "maximum": 100
+        },
+        "rate": {
+          "default": 0.1,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "updates": {
+          "default": [
+            {
+              "at": 0.36
+            },
+            {
+              "at": 0.68
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Use the error to improve the prediction",
+      "mode": "training",
+      "examples": [
+        {
+          "x": 1,
+          "y": 2
+        },
+        {
+          "x": 2,
+          "y": 4
+        }
+      ],
+      "initialWeight": 0.5,
+      "bias": 0,
+      "rate": 0.1,
+      "updates": [
+        {
+          "at": 0.36
+        },
+        {
+          "at": 0.68
+        }
+      ]
+    }
+  },
+  {
+    "name": "ModelEvaluationScene",
+    "version": "1.0.0",
+    "description": "Accumulate a binary confusion matrix and accuracy from timed examples. Optional model scores compare training and test accuracy for underfitting and overfitting.",
+    "tags": [
+      "model evaluation",
+      "confusion matrix",
+      "accuracy",
+      "overfitting",
+      "underfitting"
+    ],
+    "path": "rendering/src/scenes/MLFoundations.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Compare predictions with known labels",
+          "type": "string",
+          "maxLength": 78
+        },
+        "results": {
+          "default": [
+            {
+              "actual": "positive",
+              "prediction": "positive",
+              "at": 0.17
+            },
+            {
+              "actual": "negative",
+              "prediction": "positive",
+              "at": 0.36
+            },
+            {
+              "actual": "positive",
+              "prediction": "negative",
+              "at": 0.54
+            },
+            {
+              "actual": "negative",
+              "prediction": "negative",
+              "at": 0.72
+            }
+          ],
+          "maxItems": 18,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "actual": {
+                "type": "string",
+                "enum": [
+                  "positive",
+                  "negative"
+                ]
+              },
+              "prediction": {
+                "type": "string",
+                "enum": [
+                  "positive",
+                  "negative"
+                ]
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "actual",
+              "prediction",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "models": {
+          "default": [],
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 26
+              },
+              "train": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "test": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "name",
+              "train",
+              "test",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Compare predictions with known labels",
+      "results": [
+        {
+          "actual": "positive",
+          "prediction": "positive",
+          "at": 0.17
+        },
+        {
+          "actual": "negative",
+          "prediction": "positive",
+          "at": 0.36
+        },
+        {
+          "actual": "positive",
+          "prediction": "negative",
+          "at": 0.54
+        },
+        {
+          "actual": "negative",
+          "prediction": "negative",
+          "at": 0.72
+        }
+      ],
+      "models": []
+    }
+  },
+  {
+    "name": "RAGScene",
+    "version": "1.0.0",
+    "description": "Animate retrieval-augmented generation on one board. Highlight query pieces as token chips and IDs appear, show an illustrative embedding of the whole query, compute cosine rankings against passage vectors, and use the top passage as cited context. Supply timed stages and optional exact evidenceFocus.",
+    "tags": [
+      "rag",
+      "retrieval augmented generation",
+      "query tokenization",
+      "embedding",
+      "vector search",
+      "grounding",
+      "retrieved passage",
+      "citation",
+      "llm"
+    ],
+    "path": "rendering/src/scenes/RAGScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "From a question to a grounded answer",
+          "type": "string",
+          "maxLength": 76
+        },
+        "tokens": {
+          "default": [
+            {
+              "text": "When",
+              "id": 12,
+              "at": 0.12
+            },
+            {
+              "text": " does",
+              "id": 37,
+              "at": 0.145
+            },
+            {
+              "text": " the",
+              "id": 8,
+              "at": 0.17
+            },
+            {
+              "text": " library",
+              "id": 65,
+              "at": 0.195
+            },
+            {
+              "text": " close",
+              "id": 81,
+              "at": 0.22
+            },
+            {
+              "text": " on",
+              "id": 9,
+              "at": 0.245
+            },
+            {
+              "text": " Friday",
+              "id": 29,
+              "at": 0.27
+            },
+            {
+              "text": "?",
+              "id": 4,
+              "at": 0.295
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 9,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 23
+              },
+              "id": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "text",
+              "id",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "queryVector": {
+          "default": [
+            0.2,
+            0.9,
+            0.5
+          ],
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "minimum": -10,
+              "maximum": 10
+            },
+            {
+              "type": "number",
+              "minimum": -10,
+              "maximum": 10
+            },
+            {
+              "type": "number",
+              "minimum": -10,
+              "maximum": 10
+            }
+          ],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "passages": {
+          "default": [
+            {
+              "id": "1",
+              "title": "Friday hours",
+              "text": "Friday hours: 9 a.m. to 6 p.m.",
+              "vector": [
+                0.2,
+                0.8,
+                0.5
+              ]
+            },
+            {
+              "id": "2",
+              "title": "Borrowing rules",
+              "text": "Books may be borrowed for three weeks.",
+              "vector": [
+                0.8,
+                0.13,
+                -0.1
+              ]
+            },
+            {
+              "id": "3",
+              "title": "Weekend hours",
+              "text": "Saturday hours: 10 a.m. to 4 p.m.",
+              "vector": [
+                0.4,
+                0.3,
+                0.7
+              ]
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 12
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 105
+              },
+              "vector": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "minimum": -10,
+                    "maximum": 10
+                  },
+                  {
+                    "type": "number",
+                    "minimum": -10,
+                    "maximum": 10
+                  },
+                  {
+                    "type": "number",
+                    "minimum": -10,
+                    "maximum": 10
+                  }
+                ],
+                "items": false,
+                "minItems": 3,
+                "maxItems": 3
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "text",
+              "vector"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "answer": {
+          "default": "The library closes at 6 p.m. on Friday.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "evidenceFocus": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 45
+        },
+        "embedding": {
+          "default": {
+            "at": 0.38
+          },
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "at"
+          ],
+          "additionalProperties": false
+        },
+        "search": {
+          "default": {
+            "at": 0.53
+          },
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "at"
+          ],
+          "additionalProperties": false
+        },
+        "context": {
+          "default": {
+            "at": 0.71
+          },
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "at"
+          ],
+          "additionalProperties": false
+        },
+        "generation": {
+          "default": {
+            "at": 0.85
+          },
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "at"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "From a question to a grounded answer",
+      "tokens": [
+        {
+          "text": "When",
+          "id": 12,
+          "at": 0.12
+        },
+        {
+          "text": " does",
+          "id": 37,
+          "at": 0.145
+        },
+        {
+          "text": " the",
+          "id": 8,
+          "at": 0.17
+        },
+        {
+          "text": " library",
+          "id": 65,
+          "at": 0.195
+        },
+        {
+          "text": " close",
+          "id": 81,
+          "at": 0.22
+        },
+        {
+          "text": " on",
+          "id": 9,
+          "at": 0.245
+        },
+        {
+          "text": " Friday",
+          "id": 29,
+          "at": 0.27
+        },
+        {
+          "text": "?",
+          "id": 4,
+          "at": 0.295
+        }
+      ],
+      "queryVector": [
+        0.2,
+        0.9,
+        0.5
+      ],
+      "passages": [
+        {
+          "id": "1",
+          "title": "Friday hours",
+          "text": "Friday hours: 9 a.m. to 6 p.m.",
+          "vector": [
+            0.2,
+            0.8,
+            0.5
+          ]
+        },
+        {
+          "id": "2",
+          "title": "Borrowing rules",
+          "text": "Books may be borrowed for three weeks.",
+          "vector": [
+            0.8,
+            0.13,
+            -0.1
+          ]
+        },
+        {
+          "id": "3",
+          "title": "Weekend hours",
+          "text": "Saturday hours: 10 a.m. to 4 p.m.",
+          "vector": [
+            0.4,
+            0.3,
+            0.7
+          ]
+        }
+      ],
+      "answer": "The library closes at 6 p.m. on Friday.",
+      "embedding": {
+        "at": 0.38
+      },
+      "search": {
+        "at": 0.53
+      },
+      "context": {
+        "at": 0.71
+      },
+      "generation": {
+        "at": 0.85
+      }
+    }
+  },
+  {
+    "name": "NeuralNetworkScene",
+    "version": "1.0.0",
+    "description": "Reveal inputs, hidden ReLU layers and one linear output. Compute the actual weighted sums and activations. Cue a forward calculation or backpropagation of squared error, then update one selected weight and recompute the prediction.",
+    "tags": [
+      "neural network",
+      "deep learning",
+      "neurons",
+      "activation",
+      "weights",
+      "bias",
+      "backpropagation",
+      "forward pass",
+      "artificial neural network",
+      "relu"
+    ],
+    "path": "rendering/src/scenes/NeuralNetworkScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Follow one prediction through a neural network",
+          "type": "string",
+          "maxLength": 78
+        },
+        "inputs": {
+          "default": [
+            {
+              "label": "Input 1",
+              "value": 2
+            },
+            {
+              "label": "Input 2",
+              "value": 1
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 18
+              },
+              "value": {
+                "type": "number",
+                "minimum": -10,
+                "maximum": 10
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "layers": {
+          "default": [
+            {
+              "label": "Hidden layer",
+              "at": 0.22,
+              "neurons": [
+                {
+                  "weights": [
+                    0.5,
+                    1
+                  ],
+                  "bias": 0
+                },
+                {
+                  "weights": [
+                    1,
+                    -1
+                  ],
+                  "bias": 0
+                },
+                {
+                  "weights": [
+                    -1,
+                    1
+                  ],
+                  "bias": 0
+                }
+              ]
+            },
+            {
+              "label": "Output",
+              "at": 0.48,
+              "neurons": [
+                {
+                  "weights": [
+                    0.5,
+                    0.5,
+                    0.5
+                  ],
+                  "bias": 0
+                }
+              ]
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 22
+              },
+              "neurons": {
+                "minItems": 1,
+                "maxItems": 5,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "weights": {
+                      "minItems": 1,
+                      "maxItems": 5,
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "minimum": -10,
+                        "maximum": 10
+                      }
+                    },
+                    "bias": {
+                      "default": 0,
+                      "type": "number",
+                      "minimum": -10,
+                      "maximum": 10
+                    }
+                  },
+                  "required": [
+                    "weights"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "label",
+              "neurons",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "target": {
+          "type": "number",
+          "minimum": -10,
+          "maximum": 10
+        },
+        "rate": {
+          "default": 0.1,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "steps": {
+          "default": [],
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "forward",
+                  "backward",
+                  "update"
+                ]
+              },
+              "layer": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "neuron": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "input": {
+                "default": 0,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "at",
+              "mode",
+              "layer",
+              "neuron"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Follow one prediction through a neural network",
+      "inputs": [
+        {
+          "label": "Input 1",
+          "value": 2
+        },
+        {
+          "label": "Input 2",
+          "value": 1
+        }
+      ],
+      "layers": [
+        {
+          "label": "Hidden layer",
+          "at": 0.22,
+          "neurons": [
+            {
+              "weights": [
+                0.5,
+                1
+              ],
+              "bias": 0
+            },
+            {
+              "weights": [
+                1,
+                -1
+              ],
+              "bias": 0
+            },
+            {
+              "weights": [
+                -1,
+                1
+              ],
+              "bias": 0
+            }
+          ]
+        },
+        {
+          "label": "Output",
+          "at": 0.48,
+          "neurons": [
+            {
+              "weights": [
+                0.5,
+                0.5,
+                0.5
+              ],
+              "bias": 0
+            }
+          ]
+        }
+      ],
+      "rate": 0.1,
+      "steps": []
+    }
+  },
+  {
+    "name": "MLScatterScene",
+    "version": "1.0.0",
+    "description": "Classification shows labeled points, a threshold and a new prediction. Clustering computes timed k-means assignment and centroid updates. Embedding mode uses illustrative 2D vectors, computes cosine similarity and highlights the nearest match.",
+    "tags": [
+      "classification",
+      "classifier",
+      "decision boundary",
+      "clustering",
+      "k-means",
+      "centroid",
+      "embeddings",
+      "cosine similarity",
+      "nearest neighbors",
+      "machine learning"
+    ],
+    "path": "rendering/src/scenes/MLScatterScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Classify a new example",
+          "type": "string",
+          "maxLength": 78
+        },
+        "mode": {
+          "default": "classification",
+          "type": "string",
+          "enum": [
+            "classification",
+            "clustering",
+            "embedding"
+          ]
+        },
+        "points": {
+          "default": [
+            {
+              "label": "A",
+              "xy": [
+                -0.6,
+                0.33
+              ],
+              "group": 0,
+              "at": 0
+            },
+            {
+              "label": "B",
+              "xy": [
+                -0.44,
+                -0.41
+              ],
+              "group": 0,
+              "at": 0.12
+            },
+            {
+              "label": "C",
+              "xy": [
+                0.3,
+                0.53
+              ],
+              "group": 1,
+              "at": 0.18
+            },
+            {
+              "label": "D",
+              "xy": [
+                0.65,
+                -0.35
+              ],
+              "group": 1,
+              "at": 0.24
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 14,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 24
+              },
+              "xy": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "minimum": -1,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "number",
+                    "minimum": -1,
+                    "maximum": 1
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "group": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "const": 0
+                  },
+                  {
+                    "type": "number",
+                    "const": 1
+                  }
+                ]
+              },
+              "at": {
+                "default": 0,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "label",
+              "xy"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "classification": {
+          "type": "object",
+          "properties": {
+            "boundary": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "minimum": -1,
+                  "maximum": 1
+                },
+                "at": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "x",
+                "at"
+              ],
+              "additionalProperties": false
+            },
+            "example": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 24
+                },
+                "xy": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "number",
+                      "minimum": -1,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "number",
+                      "minimum": -1,
+                      "maximum": 1
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "group": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "const": 0
+                    },
+                    {
+                      "type": "number",
+                      "const": 1
+                    }
+                  ]
+                },
+                "at": {
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "label",
+                "xy"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "boundary",
+            "example"
+          ],
+          "additionalProperties": false
+        },
+        "cluster": {
+          "type": "object",
+          "properties": {
+            "centers": {
+              "minItems": 2,
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "minimum": -1,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "number",
+                    "minimum": -1,
+                    "maximum": 1
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "steps": {
+              "minItems": 2,
+              "maxItems": 8,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "at": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "at"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "centers",
+            "steps"
+          ],
+          "additionalProperties": false
+        },
+        "similarity": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 24
+                },
+                "xy": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "number",
+                      "minimum": -1,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "number",
+                      "minimum": -1,
+                      "maximum": 1
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "group": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "const": 0
+                    },
+                    {
+                      "type": "number",
+                      "const": 1
+                    }
+                  ]
+                },
+                "at": {
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "label",
+                "xy"
+              ],
+              "additionalProperties": false
+            },
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "query",
+            "at"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Classify a new example",
+      "mode": "classification",
+      "points": [
+        {
+          "label": "A",
+          "xy": [
+            -0.6,
+            0.33
+          ],
+          "group": 0,
+          "at": 0
+        },
+        {
+          "label": "B",
+          "xy": [
+            -0.44,
+            -0.41
+          ],
+          "group": 0,
+          "at": 0.12
+        },
+        {
+          "label": "C",
+          "xy": [
+            0.3,
+            0.53
+          ],
+          "group": 1,
+          "at": 0.18
+        },
+        {
+          "label": "D",
+          "xy": [
+            0.65,
+            -0.35
+          ],
+          "group": 1,
+          "at": 0.24
+        }
+      ]
+    }
+  },
+  {
+    "name": "TokenizationScene",
+    "version": "1.0.0",
+    "description": "Keep the source sentence intact. Highlight each token span and draw its link to the corresponding ID. Label toy tokenizers as illustrative. Preserve spaces in each token.",
+    "tags": [
+      "llm",
+      "tokenization",
+      "token ids",
+      "tokenizer",
+      "language model"
+    ],
+    "path": "rendering/src/scenes/LLMMechanics.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Break a sentence into tokens",
+          "type": "string",
+          "maxLength": 78
+        },
+        "tokens": {
+          "default": [
+            {
+              "text": "The",
+              "id": 12,
+              "at": 0.15
+            },
+            {
+              "text": " cat",
+              "id": 73,
+              "at": 0.3
+            },
+            {
+              "text": " naps",
+              "id": 118,
+              "at": 0.48
+            },
+            {
+              "text": ".",
+              "id": 9,
+              "at": 0.68
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 18,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 24
+              },
+              "id": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "text",
+              "id",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "tokenizer": {
+          "default": "Illustrative tokenizer and token IDs",
+          "type": "string",
+          "maxLength": 70
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Break a sentence into tokens",
+      "tokens": [
+        {
+          "text": "The",
+          "id": 12,
+          "at": 0.15
+        },
+        {
+          "text": " cat",
+          "id": 73,
+          "at": 0.3
+        },
+        {
+          "text": " naps",
+          "id": 118,
+          "at": 0.48
+        },
+        {
+          "text": ".",
+          "id": 9,
+          "at": 0.68
+        }
+      ],
+      "tokenizer": "Illustrative tokenizer and token IDs"
+    }
+  },
+  {
+    "name": "TextGenerationScene",
+    "version": "1.0.0",
+    "description": "Show next-token probabilities, reveal the selected token and append it to the same text. Use turn.at and turn.selection.at cues and illustrative probabilities.",
+    "tags": [
+      "llm",
+      "generation",
+      "next token",
+      "sampling",
+      "probabilities",
+      "inference"
+    ],
+    "path": "rendering/src/scenes/LLMMechanics.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Generate text one token at a time",
+          "type": "string",
+          "maxLength": 78
+        },
+        "prefix": {
+          "default": "The cat",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 110
+        },
+        "turns": {
+          "default": [
+            {
+              "at": 0.14,
+              "selection": {
+                "at": 0.33
+              },
+              "selected": 0,
+              "choices": [
+                {
+                  "text": " sat",
+                  "prob": 0.62
+                },
+                {
+                  "text": " slept",
+                  "prob": 0.28
+                },
+                {
+                  "text": " ran",
+                  "prob": 0.1
+                }
+              ]
+            },
+            {
+              "at": 0.52,
+              "selection": {
+                "at": 0.74
+              },
+              "selected": 0,
+              "choices": [
+                {
+                  "text": " down",
+                  "prob": 0.58
+                },
+                {
+                  "text": " quietly",
+                  "prob": 0.29
+                },
+                {
+                  "text": ".",
+                  "prob": 0.13
+                }
+              ]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "selected": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "selection": {
+                "type": "object",
+                "properties": {
+                  "at": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "at"
+                ],
+                "additionalProperties": false
+              },
+              "choices": {
+                "minItems": 2,
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 24
+                    },
+                    "prob": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "prob"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "at",
+              "selected",
+              "selection",
+              "choices"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Generate text one token at a time",
+      "prefix": "The cat",
+      "turns": [
+        {
+          "at": 0.14,
+          "selection": {
+            "at": 0.33
+          },
+          "selected": 0,
+          "choices": [
+            {
+              "text": " sat",
+              "prob": 0.62
+            },
+            {
+              "text": " slept",
+              "prob": 0.28
+            },
+            {
+              "text": " ran",
+              "prob": 0.1
+            }
+          ]
+        },
+        {
+          "at": 0.52,
+          "selection": {
+            "at": 0.74
+          },
+          "selected": 0,
+          "choices": [
+            {
+              "text": " down",
+              "prob": 0.58
+            },
+            {
+              "text": " quietly",
+              "prob": 0.29
+            },
+            {
+              "text": ".",
+              "prob": 0.13
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "AttentionScene",
+    "version": "1.0.0",
+    "description": "Compute simplified causal attention from scalar queries, keys and values, Draw weighted links from available tokens to the selected query, then reveal the transformer block stages.",
+    "tags": [
+      "llm",
+      "attention",
+      "transformer",
+      "causal mask",
+      "softmax",
+      "self attention"
+    ],
+    "path": "rendering/src/scenes/LLMMechanics.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Follow information through an attention head",
+          "type": "string",
+          "maxLength": 78
+        },
+        "tokens": {
+          "default": [
+            {
+              "text": "The",
+              "key": 0.2,
+              "value": 1
+            },
+            {
+              "text": "cat",
+              "key": 1.4,
+              "value": 4
+            },
+            {
+              "text": "slept",
+              "key": 0.5,
+              "value": 2
+            },
+            {
+              "text": ".",
+              "key": -0.4,
+              "value": 0
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 24
+              },
+              "key": {
+                "type": "number",
+                "minimum": -15,
+                "maximum": 15
+              },
+              "value": {
+                "type": "number",
+                "minimum": -15,
+                "maximum": 15
+              }
+            },
+            "required": [
+              "text",
+              "key",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "queryIndex": {
+          "default": 2,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "query": {
+          "default": 2,
+          "type": "number",
+          "minimum": -15,
+          "maximum": 15
+        },
+        "attention": {
+          "default": {
+            "at": 0.25
+          },
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "at"
+          ],
+          "additionalProperties": false
+        },
+        "block": {
+          "default": {
+            "at": 0.68
+          },
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "stages": {
+              "minItems": 4,
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "at": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "at"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "at"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Follow information through an attention head",
+      "tokens": [
+        {
+          "text": "The",
+          "key": 0.2,
+          "value": 1
+        },
+        {
+          "text": "cat",
+          "key": 1.4,
+          "value": 4
+        },
+        {
+          "text": "slept",
+          "key": 0.5,
+          "value": 2
+        },
+        {
+          "text": ".",
+          "key": -0.4,
+          "value": 0
+        }
+      ],
+      "queryIndex": 2,
+      "query": 2,
+      "attention": {
+        "at": 0.25
+      },
+      "block": {
+        "at": 0.68
+      }
+    }
+  },
+  {
+    "name": "AIWorkflowScene",
+    "version": "1.0.0",
+    "description": "Keep one board for an AI workflow. Mode lifecycle compares pretraining, fine-tuning and inference; rag traces question, retrieval, context and cited answer; tools traces tool selection and returned result; reliability compares grounded, unsupported and uncertain answers. Supply concrete steps and evidence.",
+    "tags": [
+      "llm",
+      "pretraining",
+      "fine-tuning",
+      "inference",
+      "rag",
+      "retrieval augmented generation",
+      "grounding",
+      "tool calling",
+      "agents",
+      "ai reliability",
+      "hallucination",
+      "evaluation"
+    ],
+    "path": "rendering/src/scenes/AIWorkflowScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "default": "rag",
+          "type": "string",
+          "enum": [
+            "lifecycle",
+            "rag",
+            "tools",
+            "reliability"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 78
+        },
+        "steps": {
+          "minItems": 2,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 37
+              },
+              "detail": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 156
+              },
+              "evidence": {
+                "type": "string",
+                "maxLength": 130
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "label",
+              "detail",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "mode": "rag"
+    }
+  },
+  {
+    "name": "WorkedExampleScene",
+    "version": "1.0.0",
+    "description": "A worked example with an instruction beside a live table. Cue each stage to the narration to select a row, reveal a result, insert a record or highlight a changed cell.",
+    "tags": [
+      "worked example",
+      "case study",
+      "records",
+      "comparison",
+      "selection",
+      "table",
+      "before and after"
+    ],
+    "path": "rendering/src/scenes/WorkedExampleScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Select a record by its stable ID",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 75
+        },
+        "tableTitle": {
+          "default": "Catalog",
+          "type": "string",
+          "maxLength": 55
+        },
+        "columns": {
+          "default": [
+            "ID",
+            "Item"
+          ],
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 22
+          }
+        },
+        "stages": {
+          "default": [
+            {
+              "at": 0,
+              "action": "Read item 42",
+              "explanation": "Find the row with the matching identifier.",
+              "rows": [
+                [
+                  "42",
+                  "Book"
+                ]
+              ],
+              "focusRow": 0
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "action": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "explanation": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 125
+              },
+              "rows": {
+                "minItems": 1,
+                "maxItems": 5,
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 52
+                  }
+                }
+              },
+              "focusRow": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "focusColumn": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "at",
+              "action",
+              "explanation",
+              "rows"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Select a record by its stable ID",
+      "tableTitle": "Catalog",
+      "columns": [
+        "ID",
+        "Item"
+      ],
+      "stages": [
+        {
+          "at": 0,
+          "action": "Read item 42",
+          "explanation": "Find the row with the matching identifier.",
+          "rows": [
+            [
+              "42",
+              "Book"
+            ]
+          ],
+          "focusRow": 0
+        }
+      ]
+    }
+  },
+  {
+    "name": "AnnotatedTextScene",
+    "version": "1.0.0",
+    "description": "Show a complete request, expression, sentence or short excerpt from the start. Use layout \"editor\" for commands or code and \"text\" for prose and equations. A valid JSON body is indented and syntax colored, with the HTTP request or response line and headers shown above it. Cue each step to highlight the exact substring in focus and show a short explanation. If the substring repeats, occurrence counts matches from 1. Omit focus to explain the whole example.",
+    "tags": [
+      "annotation",
+      "walkthrough",
+      "reading",
+      "sentence",
+      "grammar",
+      "request",
+      "excerpt",
+      "formula",
+      "parts"
+    ],
+    "path": "rendering/src/scenes/AnnotatedTextScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Read the example",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 68
+        },
+        "layout": {
+          "default": "text",
+          "type": "string",
+          "enum": [
+            "editor",
+            "text"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "text": {
+          "default": "GET /watches",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 220
+        },
+        "steps": {
+          "default": [],
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "focus": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "occurrence": {
+                "default": 1,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              },
+              "explanation": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 115
+              }
+            },
+            "required": [
+              "at",
+              "explanation"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Read the example",
+      "layout": "text",
+      "text": "GET /watches",
+      "steps": []
+    }
+  },
+  {
+    "name": "OutcomeComparisonScene",
+    "version": "1.0.0",
+    "description": "Compare two examples with their outcomes. Each row has text parts that concatenate into the complete example, optional labels and tones, and a result. Use editor layout for requests and code, or text layout for other subjects. Cue an input part or highlight exact output text with resultFocus. Rows with hidden true first appear when their row is cued. Set resultsOnCue true and use reveal true to introduce a result on its cue. To keep this board across consecutive scenes, use continue true with only new steps in the next scene’s plan.",
+    "tags": [
+      "comparison",
+      "outcome",
+      "cause and effect",
+      "request",
+      "response",
+      "reading",
+      "two examples"
+    ],
+    "path": "rendering/src/scenes/OutcomeComparisonScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Compare two examples",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 68
+        },
+        "layout": {
+          "default": "text",
+          "type": "string",
+          "enum": [
+            "editor",
+            "text"
+          ]
+        },
+        "inputHeading": {
+          "default": "Example",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "resultHeading": {
+          "default": "Outcome",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "rows": {
+          "default": [
+            {
+              "parts": [
+                {
+                  "text": "Meet at noon.",
+                  "tone": "neutral"
+                }
+              ],
+              "result": "Meet at 12:00 p.m.",
+              "hidden": false
+            },
+            {
+              "parts": [
+                {
+                  "text": "Meet at ",
+                  "tone": "neutral"
+                },
+                {
+                  "text": "sunset",
+                  "label": "New time",
+                  "tone": "amber"
+                },
+                {
+                  "text": ".",
+                  "tone": "neutral"
+                }
+              ],
+              "result": "Meet when the sun goes down.",
+              "hidden": false
+            }
+          ],
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "object",
+              "properties": {
+                "parts": {
+                  "minItems": 1,
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "label": {
+                        "type": "string",
+                        "maxLength": 24
+                      },
+                      "tone": {
+                        "default": "neutral",
+                        "type": "string",
+                        "enum": [
+                          "neutral",
+                          "teal",
+                          "amber"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "text"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "result": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 170
+                },
+                "hidden": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "parts",
+                "result"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "parts": {
+                  "minItems": 1,
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "label": {
+                        "type": "string",
+                        "maxLength": 24
+                      },
+                      "tone": {
+                        "default": "neutral",
+                        "type": "string",
+                        "enum": [
+                          "neutral",
+                          "teal",
+                          "amber"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "text"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "result": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 170
+                },
+                "hidden": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "parts",
+                "result"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "steps": {
+          "default": [],
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "row": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "const": 0
+                  },
+                  {
+                    "type": "number",
+                    "const": 1
+                  }
+                ]
+              },
+              "part": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3
+              },
+              "resultFocus": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 90
+              },
+              "explanation": {
+                "type": "string",
+                "maxLength": 110
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "reveal": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "row",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "resultsOnCue": {
+          "type": "boolean"
+        },
+        "start": {
+          "type": "object",
+          "properties": {
+            "rows": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "shown": {
+                      "type": "boolean"
+                    },
+                    "revealed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "shown",
+                    "revealed"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "shown": {
+                      "type": "boolean"
+                    },
+                    "revealed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "shown",
+                    "revealed"
+                  ],
+                  "additionalProperties": false
+                }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "active": {
+              "type": "object",
+              "properties": {
+                "row": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "const": 0
+                    },
+                    {
+                      "type": "number",
+                      "const": 1
+                    }
+                  ]
+                },
+                "part": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 3
+                },
+                "resultFocus": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 90
+                },
+                "explanation": {
+                  "type": "string",
+                  "maxLength": 110
+                }
+              },
+              "required": [
+                "row"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "rows"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Compare two examples",
+      "layout": "text",
+      "inputHeading": "Example",
+      "resultHeading": "Outcome",
+      "rows": [
+        {
+          "parts": [
+            {
+              "text": "Meet at noon.",
+              "tone": "neutral"
+            }
+          ],
+          "result": "Meet at 12:00 p.m.",
+          "hidden": false
+        },
+        {
+          "parts": [
+            {
+              "text": "Meet at ",
+              "tone": "neutral"
+            },
+            {
+              "text": "sunset",
+              "label": "New time",
+              "tone": "amber"
+            },
+            {
+              "text": ".",
+              "tone": "neutral"
+            }
+          ],
+          "result": "Meet when the sun goes down.",
+          "hidden": false
+        }
+      ],
+      "steps": []
+    }
+  },
+  {
+    "name": "LayersScene",
+    "version": "1.0.0",
+    "description": "A progressive funnel, pyramid, inverted pyramid or equal-width stack. Supply levels in top-to-bottom order with labels, details and optional timing cues. When every funnel level has a value, the widths show the relative counts; otherwise the shapes show order. Use for AIDA, sales funnels, news writing, Maslow and OSI layers.",
+    "tags": [
+      "funnel",
+      "pyramid",
+      "inverted pyramid",
+      "hierarchy of needs",
+      "layers",
+      "stack",
+      "aida",
+      "osi",
+      "maslow",
+      "conversion",
+      "gatekeeping"
+    ],
+    "path": "rendering/src/scenes/LayersScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "From awareness to action",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 78
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 90
+        },
+        "mode": {
+          "default": "funnel",
+          "type": "string",
+          "enum": [
+            "funnel",
+            "pyramid",
+            "inverted",
+            "stack"
+          ]
+        },
+        "levels": {
+          "default": [
+            {
+              "label": "Attention",
+              "detail": "People encounter the message.",
+              "at": 0
+            },
+            {
+              "label": "Interest",
+              "detail": "Some choose to learn more.",
+              "at": 0.24
+            },
+            {
+              "label": "Desire",
+              "detail": "The benefit becomes relevant.",
+              "at": 0.48
+            },
+            {
+              "label": "Action",
+              "detail": "Some take the next step.",
+              "at": 0.72
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 36
+              },
+              "detail": {
+                "type": "string",
+                "maxLength": 90
+              },
+              "value": {
+                "type": "number",
+                "minimum": 0
+              },
+              "at": {
+                "default": 0,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "unit": {
+          "default": "",
+          "type": "string",
+          "maxLength": 24
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "From awareness to action",
+      "mode": "funnel",
+      "levels": [
+        {
+          "label": "Attention",
+          "detail": "People encounter the message.",
+          "at": 0
+        },
+        {
+          "label": "Interest",
+          "detail": "Some choose to learn more.",
+          "at": 0.24
+        },
+        {
+          "label": "Desire",
+          "detail": "The benefit becomes relevant.",
+          "at": 0.48
+        },
+        {
+          "label": "Action",
+          "detail": "Some take the next step.",
+          "at": 0.72
+        }
+      ],
+      "unit": ""
+    }
+  },
+  {
+    "name": "MatrixScene",
+    "version": "1.0.0",
+    "description": "A labeled 2×2 quadrant or one-axis spectrum. Choose mode, axis labels and endpoints. Quadrant labels run top left, top right, bottom left, bottom right. Place timed markers with normalized x (left to right) and y (bottom to top); optional moves reposition a marker on cue. Use for urgent vs important, tone, media bias, or sorting decisions.",
+    "tags": [
+      "quadrant",
+      "2x2",
+      "matrix",
+      "spectrum",
+      "scale",
+      "slider",
+      "sorting",
+      "urgency",
+      "importance",
+      "bias",
+      "formal",
+      "informal"
+    ],
+    "path": "rendering/src/scenes/MatrixScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Decide what to do first",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 78
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 90
+        },
+        "mode": {
+          "default": "quadrant",
+          "type": "string",
+          "enum": [
+            "quadrant",
+            "spectrum"
+          ]
+        },
+        "xAxis": {
+          "default": {
+            "label": "Urgency",
+            "low": "Less urgent",
+            "high": "More urgent"
+          },
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "maxLength": 36
+            },
+            "low": {
+              "type": "string",
+              "maxLength": 25
+            },
+            "high": {
+              "type": "string",
+              "maxLength": 25
+            }
+          },
+          "required": [
+            "label",
+            "low",
+            "high"
+          ],
+          "additionalProperties": false
+        },
+        "yAxis": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "maxLength": 36
+            },
+            "low": {
+              "type": "string",
+              "maxLength": 25
+            },
+            "high": {
+              "type": "string",
+              "maxLength": 25
+            }
+          },
+          "required": [
+            "label",
+            "low",
+            "high"
+          ],
+          "additionalProperties": false
+        },
+        "quadrants": {
+          "minItems": 4,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 34
+          }
+        },
+        "markers": {
+          "default": [
+            {
+              "label": "Plan next week",
+              "x": 0.22,
+              "y": 0.72,
+              "at": 0.15,
+              "moves": []
+            },
+            {
+              "label": "Submit today’s work",
+              "x": 0.76,
+              "y": 0.79,
+              "at": 0.4,
+              "moves": []
+            },
+            {
+              "label": "Forward a routine request",
+              "x": 0.8,
+              "y": 0.26,
+              "at": 0.65,
+              "moves": []
+            }
+          ],
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 42
+              },
+              "moves": {
+                "default": [],
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "y": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "at": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "x",
+              "at",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Decide what to do first",
+      "mode": "quadrant",
+      "xAxis": {
+        "label": "Urgency",
+        "low": "Less urgent",
+        "high": "More urgent"
+      },
+      "markers": [
+        {
+          "label": "Plan next week",
+          "x": 0.22,
+          "y": 0.72,
+          "at": 0.15,
+          "moves": []
+        },
+        {
+          "label": "Submit today’s work",
+          "x": 0.76,
+          "y": 0.79,
+          "at": 0.4,
+          "moves": []
+        },
+        {
+          "label": "Forward a routine request",
+          "x": 0.8,
+          "y": 0.26,
+          "at": 0.65,
+          "moves": []
+        }
+      ]
+    }
+  },
+  {
+    "name": "FactCheckScene",
+    "version": "1.0.0",
+    "description": "Hold a claim on screen, reveal source-attributed evidence, then stamp a supported, contradicted, misleading, mixed or unverified verdict with its reason. Use evidence the lesson actually has and label illustrative examples.",
+    "tags": [
+      "fact check",
+      "fact-checking",
+      "media literacy",
+      "claim",
+      "evidence",
+      "verdict",
+      "verification",
+      "misinformation",
+      "sources"
+    ],
+    "path": "rendering/src/scenes/FactCheckScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Check the claim against the source",
+          "type": "string",
+          "maxLength": 78
+        },
+        "claim": {
+          "default": "“Every library branch opens on Sunday.”",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "attribution": {
+          "type": "string",
+          "maxLength": 70
+        },
+        "evidence": {
+          "default": [
+            {
+              "finding": "The sample schedule lists three branches. Only Central has Sunday hours.",
+              "source": "Illustrative library schedule",
+              "at": 0.34
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "finding": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 137
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 78
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "finding",
+              "source",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "verdict": {
+          "default": {
+            "status": "contradicted",
+            "reason": "The schedule shows at least one branch closed on Sunday.",
+            "at": 0.7
+          },
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "supported",
+                "contradicted",
+                "misleading",
+                "mixed",
+                "unverified"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 135
+            },
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "status",
+            "reason",
+            "at"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Check the claim against the source",
+      "claim": "“Every library branch opens on Sunday.”",
+      "evidence": [
+        {
+          "finding": "The sample schedule lists three branches. Only Central has Sunday hours.",
+          "source": "Illustrative library schedule",
+          "at": 0.34
+        }
+      ],
+      "verdict": {
+        "status": "contradicted",
+        "reason": "The schedule shows at least one branch closed on Sunday.",
+        "at": 0.7
+      }
+    }
+  },
+  {
+    "name": "CaseStudyScene",
+    "version": "1.0.0",
+    "description": "A four-part case study board. Keep the goal, strategy, measured result and lesson in view as each is revealed. Supply optional metrics with units or comparison baselines, plus a source for real results.",
+    "tags": [
+      "case study",
+      "campaign",
+      "startup",
+      "strategy",
+      "outcome",
+      "measured result",
+      "history",
+      "impact"
+    ],
+    "path": "rendering/src/scenes/CaseStudyScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "A simpler reminder for a library event",
+          "type": "string",
+          "maxLength": 78
+        },
+        "context": {
+          "type": "string",
+          "maxLength": 90
+        },
+        "goal": {
+          "default": {
+            "text": "Help more people find the time and location of the free event.",
+            "at": 0
+          },
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 140
+            },
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "text",
+            "at"
+          ],
+          "additionalProperties": false
+        },
+        "strategy": {
+          "default": {
+            "text": "Put the time, location and signup link at the top of the reminder.",
+            "at": 0.24
+          },
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 140
+            },
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "text",
+            "at"
+          ],
+          "additionalProperties": false
+        },
+        "result": {
+          "default": {
+            "text": "More recipients opened the signup page in this illustrative example.",
+            "metrics": [
+              {
+                "value": "18 → 29",
+                "label": "Visits to the signup page"
+              }
+            ],
+            "at": 0.5
+          },
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 140
+            },
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "metrics": {
+              "default": [],
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50
+                  }
+                },
+                "required": [
+                  "value",
+                  "label"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          "required": [
+            "text",
+            "at"
+          ],
+          "additionalProperties": false
+        },
+        "lesson": {
+          "default": {
+            "text": "Put what readers need to act on where they will see it first.",
+            "at": 0.76
+          },
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 140
+            },
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "text",
+            "at"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "A simpler reminder for a library event",
+      "goal": {
+        "text": "Help more people find the time and location of the free event.",
+        "at": 0
+      },
+      "strategy": {
+        "text": "Put the time, location and signup link at the top of the reminder.",
+        "at": 0.24
+      },
+      "result": {
+        "text": "More recipients opened the signup page in this illustrative example.",
+        "metrics": [
+          {
+            "value": "18 → 29",
+            "label": "Visits to the signup page"
+          }
+        ],
+        "at": 0.5
+      },
+      "lesson": {
+        "text": "Put what readers need to act on where they will see it first.",
+        "at": 0.76
+      }
+    }
+  },
+  {
+    "name": "ProfileScene",
+    "version": "1.0.0",
+    "description": "Profile a person, character or audience segment with an optional portrait or icon and timed labeled facts. Choose fields that explain the person’s role, goals or choices. Label fictional personas as illustrative.",
+    "tags": [
+      "persona",
+      "profile",
+      "biography",
+      "character",
+      "audience segment",
+      "historical figure",
+      "portrait"
+    ],
+    "path": "rendering/src/scenes/ProfileScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Meet the audience for a local newsletter",
+          "type": "string",
+          "maxLength": 78
+        },
+        "name": {
+          "default": "First-time readers",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48
+        },
+        "context": {
+          "default": "Illustrative audience segment",
+          "type": "string",
+          "maxLength": 70
+        },
+        "image": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "imageAlt": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "icon": {
+          "default": "users",
+          "type": "string",
+          "maxLength": 48
+        },
+        "fields": {
+          "default": [
+            {
+              "label": "Goal",
+              "value": "Find one local event to attend this weekend.",
+              "at": 0
+            },
+            {
+              "label": "Constraint",
+              "value": "They may be reading on a phone with limited time.",
+              "at": 0.28
+            },
+            {
+              "label": "What helps",
+              "value": "A short headline with the date, location and signup link.",
+              "at": 0.6
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 28
+              },
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "label",
+              "value",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Meet the audience for a local newsletter",
+      "name": "First-time readers",
+      "context": "Illustrative audience segment",
+      "icon": "users",
+      "fields": [
+        {
+          "label": "Goal",
+          "value": "Find one local event to attend this weekend.",
+          "at": 0
+        },
+        {
+          "label": "Constraint",
+          "value": "They may be reading on a phone with limited time.",
+          "at": 0.28
+        },
+        {
+          "label": "What helps",
+          "value": "A short headline with the date, location and signup link.",
+          "at": 0.6
+        }
+      ]
+    }
+  },
+  {
+    "name": "AnalogyScene",
+    "version": "1.0.0",
+    "description": "Pair a familiar situation with a new idea. Use illustration labels, icons or images, and reveal each matching pair with shared emphasis when it is explained. An optional final cue shows where the analogy breaks down.",
+    "tags": [
+      "analogy",
+      "metaphor",
+      "mapping",
+      "cross-domain",
+      "introductory",
+      "familiar example",
+      "comparison"
+    ],
+    "path": "rendering/src/scenes/AnalogyScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "An API request is like ordering from a menu",
+          "type": "string",
+          "maxLength": 78
+        },
+        "familiar": {
+          "default": {
+            "label": "At a café",
+            "icon": "coffee"
+          },
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 42
+            },
+            "icon": {
+              "type": "string",
+              "maxLength": 48
+            },
+            "image": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "label"
+          ],
+          "additionalProperties": false
+        },
+        "subject": {
+          "default": {
+            "label": "Using an API",
+            "icon": "plug"
+          },
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 42
+            },
+            "icon": {
+              "type": "string",
+              "maxLength": 48
+            },
+            "image": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "label"
+          ],
+          "additionalProperties": false
+        },
+        "pairs": {
+          "default": [
+            {
+              "left": "Order name",
+              "right": "Request path",
+              "explanation": "Both tell the recipient what you are asking for.",
+              "at": 0.16
+            },
+            {
+              "left": "The café fills the order",
+              "right": "The server handles the request",
+              "explanation": "The recipient does the work and sends something back.",
+              "at": 0.45
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "left": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 47
+              },
+              "right": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 47
+              },
+              "explanation": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 125
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "left",
+              "right",
+              "explanation",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "limitation": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 125
+            },
+            "at": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "text",
+            "at"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "An API request is like ordering from a menu",
+      "familiar": {
+        "label": "At a café",
+        "icon": "coffee"
+      },
+      "subject": {
+        "label": "Using an API",
+        "icon": "plug"
+      },
+      "pairs": [
+        {
+          "left": "Order name",
+          "right": "Request path",
+          "explanation": "Both tell the recipient what you are asking for.",
+          "at": 0.16
+        },
+        {
+          "left": "The café fills the order",
+          "right": "The server handles the request",
+          "explanation": "The recipient does the work and sends something back.",
+          "at": 0.45
+        }
+      ]
+    }
+  },
+  {
+    "name": "ConceptMapScene",
+    "version": "1.0.0",
+    "description": "A centered mind map or concept map with gradually revealed concepts and labeled relationships. Omit links for radial branches from the center. Supply links to show how ideas relate, and optional normalized positions for a custom arrangement.",
+    "tags": [
+      "mind map",
+      "concept map",
+      "relationship",
+      "branching",
+      "overview",
+      "recap",
+      "brainstorming",
+      "ideas"
+    ],
+    "path": "rendering/src/scenes/ConceptMapScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Three questions for media literacy",
+          "type": "string",
+          "maxLength": 78
+        },
+        "center": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "nodes": {
+          "default": [
+            {
+              "id": "media",
+              "label": "Media literacy",
+              "at": 0
+            },
+            {
+              "id": "source",
+              "label": "Who made it?",
+              "at": 0.22
+            },
+            {
+              "id": "evidence",
+              "label": "What supports it?",
+              "at": 0.45
+            },
+            {
+              "id": "audience",
+              "label": "Who is it for?",
+              "at": 0.66
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 24
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 42
+              },
+              "at": {
+                "default": 0,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "position": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "links": {
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "minLength": 1
+              },
+              "to": {
+                "type": "string",
+                "minLength": 1
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 25
+              },
+              "at": {
+                "default": 0,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "Three questions for media literacy",
+      "nodes": [
+        {
+          "id": "media",
+          "label": "Media literacy",
+          "at": 0
+        },
+        {
+          "id": "source",
+          "label": "Who made it?",
+          "at": 0.22
+        },
+        {
+          "id": "evidence",
+          "label": "What supports it?",
+          "at": 0.45
+        },
+        {
+          "id": "audience",
+          "label": "Who is it for?",
+          "at": 0.66
+        }
+      ]
+    }
+  },
+  {
+    "name": "GitGraphScene",
+    "version": "1.0.0",
+    "description": "Teach Git history on a stable commit graph. Supply commits in parent-first order with a lane and reveal cue. Use full refs snapshots and branch or detached HEAD updates on steps. A merge has multiple parent IDs. For rebase, reveal the rewritten commits with new IDs, move the branch, and optionally hide its old path.",
+    "tags": [
+      "git graph",
+      "git",
+      "version control",
+      "commit",
+      "branch",
+      "head",
+      "merge",
+      "rebase",
+      "cherry pick",
+      "detached head"
+    ],
+    "path": "rendering/src/scenes/GitGraphScene.tsx",
+    "staged": false,
+    "propsSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "What a merge commit connects",
+          "type": "string",
+          "maxLength": 78
+        },
+        "commits": {
+          "default": [
+            {
+              "id": "a1",
+              "parents": [],
+              "lane": 0,
+              "message": "Start the project",
+              "at": 0
+            },
+            {
+              "id": "b2",
+              "parents": [
+                "a1"
+              ],
+              "lane": 0,
+              "message": "Update the readme",
+              "at": 0.18
+            },
+            {
+              "id": "c3",
+              "parents": [
+                "a1"
+              ],
+              "lane": 1,
+              "message": "Add the feature",
+              "at": 0.38
+            },
+            {
+              "id": "d4",
+              "parents": [
+                "b2",
+                "c3"
+              ],
+              "lane": 0,
+              "message": "Merge the feature",
+              "at": 0.68
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 12
+              },
+              "parents": {
+                "default": [],
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 12
+                }
+              },
+              "lane": {
+                "default": 0,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 39
+              },
+              "at": {
+                "default": 0,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "refs": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12
+          }
+        },
+        "head": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "steps": {
+          "default": [],
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "refs": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 24
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 12
+                }
+              },
+              "head": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 24
+              },
+              "hide": {
+                "maxItems": 12,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 12
+                }
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 120
+              }
+            },
+            "required": [
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "title": "What a merge commit connects",
+      "commits": [
+        {
+          "id": "a1",
+          "parents": [],
+          "lane": 0,
+          "message": "Start the project",
+          "at": 0
+        },
+        {
+          "id": "b2",
+          "parents": [
+            "a1"
+          ],
+          "lane": 0,
+          "message": "Update the readme",
+          "at": 0.18
+        },
+        {
+          "id": "c3",
+          "parents": [
+            "a1"
+          ],
+          "lane": 1,
+          "message": "Add the feature",
+          "at": 0.38
+        },
+        {
+          "id": "d4",
+          "parents": [
+            "b2",
+            "c3"
+          ],
+          "lane": 0,
+          "message": "Merge the feature",
+          "at": 0.68
+        }
+      ],
+      "refs": {},
+      "steps": []
+    }
+  },
+  {
     "name": "TitleScene",
     "version": "1.0.0",
     "description": "An animated title and optional subtitle.",
@@ -2245,7 +6301,7 @@
   {
     "name": "ChartScene",
     "version": "1.0.0",
-    "description": "A flexible, animated bar, line, or area chart with multiple series, axes, grid lines, and value labels.",
+    "description": "A bar, line, or area chart. On a line or area chart, supply xValues for numeric spacing, and add labeled markers to distinguish a prediction from observed data. Use growFrames:0 to keep the existing chart visible while a marker is added on its narration cue.",
     "tags": [
       "chart",
       "bar",
@@ -2292,6 +6348,48 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "xValues": {
+          "minItems": 2,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "markers": {
+          "default": [],
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 45
+              }
+            },
+            "required": [
+              "at",
+              "x",
+              "y",
+              "label"
+            ],
+            "additionalProperties": false
           }
         },
         "series": {
@@ -2372,7 +6470,7 @@
         "growFrames": {
           "default": 42,
           "type": "integer",
-          "exclusiveMinimum": 0,
+          "minimum": 0,
           "maximum": 9007199254740991
         },
         "footer": {
@@ -2394,6 +6492,7 @@
         "2023",
         "2024"
       ],
+      "markers": [],
       "series": [
         {
           "name": "Internet users (billions)",
@@ -3426,14 +7525,18 @@
   {
     "name": "ImageScene",
     "version": "1.0.0",
-    "description": "A full-width figure or image with a caption, credit, and optional pan or Ken Burns motion.",
+    "description": "A full-width figure or image with a caption, credit, and optional pan or zoom. Add timed numbered hotspots with x/y in 0–1 measured from the source image’s top-left, a label and optional explanation. Markers follow the image when fitted and during camera motion. Use contain to keep the whole figure visible.",
     "tags": [
       "image",
       "figure",
       "diagram",
       "photo",
       "pdf",
-      "source material"
+      "source material",
+      "hotspots",
+      "image annotation",
+      "ad anatomy",
+      "ui breakdown"
     ],
     "path": "rendering/src/scenes/ImageScene.tsx",
     "staged": false,
@@ -3505,6 +7608,47 @@
         "footer": {
           "default": "",
           "type": "string"
+        },
+        "hotspots": {
+          "default": [],
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 48
+              },
+              "detail": {
+                "type": "string",
+                "maxLength": 90
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "label",
+              "at"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
@@ -3521,7 +7665,8 @@
       "zoom": 1.12,
       "startAt": 0,
       "motionFrames": 150,
-      "footer": ""
+      "footer": "",
+      "hotspots": []
     }
   },
   {
@@ -7802,6 +11947,31 @@
             "maxLength": 70
           }
         },
+        "exampleLines": {
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 72
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "text",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        },
         "zoom": {
           "default": 1,
           "type": "number",
@@ -9707,6 +13877,31 @@
               "items": {
                 "type": "string",
                 "maxLength": 70
+              }
+            },
+            "exampleLines": {
+              "minItems": 1,
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 72
+                  },
+                  "at": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "text",
+                  "at"
+                ],
+                "additionalProperties": false
               }
             },
             "zoom": {
@@ -13071,9 +17266,11 @@
   {
     "name": "TreeScene",
     "version": "1.0.0",
-    "description": "A tree in the paper style. kind \"bst\": insert walks down comparing (7 > 5 → right) and the node pops in; \"avl\": after insert/delete the tree rebalances and nodes glide through each rotation; \"tree\": any hierarchy given as \"tree\": {label, children:[...]} (file system, DOM, org chart). \"values\" are inserted at the start; \"steps\": insert {value, parent for \"tree\"} | delete {value} | find {value} | traverse {order: inorder|preorder|postorder|bfs} | visit {value} | note.",
+    "description": "A tree in the paper style. kind \"bst\": insert walks down comparing (7 > 5 → right) and the node pops in; \"avl\": after insert/delete the tree rebalances and nodes glide through each rotation; \"tree\": any hierarchy given as \"tree\": {label, children:[...]} (file system, DOM, company or newsroom org chart). Omit steps for a static hierarchy. \"values\" are inserted at the start in BST/AVL mode; \"steps\": insert {value, parent for \"tree\"} | delete {value} | find {value} | traverse {order: inorder|preorder|postorder|bfs} | visit {value} | note. For a decision tree, use decisionPath with at and reason for the root, then add a zero-based child index to each following cue.",
     "tags": [
       "tree",
+      "decision tree",
+      "decision path",
       "binary tree",
       "binary search tree",
       "bst",
@@ -13086,6 +17283,10 @@
       "postorder",
       "dom",
       "hierarchy",
+      "org chart",
+      "organization chart",
+      "newsroom",
+      "reporting structure",
       "dsa",
       "recursion",
       "file system"
@@ -13186,6 +17387,36 @@
               "do"
             ],
             "additionalProperties": {}
+          }
+        },
+        "decisionPath": {
+          "minItems": 1,
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "child": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 90
+              }
+            },
+            "required": [
+              "at",
+              "reason"
+            ],
+            "additionalProperties": false
           }
         },
         "showBalance": {

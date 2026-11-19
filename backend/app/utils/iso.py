@@ -1,4 +1,4 @@
-"""IsoScene continuations: "same picture, small change" without repeating the whole diagram.
+"""Lecture continuations keep the same picture across a scene cut.
 
 The planner writes a scene with ``"continue": true`` and lists only what is new (objects, links,
 steps) plus ``"remove": [ids]``. ``expand_continuations`` turns it into a complete IsoScene:
@@ -11,6 +11,9 @@ steps) plus ``"remove": [ids]``. ``expand_continuations`` turns it into a comple
 
 Cheap: those scenes cost only their changes in LLM output. Idempotent: expanded scenes are marked
 ``continued: true`` and lose ``continue`` / ``remove``.
+
+OutcomeComparisonScene keeps its existing two-row layout and carries the final visible rows,
+results and emphasis. The next scene supplies only its new steps.
 """
 
 import copy
@@ -44,12 +47,46 @@ def _end_state(scene: dict[str, Any]) -> tuple[list[dict], list[dict]]:
     return list(alive.values()), links
 
 
+def _continue_comparison(previous: dict, following: dict) -> dict:
+    """Reuse the board and start from the state at the end of its previous narration."""
+    steps = previous.get("steps", [])
+    if not isinstance(steps, list) or any(
+        not isinstance(step, dict) or type(step.get("row")) is not int or step["row"] not in (0, 1) for step in steps
+    ):
+        raise ValueError("The previous comparison's steps must each specify row 0 or 1")
+    on_cue = previous.get("resultsOnCue", any(step.get("reveal") is True for step in steps))
+    start = copy.deepcopy(previous.get("start"))
+    if start is None:
+        rows = previous.get("rows", [{}, {}])
+        if not isinstance(rows, list) or len(rows) != 2 or not all(isinstance(row, dict) for row in rows):
+            raise ValueError("The previous comparison needs two rows")
+        start = {"rows": [{"shown": not row.get("hidden", False), "revealed": not on_cue}
+                          for row in rows]}
+    elif not isinstance(start, dict) or not isinstance(start.get("rows"), list) or len(start["rows"]) != 2 or not all(
+        isinstance(row, dict) and type(row.get("shown")) is bool and type(row.get("revealed")) is bool for row in start["rows"]
+    ):
+        raise ValueError("The previous comparison's start state needs two shown and revealed flags")
+    for step in steps:
+        row = start["rows"][step["row"]]
+        row["shown"] = True
+        row["revealed"] = row["revealed"] or step.get("reveal") is True
+        start["active"] = {key: step[key] for key in ("row", "part", "resultFocus", "explanation") if key in step}
+    return {**copy.deepcopy(previous), "start": start, "steps": following.get("steps", [])}
+
+
 def expand_continuations(spec: dict[str, Any]) -> dict[str, Any]:
     scenes = spec.get("scenes") or []
     chain: list[int] = []
     chains: list[list[int]] = []
     for i, s in enumerate(scenes):
         props = s.get("props") if isinstance(s.get("props"), dict) else None
+        if s.get("component") == "OutcomeComparisonScene" and props and props.get("continue") is True:
+            if i == 0 or scenes[i - 1].get("component") != s["component"]:
+                raise ValueError("An OutcomeComparisonScene continuation needs an OutcomeComparisonScene immediately before it")
+            if props.keys() - {"continue", "steps"}:
+                raise ValueError("Supply only continue and new steps for an OutcomeComparisonScene continuation")
+            s["props"] = _continue_comparison(scenes[i - 1].get("props") or {}, props)
+            s["transition"] = {"type": "none"}
         cont = s.get("component") == "IsoScene" and props is not None and props.get("continue") is True
         if cont and chain:
             prev = scenes[chain[-1]]
@@ -57,9 +94,11 @@ def expand_continuations(spec: dict[str, Any]) -> dict[str, Any]:
             for o in objs:
                 o["enter"] = "none"
                 o.pop("appearAt", None)
+                o.pop("appearCue", None)
             for l in links:
                 l["enter"] = "none"
                 l.pop("appearAt", None)
+                l.pop("appearCue", None)
             removed = set(props.get("remove") or [])
             new_objs = [o for o in props.get("objects") or [] if isinstance(o, dict)]
             new_ids = {o.get("id") for o in new_objs}
@@ -75,6 +114,10 @@ def expand_continuations(spec: dict[str, Any]) -> dict[str, Any]:
             for k in ("eyebrow", "title", "subtitle"):  # same picture, same heading unless it changes
                 if k not in props and k in (prev.get("props") or {}):
                     props[k] = prev["props"][k]
+            previous_lines = (prev.get("props") or {}).get("exampleLines")
+            if previous_lines and "exampleLines" not in props and "points" not in props:
+                props["exampleLines"] = [{"text": line["text"], "at": 0} for line in previous_lines
+                                         if isinstance(line, dict) and "text" in line]
             props.pop("continue", None)
             props.pop("remove", None)
             props["continued"] = True

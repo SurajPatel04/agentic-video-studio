@@ -57,7 +57,7 @@ def _transition_into(spec: dict[str, Any], i: int) -> int:
     scenes = spec.get("scenes", [])
     if i <= 0 or i >= len(scenes):
         return 0
-    t = scenes[i].get("transition") or spec.get("defaultTransition") or {"type": "fade"}
+    t = scenes[i].get("transition") or spec.get("defaultTransition") or {"type": "none"}
     return 0 if t.get("type") == "none" else int(t.get("durationInFrames", DEFAULT_TRANSITION_FRAMES))
 
 
@@ -146,6 +146,9 @@ async def add_narration(spec: dict[str, Any], *, captions: bool | None = None) -
 
     for (i, scene), clip, words in zip(jobs, clips, timings):
         delay = int(scene["narration"].get("delay", 10))
+        transition = scene.get("transition") or spec.get("defaultTransition") or {}
+        if transition.get("type") in {"wipe", "fade"} and (overlap := _transition_into(spec, i)):
+            delay = max(delay, overlap + 3)  # Captions.tsx shows the first line up to three frames early.
         frames = math.ceil(clip.seconds * fps)
         scene["voice"] = {**(scene.get("voice") or {}), "src": clip.src, "startAt": delay, "frames": frames}
         scene["voice"].pop("words", None)
@@ -216,7 +219,7 @@ async def render_video(
     job_dir.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
 
-    spec = expand_continuations(copy.deepcopy(spec))  # hand-written JSON may use IsoScene "continue" too
+    spec = expand_continuations(copy.deepcopy(spec))  # hand-written plans may request continuations too
     spec = paper_code_scenes(spec)  # paper-style video: no dark CodeScene
     spec = apply_brand(spec)
     made = cached = 0

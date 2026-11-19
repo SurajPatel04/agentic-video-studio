@@ -3,16 +3,22 @@ import {z} from 'zod';
 import {scaleBand, scaleLinear, scalePoint} from 'd3-scale';
 import {area, curveMonotoneX, line} from 'd3-shape';
 import {StudyFrame} from '../components/StudyFrame';
-import {useTheme} from '../theme';
+import {useSceneLength, useTheme} from '../theme';
 
 const nonnegative = z.number().int().nonnegative();
-const positive = z.number().int().positive();
 
 export const chartSceneSchema = z.object({
   title: z.string().default('Global internet users'),
   eyebrow: z.string().default('CHART / SEE THE TREND'),
   chartType: z.enum(['bar', 'line', 'area']).default('bar'),
   categories: z.array(z.string()).min(2).max(12).default(['2019', '2020', '2021', '2022', '2023', '2024']),
+  xValues: z.array(z.number()).min(2).max(12).optional(),
+  markers: z.array(z.object({
+    at: z.number().min(0).max(1),
+    x: z.number(),
+    y: z.number().nonnegative(),
+    label: z.string().min(1).max(45),
+  }).strict()).max(4).default([]),
   series: z.array(z.object({
     name: z.string(),
     values: z.array(z.number().nonnegative()),
@@ -28,9 +34,19 @@ export const chartSceneSchema = z.object({
   showLegend: z.boolean().default(true),
   showGrid: z.boolean().default(true),
   startAt: nonnegative.default(12),
-  growFrames: positive.default(42),
+  growFrames: nonnegative.default(42),
   footer: z.string().default('Bars and lines are drawn in proportion to the values shown.'),
 }).superRefine((p, ctx) => {
+  const {xValues} = p;
+  if (xValues && (p.chartType === 'bar' || xValues.length !== p.categories.length ||
+    xValues.some((value, i) => i > 0 && value <= xValues[i - 1]))) {
+    ctx.addIssue({code: 'custom', path: ['xValues'], message: 'Use one increasing x value per category on a line or area chart.'});
+  }
+  p.markers.forEach((marker, i) => {
+    if (!xValues || marker.x < xValues[0] || marker.x > xValues[xValues.length - 1]) {
+      ctx.addIssue({code: 'custom', path: ['markers', i, 'x'], message: 'Place the marker within the numeric x axis.'});
+    }
+  });
   p.series.forEach((s, i) => {
     if (s.values.length !== p.categories.length) {
       ctx.addIssue({code: 'custom', path: ['series', i, 'values'], message: 'Each series needs one value per category'});
@@ -38,7 +54,7 @@ export const chartSceneSchema = z.object({
   });
 });
 
-export const description = 'A flexible, animated bar, line, or area chart with multiple series, axes, grid lines, and value labels.';
+export const description = 'A bar, line, or area chart. On a line or area chart, supply xValues for numeric spacing, and add labeled markers to distinguish a prediction from observed data. Use growFrames:0 to keep the existing chart visible while a marker is added on its narration cue.';
 export const tags = ['chart', 'bar', 'line', 'area', 'data', 'trend', 'statistics'];
 
 const DEFAULT_COLORS = ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24'];
@@ -47,7 +63,7 @@ const fmt = (value: number, maxDigits = 2) => new Intl.NumberFormat('en-US', {ma
 
 export const ChartScene: React.FC<z.input<typeof chartSceneSchema>> = (input) => {
   const p = chartSceneSchema.parse(input);
-  const frame = useCurrentFrame();
+  const frame = useCurrentFrame(), len = useSceneLength();
   const theme = useTheme();
 
   const W = 1440;
@@ -60,26 +76,27 @@ export const ChartScene: React.FC<z.input<typeof chartSceneSchema>> = (input) =>
   const plotH = H - top - bottom;
   const colors = p.series.map((s, i) => s.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length]);
 
-  const rawMax = Math.max(...p.series.flatMap((s) => s.values), 0);
+  const rawMax = Math.max(...p.series.flatMap((s) => s.values), ...p.markers.map(marker => marker.y), 0);
   const yScale = scaleLinear().domain([0, p.maxValue ?? (rawMax || 1)]).nice(4).range([plotH, 0]);
   const yTicks = yScale.ticks(4);
   const yTop = yTicks[yTicks.length - 1] || 1;
 
   const band = scaleBand<string>().domain(p.categories).range([0, plotW]).padding(0.26);
   const point = scalePoint<string>().domain(p.categories).range([0, plotW]).padding(0.22);
+  const numericX = p.xValues ? scaleLinear()
+    .domain([p.xValues[0], p.xValues[p.xValues.length - 1]]).range([38, plotW - 38]) : undefined;
+  const xAt = (category: string, index: number) => numericX && p.xValues ? numericX(p.xValues[index]) : point(category) ?? 0;
 
-  const seriesProgress = (index: number) => interpolate(
-    frame,
-    [p.startAt + index * 8, p.startAt + index * 8 + p.growFrames],
-    [0, 1],
-    {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic)},
-  );
+  const grow = (start: number) => p.growFrames === 0 ? 1 :
+    interpolate(frame, [start, start + p.growFrames], [0, 1],
+      {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic)});
 
   const linePath = line<[number, number]>().x((d) => d[0]).y((d) => d[1]).curve(curveMonotoneX);
   const areaPath = area<[number, number]>().x((d) => d[0]).y0(plotH).y1((d) => d[1]).curve(curveMonotoneX);
 
   return (
-    <StudyFrame title={p.title} eyebrow={p.eyebrow} footer={p.footer || undefined}>
+    <StudyFrame title={p.title} eyebrow={p.eyebrow} footer={p.footer || undefined}
+      textAnimation={p.growFrames === 0 ? 'none' : undefined}>
       <div style={{position: 'absolute', top: -8, right: 0, display: 'flex', gap: 24, alignItems: 'center'}}>
         {p.showLegend && p.series.length > 1
           ? p.series.map((s, i) => (
@@ -112,12 +129,7 @@ export const ChartScene: React.FC<z.input<typeof chartSceneSchema>> = (input) =>
                 const barWidth = Math.max(8, groupWidth * 0.8);
                 return p.series.map((s, seriesIndex) => {
                   const value = s.values[categoryIndex] ?? 0;
-                  const progress = interpolate(
-                    frame,
-                    [p.startAt + categoryIndex * 2, p.startAt + categoryIndex * 2 + p.growFrames],
-                    [0, 1],
-                    {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic)},
-                  );
+                  const progress = grow(p.startAt + categoryIndex * 2);
                   const height = (value / yTop) * plotH * progress;
                   const x = (band(category) ?? 0) + seriesIndex * groupWidth + (groupWidth - barWidth) / 2;
                   const y = plotH - height;
@@ -134,8 +146,8 @@ export const ChartScene: React.FC<z.input<typeof chartSceneSchema>> = (input) =>
                 });
               })
             : p.series.map((s, seriesIndex) => {
-                const progress = seriesProgress(seriesIndex);
-                const points = p.categories.map((category, i) => [point(category) ?? 0, yScale(s.values[i] ?? 0)] as [number, number]);
+                const progress = grow(p.startAt + seriesIndex * 8);
+                const points = p.categories.map((category, i) => [xAt(category, i), yScale(s.values[i] ?? 0)] as [number, number]);
                 const d = p.chartType === 'area' ? areaPath(points) : linePath(points);
                 const clipId = `chart-clip-${seriesIndex}`;
                 return (
@@ -162,8 +174,19 @@ export const ChartScene: React.FC<z.input<typeof chartSceneSchema>> = (input) =>
                 );
               })}
 
-          {p.categories.map((category) => {
-            const x = p.chartType === 'bar' ? (band(category) ?? 0) + band.bandwidth() / 2 : point(category) ?? 0;
+          {numericX && p.markers.map((marker, i) => {
+            if (frame < Math.min(len - 1, Math.round(marker.at * len))) return null;
+            const x = numericX(marker.x), y = yScale(marker.y);
+            const labelX = Math.max(195, Math.min(plotW - 195, x));
+            return <g key={i} fill="#85420d">
+              <line x1={x} y1={y} x2={x} y2={plotH} stroke="#a85b19" strokeWidth={2} strokeDasharray="6 5" />
+              <circle cx={x} cy={y} r={10} fill="#f5b564" stroke="#85420d" strokeWidth={3} />
+              <text x={labelX} y={y - 27} textAnchor="middle" fontSize={23} fontWeight={750}
+                stroke={theme.background} strokeWidth={7} paintOrder="stroke">{marker.label}</text>
+            </g>;
+          })}
+          {p.categories.map((category, i) => {
+            const x = p.chartType === 'bar' ? (band(category) ?? 0) + band.bandwidth() / 2 : xAt(category, i);
             return (
               <text key={category} x={x} y={plotH + 34} textAnchor="middle" fill={theme.muted} fontSize={19}>
                 {category}

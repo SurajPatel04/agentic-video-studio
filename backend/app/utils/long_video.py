@@ -38,6 +38,7 @@ from pydantic import BaseModel, Field, ValidationError
 from app.config import settings
 from app.utils import skill_router, skills as teaching_skills
 from app.utils.console import step
+from app.utils.iso import expand_continuations
 from app.utils.llm import get_llm, text_of, usage_of
 from app.utils.planner import BRIEF_GUIDANCE, PlanError, _extract_json, apply_layout, plan_video
 from app.utils import cues, subtitles
@@ -224,6 +225,9 @@ Rules:
 - glossary: shared terms when terminology matters (otherwise empty). examples: recurring examples or situations
   when relevant. Establish the people, facts or sample data shared across chapters. For data examples,
   specify stable identifiers, field names, types and values. Use examples from the requested subject.
+- In a lesson's visual conventions, keep the same worked evidence on screen across steps. Describe
+  what to reveal as the narrator names it. In a process diagram, treat messages and results as what
+  moves between participants and label where each result becomes visible.
 - Decide code_demo for each chapter from its viewer outcome. If viewers need to read, write, trace
   or debug source code to meet that goal, describe the specific code demonstration in one short
   sentence. Use an empty string when source code is optional, including when interfaces, sample
@@ -496,11 +500,21 @@ def _stamp(seconds: float) -> str:
     return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}" if s >= 3600 else f"{s // 60:02d}:{s % 60:02d}"
 
 
+async def _has_audio(video: Path) -> bool:
+    code, out = await _ffmpeg("ffprobe", "-v", "error", "-select_streams", "a:0",
+                              "-show_entries", "stream=index", "-of", "csv=p=0", str(video), timeout=60)
+    if code != 0:
+        raise RenderError("ffprobe failed", out[-1000:])
+    return bool(out.strip())
+
+
 async def join_chapters(state: LongState) -> Path:
-    """Concatenate the chapter MP4s (stream copy; re-encode if that fails) and add chapter markers."""
+    """Copy the chapter pictures, join their decoded audio, and add chapter markers."""
     d = _dir(state.id)
     videos = [settings.WORKSPACE_DIR / "jobs" / c.job_id / "video.mp4" for c in state.chapters]
-    (d / "concat.txt").write_text("".join(f"file '{v.resolve()}'\n" for v in videos))
+    lengths = [c.seconds for c in state.chapters]
+    (d / "concat.txt").write_text("".join(f"file '{v.resolve()}'\nduration {length:.3f}\n"
+                                        for v, length in zip(videos, lengths)))
     meta, stamps, start = [";FFMETADATA1", f"title={state.outline.title}"], [], 0.0
     cues, said = long_captions(state)
     mode = ""
@@ -514,7 +528,9 @@ async def join_chapters(state: LongState) -> Path:
         start = end
     (d / "chapters.ffmeta").write_text("\n".join(meta) + "\n")
     out = d / "video.mp4"
-    base = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(d / "concat.txt"), "-i", str(d / "chapters.ffmeta")]
+    # Keep picture timestamps anchored at zero even when the concat demuxer
+    # reports a negative start time from a chapter's AAC priming packets.
+    base = ["ffmpeg", "-y", "-copyts", "-f", "concat", "-safe", "0", "-i", str(d / "concat.txt"), "-i", str(d / "chapters.ffmeta")]
     track = []
     if cues:
         srt, _ = subtitles.write_files(cues, d)
@@ -522,10 +538,30 @@ async def join_chapters(state: LongState) -> Path:
             base += ["-i", str(srt)]
             track = ["-map", "2:0", "-c:s", "mov_text", "-metadata:s:s:0", "language=eng", "-metadata:s:s:0", "title=Captions",
                      "-disposition:s:0", "default" if mode == "track" else "0"]
-    base += ["-map", "0:v", "-map", "0:a?", "-map_metadata", "1", "-map_chapters", "1", *track]
-    code, log_text = await _ffmpeg(*base, "-c:v", "copy", "-c:a", "copy", "-movflags", "+faststart", str(out))
+    audio = await asyncio.gather(*(_has_audio(video) for video in videos))
+    audio_map: list[str] = []
+    if any(audio):
+        # Decode each AAC track independently so FFmpeg applies its MP4 edit list
+        # and removes encoder priming before the chapter timelines are joined.
+        index = 3 if track else 2
+        filters, streams = [], []
+        for n, (video, length, has_audio) in enumerate(zip(videos, lengths, audio)):
+            label = f"[chapter_audio{n}]"
+            if has_audio:
+                base += ["-i", str(video)]
+                source = f"[{index}:a:0]aformat=sample_rates=48000:channel_layouts=stereo,apad"
+                index += 1
+            else:
+                source = "anullsrc=r=48000:cl=stereo"
+            filters.append(f"{source},atrim=duration={length:.3f},asetpts=N/SR/TB{label}")
+            streams.append(label)
+        filters.append("".join(streams) + f"concat=n={len(streams)}:v=0:a=1[joined_audio]")
+        base += ["-filter_complex", ";".join(filters)]
+        audio_map = ["-map", "[joined_audio]", "-c:a", "aac", "-b:a", "128k"]
+    base += ["-map", "0:v", *audio_map, "-map_metadata", "1", "-map_chapters", "1", *track]
+    code, log_text = await _ffmpeg(*base, "-c:v", "copy", "-movflags", "+faststart", str(out))
     if code != 0:  # chapters differ in format: re-encode once
-        code, log_text = await _ffmpeg(*base, "-c:v", "libx264", "-crf", "18", "-c:a", "aac", "-movflags", "+faststart", str(out))
+        code, log_text = await _ffmpeg(*base, "-c:v", "libx264", "-crf", "18", "-movflags", "+faststart", str(out))
     (d / "join.log").write_text(log_text)
     if code != 0 or not out.exists():
         raise RenderError("joining chapters failed", log_text[-2000:])
@@ -804,7 +840,8 @@ async def set_chapter_plan(job_id: str, n: int, spec: dict[str, Any]) -> LongSta
     if not 1 <= n <= len(state.chapters):
         raise ValueError(f"chapter {n} does not exist")
     tmp = _dir(job_id) / f"ch{n:02d}.check.json"
-    tmp.write_text(json.dumps(cues.resolve(spec)[0], indent=2))  # word cues are resolved at render
+    checked, _ = cues.resolve(spec)  # word cues are resolved from speech at render
+    tmp.write_text(json.dumps(expand_continuations(checked), indent=2))
     try:
         await validate(tmp)
     finally:

@@ -33,6 +33,11 @@ metadata:
   scenes:
   - IsoScene
   - NewsCycleScene
+  - FactCheckScene
+  - CaseStudyScene
+  - ProfileScene
+  - LayersScene
+  - ImageScene
   - FrontPageScene
   - PrintDeliveryScene
   - FeedScene
@@ -47,7 +52,7 @@ metadata:
   long_video: false
 ---
 
-Teach media as people and things doing something: a sender makes a message, a channel carries it, an audience receives and reacts. Every idea should be visible as objects, never as a table of terms.
+Teach media as people and things doing something: a sender makes a message, a channel carries it, an audience receives and reacts. Make every idea visible.
 
 Pick ONE running story the viewer knows (a storm warning, a new phone launch, an election, a local festival) and follow it through the whole video, so each concept is a new view of the same story.
 
@@ -77,19 +82,13 @@ Use real examples with source-supported statistics, dates and quotes. Keep claim
 
 For individual beats in IsoScene, use `flow: "wave"` for a broadcast, `via` for an opinion leader, `noise: true` for interference, and a dashed link from the audience to the sender for feedback. Use timed `spread`, `gate`, `frame`, `agenda`, `bubble`, `race`, `attention`, `opinion`, `split`, `react`, `say` and `headline` fields to demonstrate the corresponding changes on the diagram.
 
-News and journalism animations (prefer these for complete sequences):
-- `NewsCycleScene`: event → reporter with mic → editor / funnel → publication → audience reactions. Set `event`, `output` (`print` or `broadcast`) and `stories` (`label`, `selected`).
-- `FrontPageScene`: an empty newspaper builds headline, illustrated photo and text columns; the editor changes the lead story’s size. Set `masthead`, `headline`, `photoCaption`, `stories` and `leadShare` (0.5–0.72).
-- `PrintDeliveryScene`: rolling press → stacking papers → van along a road → doorstep deliveries. Set `masthead` and 2–4 `homes` labels.
-- `StudioScene`: anchor and cameras → ON AIR → control-room camera cut → TVs at home. Set `channel`, `headline`, `anchorName`, `cameraLabels`, and optional fractional `liveAt`, `switchAt`, `homeAt`.
-- All four work with empty props and stretch to the scene duration. Preview `rendering/examples/journalism.json` or `JournalismDemo` in Remotion Studio.
-
-Broadcast animation scenes: `SignalHomesScene` for expanding tower waves activating house receivers; `RadioTuningScene` for a dial and visual static settling into a clean waveform; `SatelliteNewsScene` for uplink/downlink and an illustrative delay timer. All use isometric artwork and accept empty props.
-
-Social/digital animations: `FeedScene` modes `scroll` (likes, shares, comment) and `ranking` (scores, reorder); `SpreadScene` modes `viral` and `race` (false post vs delayed correction); `CreatorWorkflowScene` (shoot, edit timeline, upload, views). `MediaTheoryScene` modes `communication`, `agenda`, `two-step`, `gratifications`. Reuse `NewsCycleScene` for gatekeeping. All metrics are illustrative; correction reach does not imply belief changed. Preview `SocialMediaDemo`.
+Journalism and media scenes:
+- NewsCycleScene follows a story from reporting through gatekeeping to publication and reaction. FrontPageScene shows how editors give a story more prominence. PrintDeliveryScene and StudioScene cover delivery and live broadcast.
+- SignalHomesScene shows broadcast coverage. RadioTuningScene illustrates tuning and static. SatelliteNewsScene demonstrates uplink, downlink and illustrative delay.
+- FeedScene shows scrolling or ranking. SpreadScene compares the reach of a rumour and correction. CreatorWorkflowScene shows video production. MediaTheoryScene covers communication, agenda setting, two-step flow and uses and gratifications.
+- FactCheckScene holds a claim, shows sourced evidence, and explains a verdict. Use ImageScene hotspots for ad or front-page anatomy. Use CaseStudyScene for a campaign with a measured result, ProfileScene for an audience segment, and LayersScene for AIDA.
 
 Expanded isometric media props (use the actual object, rather than a generic icon tile):
-- Audio: headphones, mixingconsole, boommic, speaker, audiorecorder, podcastbooth.
 - Broadcasting: studiocamera (tripod broadcast camera), newsdesk (anchor desk), teleprompter, studiolights, controlmonitors, obvan.
 - Film: clapperboard, cinemaprojector, cinemascreen, filmreel, storyboard, editingtimeline, theatrestage.
 - Digital: socialpost, scrollingfeed, videoplayer, livestream, comments, repost, notification, hashtag.

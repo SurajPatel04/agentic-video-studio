@@ -1,0 +1,300 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "brand": false,
+  "audio": {
+    "effects": false
+  },
+  "defaultTransition": {
+    "type": "fade",
+    "durationInFrames": 15
+  },
+  "scenes": [
+    {
+      "id": "dataset",
+      "component": "DatasetScene",
+      "props": {
+        "leakage": {
+          "at": 0.78,
+          "text": "If the test examples help choose or fit the model, the test score is no longer an independent estimate."
+        }
+      },
+      "durationInFrames": 150
+    },
+    {
+      "id": "fit",
+      "component": "ModelTrainingScene",
+      "props": {
+        "title": "Fit a simple price model",
+        "examples": [
+          {
+            "x": 1,
+            "y": 2
+          },
+          {
+            "x": 1.5,
+            "y": 2.75
+          }
+        ],
+        "bias": 0.5,
+        "initialWeight": 0.8,
+        "rate": 0.12,
+        "units": "Floor area in thousands of ft². Price in hundreds of thousands of dollars."
+      },
+      "durationInFrames": 180
+    },
+    {
+      "id": "forward",
+      "component": "NeuralNetworkScene",
+      "props": {
+        "steps": [
+          {
+            "at": 0.34,
+            "mode": "forward",
+            "layer": 0,
+            "neuron": 0
+          },
+          {
+            "at": 0.7,
+            "mode": "forward",
+            "layer": 1,
+            "neuron": 0
+          }
+        ]
+      },
+      "durationInFrames": 180
+    },
+    {
+      "id": "evaluation",
+      "component": "ModelEvaluationScene",
+      "props": {
+        "models": [
+          {
+            "name": "Underfit",
+            "train": 0.6,
+            "test": 0.58,
+            "at": 0.36
+          },
+          {
+            "name": "Overfit",
+            "train": 0.99,
+            "test": 0.67,
+            "at": 0.54
+          },
+          {
+            "name": "Better fit",
+            "train": 0.88,
+            "test": 0.85,
+            "at": 0.72
+          }
+        ]
+      },
+      "durationInFrames": 150
+    },
+    {
+      "id": "classification",
+      "component": "MLScatterScene",
+      "props": {},
+      "durationInFrames": 150
+    },
+    {
+      "id": "clustering",
+      "component": "MLScatterScene",
+      "props": {
+        "title": "Group points with k-means",
+        "mode": "clustering",
+        "cluster": {
+          "centers": [
+            [
+              -0.1,
+              0.3
+            ],
+            [
+              0.62,
+              0.15
+            ]
+          ],
+          "steps": [
+            {
+              "at": 0.29
+            },
+            {
+              "at": 0.46
+            },
+            {
+              "at": 0.63
+            },
+            {
+              "at": 0.8
+            }
+          ]
+        }
+      },
+      "durationInFrames": 180
+    },
+    {
+      "id": "decision-tree",
+      "component": "TreeScene",
+      "props": {
+        "title": "Predict a house price band",
+        "kind": "tree",
+        "sound": false,
+        "tree": {
+          "label": "Area ≥ 1,500 ft²?",
+          "children": [
+            {
+              "label": "Lower price band"
+            },
+            {
+              "label": "Higher price band"
+            }
+          ]
+        },
+        "decisionPath": [
+          {
+            "at": 0.16,
+            "reason": "Start with a house of 1,800 square feet."
+          },
+          {
+            "at": 0.62,
+            "child": 1,
+            "reason": "1,800 is at least 1,500. Follow the yes branch."
+          }
+        ]
+      },
+      "durationInFrames": 150
+    },
+    {
+      "id": "gradient",
+      "component": "ModelTrainingScene",
+      "props": {
+        "title": "Step downhill on the loss curve",
+        "mode": "gradient"
+      },
+      "durationInFrames": 150
+    },
+    {
+      "id": "backprop",
+      "component": "NeuralNetworkScene",
+      "props": {
+        "title": "Trace the error back to a hidden weight",
+        "target": 3,
+        "steps": [
+          {
+            "at": 0.3,
+            "mode": "forward",
+            "layer": 0,
+            "neuron": 0
+          },
+          {
+            "at": 0.62,
+            "mode": "backward",
+            "layer": 0,
+            "neuron": 0
+          },
+          {
+            "at": 0.8,
+            "mode": "update",
+            "layer": 0,
+            "neuron": 0
+          }
+        ]
+      },
+      "durationInFrames": 210
+    },
+    {
+      "id": "tokenization",
+      "component": "TokenizationScene",
+      "props": {},
+      "durationInFrames": 150
+    },
+    {
+      "id": "embeddings",
+      "component": "MLScatterScene",
+      "props": {
+        "title": "Find a similar item using vectors",
+        "mode": "embedding",
+        "points": [
+          {
+            "label": "bicycle",
+            "xy": [
+              0.78,
+              0.49
+            ]
+          },
+          {
+            "label": "scooter",
+            "xy": [
+              0.65,
+              0.35
+            ]
+          },
+          {
+            "label": "recipe",
+            "xy": [
+              -0.53,
+              0.72
+            ]
+          }
+        ],
+        "similarity": {
+          "query": {
+            "label": "bike",
+            "xy": [
+              0.61,
+              0.4
+            ],
+            "at": 0.28
+          },
+          "at": 0.62
+        }
+      },
+      "durationInFrames": 150
+    },
+    {
+      "id": "attention",
+      "component": "AttentionScene",
+      "props": {},
+      "durationInFrames": 180
+    },
+    {
+      "id": "generation",
+      "component": "TextGenerationScene",
+      "props": {},
+      "durationInFrames": 210
+    },
+    {
+      "id": "lifecycle",
+      "component": "AIWorkflowScene",
+      "props": {
+        "mode": "lifecycle"
+      },
+      "durationInFrames": 150
+    },
+    {
+      "id": "rag",
+      "component": "RAGScene",
+      "props": {
+        "evidenceFocus": "6 p.m."
+      },
+      "durationInFrames": 360
+    },
+    {
+      "id": "tools",
+      "component": "AIWorkflowScene",
+      "props": {
+        "mode": "tools"
+      },
+      "durationInFrames": 150
+    },
+    {
+      "id": "reliability",
+      "component": "AIWorkflowScene",
+      "props": {
+        "mode": "reliability"
+      },
+      "durationInFrames": 150
+    }
+  ]
+}

@@ -19,6 +19,49 @@ def base():
 
 
 class ContinueTests(unittest.TestCase):
+    def test_comparison_carries_rows_results_and_focus_across_cuts(self):
+        component = "OutcomeComparisonScene"
+        original = {"title": "Read watches", "resultsOnCue": True, "rows": [
+            {"parts": [{"text": "GET /watches"}], "result": "[]"},
+            {"parts": [{"text": "GET /watches/w-104"}], "result": '{"id":"w-104"}', "hidden": True},
+        ], "steps": [{"cue": "the list", "row": 0, "reveal": True, "explanation": "Read the list."}]}
+        spec = {"scenes": [
+            {"component": component, "props": original},
+            {"component": component, "props": {"continue": True, "steps": [
+                {"cue": "the ID", "row": 1, "part": 0}]}},
+            {"component": component, "props": {"continue": True, "steps": [
+                {"cue": "one watch", "row": 1, "reveal": True}]}},
+        ]}
+        expand_continuations(spec)
+        middle, end = spec["scenes"][1:]
+        self.assertEqual(middle["transition"], {"type": "none"})
+        self.assertEqual(middle["props"]["rows"], original["rows"])
+        self.assertEqual(middle["props"]["start"], {
+            "rows": [{"shown": True, "revealed": True}, {"shown": False, "revealed": False}],
+            "active": {"row": 0, "explanation": "Read the list."},
+        })
+        self.assertEqual(middle["props"]["steps"], [{"cue": "the ID", "row": 1, "part": 0}])
+        self.assertEqual(end["props"]["start"], {
+            "rows": [{"shown": True, "revealed": True}, {"shown": True, "revealed": False}],
+            "active": {"row": 1, "part": 0},
+        })
+        expanded = copy.deepcopy(spec)
+        self.assertEqual(expand_continuations(spec), expanded)
+
+    def test_comparison_requires_an_adjacent_board(self):
+        with self.assertRaisesRegex(ValueError, "immediately before"):
+            expand_continuations({"scenes": [
+                {"component": "OutcomeComparisonScene", "props": {"continue": True}},
+            ]})
+
+    def test_written_example_stays_visible_in_continuation(self):
+        setup = base()
+        setup["props"]["exampleLines"] = [{"text": "Initial state", "at": 0}, {"text": "Result", "cue": "result"}]
+        continuation = {"id": "next", "component": "IsoScene", "props": {"continue": True}}
+        expand_continuations({"scenes": [setup, continuation]})
+        self.assertEqual(continuation["props"]["exampleLines"],
+                         [{"text": "Initial state", "at": 0}, {"text": "Result", "at": 0}])
+
     def test_carries_end_state_without_entrance(self):
         spec = {"scenes": [base(), {"id": "s2", "component": "IsoScene", "props": {
             "continue": True, "objects": [{"id": "b", "kind": "server", "at": [3.5, 0]}],
