@@ -13,8 +13,14 @@ import copy
 import json
 import logging
 import math
+import os
+import re
+import signal
+import tempfile
 import time
 import uuid
+import wave
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -28,6 +34,16 @@ from app.utils.tts import synthesize, word_timings
 log = logging.getLogger(__name__)
 
 DEFAULT_TRANSITION_FRAMES = 15  # matches rendering/src/transitions.ts
+HIGHLIGHT_MARKUP = re.compile(r"==[^=\n]+==")
+
+
+def _needs_spoken_words(scene: dict[str, Any]) -> bool:
+    props = scene.get("props") or {}
+    if scene.get("component") != "ExplainScene":
+        return False
+    return bool(props.get("pointCues")) or any(
+        isinstance(text, str) and HIGHLIGHT_MARKUP.search(text) for text in (props.get("heading"), props.get("body"))
+    )
 
 
 class RenderError(RuntimeError):
@@ -119,12 +135,11 @@ def set_captions(spec: dict[str, Any], enabled: bool | None) -> dict[str, Any]:
 async def add_narration(spec: dict[str, Any], *, captions: bool | None = None) -> tuple[dict[str, Any], int, int, list[str]]:
     """Turn each scene's ``narration`` into a ``voice`` clip and make the scene long enough for it.
 
-    With captions on, also stores when each word is spoken (``voice.words``, scene frames).
+    Stores word timings for captions and narration synced highlights.
     Returns (new spec, clips made, clips cached, log lines). The input is not modified.
     """
     spec = set_captions(spec, captions)
     show_words = captions_enabled(spec)
-    want_words = show_words or cues.has_cues(spec)  # word cues need the spoken word times too
     spec = copy.deepcopy(spec)
     fps = int(spec.get("fps", 30))
     default_voice = (spec.get("audio") or {}).get("voice") or settings.TTS_VOICE
@@ -132,20 +147,27 @@ async def add_narration(spec: dict[str, Any], *, captions: bool | None = None) -
     made = cached = 0
     lines: list[str] = []
 
-    jobs = [(i, s) for i, s in enumerate(scenes) if (s.get("narration") or {}).get("text")]
-    clips, timings = [], []
-    if jobs:
-        with step("voice (Deepgram TTS)", clips=len(jobs), voice=default_voice) as st:
-            clips = await asyncio.gather(*(synthesize(sc["narration"]["text"], sc["narration"].get("voice") or default_voice) for _, sc in jobs))
-            st.update(new=sum(not c.cached for c in clips), cached=sum(c.cached for c in clips), audio=f"{sum(c.seconds for c in clips):.0f}s")
-    if jobs and want_words:
-        with step("caption timings (Deepgram STT)", clips=len(jobs)) as st:
-            timings = await asyncio.gather(*(word_timings(clip, sc["narration"]["text"]) for (_, sc), clip in zip(jobs, clips)))
-            st["words"] = sum(len(t) for t in timings)
-    else:
-        timings = [None] * len(jobs)
+    async def prepare_voice(i: int, scene: dict[str, Any]):
+        narration = scene["narration"]
+        try:
+            clip = await synthesize(narration["text"], narration.get("voice") or default_voice)
+            words = await word_timings(clip, narration["text"]) if (
+                show_words or _needs_spoken_words(scene) or cues.has_cues(scene)
+            ) else []
+        except Exception as exc:
+            raise RenderError(f"Scene {i + 1} ({scene['id']}) audio preparation failed", str(exc)) from exc
+        return i, scene, clip, words
 
-    for (i, scene), clip, words in zip(jobs, clips, timings):
+    jobs = [(i, s) for i, s in enumerate(scenes) if (s.get("narration") or {}).get("text")]
+    prepared = []
+    if jobs:
+        with step("scene narration and word timings", scenes=len(jobs), voice=default_voice) as st:
+            prepared = await asyncio.gather(*(prepare_voice(i, scene) for i, scene in jobs))
+            st.update(new=sum(not clip.cached for _, _, clip, _ in prepared),
+                      cached=sum(clip.cached for _, _, clip, _ in prepared),
+                      words=sum(len(words) for _, _, _, words in prepared))
+
+    for i, scene, clip, words in prepared:
         delay = int(scene["narration"].get("delay", 10))
         transition = scene.get("transition") or spec.get("defaultTransition") or {}
         if transition.get("type") in {"wipe", "fade"} and (overlap := _transition_into(spec, i)):
@@ -172,22 +194,45 @@ async def add_narration(spec: dict[str, Any], *, captions: bool | None = None) -
         missing = cues.resolve_scene(scene)
         if missing:
             lines.append(f"{scene.get('id')}: cues not heard in the narration (kept estimated): {', '.join(missing)}")
-        if not show_words and isinstance(scene.get("voice"), dict):
-            scene["voice"].pop("words", None)  # captions off: the times were only needed for the cues
+        if not show_words and not _needs_spoken_words(scene) and isinstance(scene.get("voice"), dict):
+            scene["voice"].pop("words", None)
     return spec, made, cached, lines
 
 
-async def _run(cmd: list[str], timeout: float) -> tuple[int, str]:
+async def _run(cmd: list[str], timeout: float, on_output: Callable[[str], None] | None = None) -> tuple[int, str]:
+    isolated = os.name == "posix"
     proc = await asyncio.create_subprocess_exec(
-        *cmd, cwd=settings.RENDERING_DIR, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        *cmd, cwd=settings.RENDERING_DIR, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+        start_new_session=isolated,
     )
-    try:
-        out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
-        proc.kill()
+    async def collect_output() -> str:
+        if on_output is None:
+            out, _ = await proc.communicate()
+            return out.decode(errors="replace")
+        assert proc.stdout is not None
+        lines = []
+        async for raw in proc.stdout:
+            line = raw.decode(errors="replace")
+            on_output(line)
+            lines.append(line)
         await proc.wait()
-        raise RenderError(f"timed out after {timeout:.0f}s: {' '.join(cmd[:3])}")
-    return proc.returncode or 0, out.decode(errors="replace")
+        return "".join(lines)
+
+    try:
+        output = await asyncio.wait_for(collect_output(), timeout=timeout)
+    except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
+        try:
+            if isolated:
+                os.killpg(proc.pid, signal.SIGKILL)
+            elif proc.returncode is None:
+                proc.kill()
+        except ProcessLookupError:
+            pass
+        await proc.communicate()
+        if isinstance(exc, asyncio.CancelledError):
+            raise
+        raise RenderError(f"timed out after {timeout:.0f}s: {' '.join(cmd[:3])}") from exc
+    return proc.returncode or 0, output
 
 
 async def validate(composition_file: Path) -> None:
@@ -199,6 +244,67 @@ async def validate(composition_file: Path) -> None:
             log.warning("validation errors:\n%s", errors or out[-2000:])
             raise RenderError("composition is invalid", errors or out[-2000:])
         s["ok"] = True
+
+
+def _join_scene_audio(chunks: Path, boundaries: list[int], fps: int) -> Path:
+    """Concatenate PCM by exact frame boundaries, then let FFmpeg encode AAC once."""
+    soundtrack = chunks / "soundtrack.wav"
+    sample_rate = 48000
+    with wave.open(str(soundtrack), "wb") as output:
+        output.setparams((2, 2, sample_rate, 0, "NONE", "not compressed"))
+        for index, (start, end) in enumerate(zip(boundaries, boundaries[1:]), 1):
+            samples = round(end * sample_rate / fps) - round(start * sample_rate / fps)
+            try:
+                with wave.open(str(chunks / f"scene-{index:05d}.wav"), "rb") as clip:
+                    if (clip.getnchannels(), clip.getsampwidth(), clip.getframerate()) != (2, 2, sample_rate):
+                        raise RenderError(f"Scene {index} audio has an unexpected format")
+                    output.writeframesraw(clip.readframes(samples).ljust(samples * 4, b"\x00"))
+            except (OSError, EOFError, wave.Error) as exc:
+                raise RenderError(f"Scene {index} audio could not be joined", str(exc)) from exc
+    return soundtrack
+
+
+async def _render_scene_ranges(spec: dict[str, Any], composition: Path, video: Path, *,
+                               scale: float, concurrency: int | None) -> None:
+    """Render individual scene ranges against the full timeline and join them without re-encoding."""
+    starts = subtitles._scene_starts(spec, spec["fps"])
+    render_log = video.with_name("render.log")
+    with tempfile.TemporaryDirectory(prefix="scene-render-", dir=video.parent) as work:
+        chunks = Path(work)
+        from app.agent.videoGenerator.jobs.scene_stream import active
+        stream = active.get()
+        reused = stream.reuse(spec, chunks) if stream else 0
+        if reused:
+            log.info("%s · Reusing %d verified streamed scene ranges", video.parent.name, reused)
+        command = ["node", "scripts/render-scenes.mjs", str(composition), work, json.dumps(starts),
+                   str(scale), str(concurrency or 0), str(reused)]
+        with render_log.open("w", buffering=1) as handle:
+            def on_output(line: str) -> None:
+                handle.write(line)
+                if line.startswith("PROGRESS "):
+                    log.info("%s · %s", video.parent.name, line.removeprefix("PROGRESS ").strip())
+
+            code, output = await _run(command, timeout=settings.RENDER_TIMEOUT_SECONDS, on_output=on_output)
+        if code != 0:
+            tail = "\n".join(line for line in output.splitlines() if "Deprecation" not in line)[-4000:]
+            raise RenderError("Scene rendering failed", tail)
+        joined = chunks / "joined.mp4"
+        boundaries = [0, *starts[1:], starts[-1] + spec["scenes"][-1]["durationInFrames"]]
+        log.info("%s · Joining scene clips and audio", video.parent.name)
+        soundtrack = chunks / "soundtrack.wav"
+        if not soundtrack.is_file():
+            soundtrack = await asyncio.to_thread(_join_scene_audio, chunks, boundaries, spec["fps"])
+        code, output = await _run([
+            "ffmpeg", "-v", "error", "-f", "concat", "-safe", "1", "-i", str(chunks / "concat.txt"),
+            "-i", str(soundtrack), "-map", "0:v:0", "-map", "1:a:0",
+            "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-af", "apad", "-shortest",
+            "-movflags", "+faststart", str(joined),
+        ], timeout=settings.RENDER_TIMEOUT_SECONDS)
+        with render_log.open("a") as handle:
+            handle.write("\nJoining scene ranges and soundtrack\n" + output)
+        if code != 0 or not joined.is_file():
+            raise RenderError("Joining rendered scenes failed", output[-3000:])
+        joined.replace(video)
 
 
 async def render_video(
@@ -216,7 +322,7 @@ async def render_video(
     ``captions``: True / False forces subtitles on or off; None keeps the JSON's setting (default on).
     ``captions_mode``: burn (in the picture) | track (player can switch it) | both; None = JSON, else CAPTIONS_PLAYER_TRACK (burn / both).
     """
-    job_id = job_id or uuid.uuid4().hex[:12]
+    job_id = job_id or str(uuid.uuid4())
     job_dir = settings.WORKSPACE_DIR / "jobs" / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
@@ -224,37 +330,34 @@ async def render_video(
     spec = expand_continuations(copy.deepcopy(spec))  # hand-written plans may request continuations too
     spec = paper_code_scenes(spec)  # paper-style video: no dark CodeScene
     spec = apply_brand(spec)
+    spec = set_caption_mode(set_captions(spec, captions), captions_mode)
+    composition = job_dir / "composition.json"
+    validation_started = time.perf_counter()
+    estimated, _ = cues.resolve(spec)
+    composition.write_text(json.dumps(estimated, indent=2))
+    await validate(composition)
+    validation_seconds = time.perf_counter() - validation_started
+
     made = cached = 0
     lines: list[str] = []
     narration_started = time.perf_counter()
     if narrate:
-        spec, made, cached, lines = await add_narration(spec, captions=captions)
+        spec, made, cached, lines = await add_narration(spec)
+        spec, _ = cues.resolve(spec)
     else:
-        spec = set_captions(spec, captions)
+        spec = estimated
     narration_seconds = time.perf_counter() - narration_started
-    spec = set_caption_mode(spec, captions_mode)
-    spec, _ = cues.resolve(spec)  # word cues left (no narration / narrate off): estimated from the text
-
-    composition = job_dir / "composition.json"
-    composition.write_text(json.dumps(spec, indent=2))
-    validation_started = time.perf_counter()
-    await validate(composition)
-    validation_seconds = time.perf_counter() - validation_started
+    if narrate:
+        validation_started = time.perf_counter()
+        composition.write_text(json.dumps(spec, indent=2))
+        await validate(composition)
+        validation_seconds += time.perf_counter() - validation_started
 
     video = job_dir / "video.mp4"
-    cmd = ["npx", "remotion", "render", "src/index.ts", "VideoComposition", str(video), f"--props={composition}", "--gl=angle"]
-    if scale != 1.0:
-        cmd.append(f"--scale={scale}")
-    if concurrency:
-        cmd.append(f"--concurrency={concurrency}")  # Remotion threads (default: half the cores)
     frames = sum(int(sc.get("durationInFrames", 0)) for sc in spec.get("scenes", []))
     remotion_started = time.perf_counter()
-    with step("remotion render", job=job_id, scenes=len(spec.get("scenes", [])), frames=frames, scale=scale, threads=concurrency) as s:
-        code, out = await _run(cmd, timeout=settings.RENDER_TIMEOUT_SECONDS)
-        (job_dir / "render.log").write_text(out)
-        if code != 0 or not video.exists():
-            tail = "\n".join(l for l in out.splitlines() if "Deprecation" not in l and "require(" not in l)[-3000:]
-            raise RenderError("Remotion render failed", tail)
+    with step("remotion scene render", job=job_id, scenes=len(spec.get("scenes", [])), frames=frames, scale=scale, threads=concurrency) as s:
+        await _render_scene_ranges(spec, composition, video, scale=scale, concurrency=concurrency)
         s.update(video=str(video), size=f"{video.stat().st_size / 1e6:.1f}MB")
 
     remotion_seconds = time.perf_counter() - remotion_started

@@ -74,10 +74,24 @@ def _continue_comparison(previous: dict, following: dict) -> dict:
     return {**copy.deepcopy(previous), "start": start, "steps": following.get("steps", [])}
 
 
+def object_references(props: dict):
+    """Yield the field path and ID for explicit object references in a diagram."""
+    for track, fields in (("links", ("from", "to", "via")), ("steps", ("target",))):
+        items = props.get(track)
+        if not isinstance(items, list):
+            continue
+        for i, item in enumerate(items):
+            if isinstance(item, dict):
+                for field in fields:
+                    if isinstance(item.get(field), str):
+                        yield f"{track}[{i}].{field}", item[field]
+
+
 def expand_continuations(spec: dict[str, Any]) -> dict[str, Any]:
     scenes = spec.get("scenes") or []
     chain: list[int] = []
     chains: list[list[int]] = []
+    last_iso: dict | None = None
     for i, s in enumerate(scenes):
         props = s.get("props") if isinstance(s.get("props"), dict) else None
         if s.get("component") == "OutcomeComparisonScene" and props and props.get("continue") is True:
@@ -127,10 +141,25 @@ def expand_continuations(spec: dict[str, Any]) -> dict[str, Any]:
             props["continued"] = True
             s["transition"] = {"type": "none"}
             chain.append(i)
+            last_iso = s
             continue
         if props is not None and s.get("component") == "IsoScene":
+            if cont and last_iso is not None and isinstance(objects := props.get("objects", []), list):
+                # After a cutaway, rebuild only the explicitly referenced actors. Keep the normal
+                # scene transition and current links rather than extending the previous board.
+                present = {obj.get("id") for obj in objects if isinstance(obj, dict) and isinstance(obj.get("id"), str)}
+                missing = {oid for _, oid in object_references(props)} - present - set(props.get("remove") or [])
+                if missing:
+                    previous, _ = _end_state(last_iso)
+                    for obj in previous:
+                        if obj["id"] in missing:
+                            obj.pop("appearAt", None)
+                            obj.pop("appearCue", None)
+                            objects.append({**obj, "enter": "none"})
+                    props["objects"] = objects
             props.pop("continue", None)
             props.pop("remove", None)
+            last_iso = s
         if len(chain) > 1:
             chains.append(chain)
         chain = [i] if s.get("component") == "IsoScene" else []

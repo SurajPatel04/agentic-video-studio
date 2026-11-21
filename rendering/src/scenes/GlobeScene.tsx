@@ -633,3 +633,11 @@ labelStyle:z.record(z.string(),z.unknown()).optional()
 });
 export const description = 'A satellite globe with official India boundaries, animated routes, and a follow camera.';
 export const tags = ['globe','WAN','geography','routes'];
+/** Shown to the planner (every field is optional, so the schema's defaults alone would be empty). */
+export const example = {
+  title: 'A request crosses the world',
+  caption: 'Packets hop between continents through undersea cables.',
+  routes: [{from: 'India', to: 'USA'}, {from: 'USA', to: 'Japan'}],
+  camera: 'follow',
+  surface: 'satellite',
+};

@@ -8,7 +8,7 @@ import {Overlays, overlaysSchema} from './effects/overlays';
 import {PAPER} from './iso/iso';
 import {PaperStage} from './scenes/paperStage';
 import {registry, sceneCatalog} from './registry';
-import {defaultTheme, SceneLengthProvider, ThemeProvider} from './theme';
+import {BottomCaptionInsetProvider, defaultTheme, SceneLengthProvider, SceneWordsProvider, ThemeProvider} from './theme';
 import {presentationFor, transitionFrames, transitionInto} from './transitions';
 import type {CompositionSpec, SceneSpec} from './types';
 
@@ -42,6 +42,10 @@ const SceneFrame: React.FC<{scene: SceneSpec; audio: AudioSettings; captions: Ca
 
   const voice = useMemo(() => (scene.voice ? voiceSchema.safeParse(scene.voice) : null), [scene.voice]);
   if (voice && !voice.success) throw new Error(`Scene ${scene.id} voice: ${voice.error.message}`);
+  const words = voice?.success ? voice.data.words : undefined;
+  const captionWords = captions.enabled && captions.mode !== 'track' && words?.length ? words : undefined;
+  const bottomCaptionInset = captionWords && captions.position === 'bottom'
+    ? Math.max(165, captions.offset + captions.size * 1.3 + (captions.background ? 20 : 0) + 12) : 0;
   const cues = useMemo(() => (scene.sfx ? sfxCuesSchema.safeParse(scene.sfx) : null), [scene.sfx]);
   if (cues && !cues.success) throw new Error(`Scene ${scene.id} sfx: ${cues.error.message}`);
 
@@ -50,6 +54,8 @@ const SceneFrame: React.FC<{scene: SceneSpec; audio: AudioSettings; captions: Ca
   return (
     <ThemeProvider value={defaultTheme}>
      <SceneLengthProvider value={scene.durationInFrames}>
+      <SceneWordsProvider value={words}>
+      <BottomCaptionInsetProvider value={bottomCaptionInset}>
       <AbsoluteFill style={{color: defaultTheme.text, fontFamily: defaultTheme.fontFamily}}>
         <PaperStage>
           {textCards.has(scene.component) ? <AbsoluteFill style={{inset: '6% 5% 17%', width: '90%', height: '77%', borderRadius: 24, background: PAPER.card, border: '1px solid ' + PAPER.track}}>{content}</AbsoluteFill> : content}
@@ -57,12 +63,14 @@ const SceneFrame: React.FC<{scene: SceneSpec; audio: AudioSettings; captions: Ca
         {overlays?.success && overlays.data.length ? <Overlays items={overlayItems} scene={content} /> : null}
         {voice?.success ? <Voice voice={voice.data} volume={audio.voiceVolume} /> : null}
         {cues?.success ? <SfxCues cues={cues.data} /> : null}
-        {voice?.success && voice.data.words ? (
+        {captionWords ? (
           <Sequence durationInFrames={captionFrames} layout="none" showInTimeline={false}>
-            <Captions words={voice.data.words} settings={captions} fps={fps} />
+            <Captions words={captionWords} settings={captions} fps={fps} />
           </Sequence>
         ) : null}
       </AbsoluteFill>
+      </BottomCaptionInsetProvider>
+      </SceneWordsProvider>
      </SceneLengthProvider>
     </ThemeProvider>
   );

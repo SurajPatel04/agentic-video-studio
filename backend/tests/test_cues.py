@@ -81,20 +81,32 @@ class CueTests(unittest.TestCase):
         at = [a.get("at") for a in scene["props"]["actions"]]
         self.assertEqual(missing, ["deploy"])
         self.assertTrue(at[0] < at[1] < at[2])  # "test" matches "tests", after the earlier cue
-        self.assertEqual(at[3], 0.5)  # still valid; the planner is told about it
+        self.assertEqual(at[3], 0.8)  # provisional position for the last action
 
     def test_scenes_without_timing_fields_are_left_alone(self):
         scene = {"id": "q", "component": "QuoteScene", "props": {"quote": "x", "cue": "nothing"}}
         cues.resolve_scene(scene)
         self.assertEqual(scene["props"], {"quote": "x"})
 
-    def test_lint_flags_guessed_timing_and_unknown_cues(self):
+    def test_missing_cues_have_distinct_provisional_times_and_exact_diagnostics(self):
+        scene = {"id": "collection", "component": "AnnotatedTextScene", "narration": {"text": "The records arrive."},
+                 "props": {"steps": [{"cue": "first watch"}, {"cue": "next watch"}, {"cue": "records"}]}}
+        issues = []
+        estimated, missing = cues.resolve({"scenes": [scene]}, issues=issues)
+        times = [step["at"] for step in estimated["scenes"][0]["props"]["steps"]]
+        self.assertTrue(0 < times[0] < times[1] < times[2])
+        self.assertEqual(missing, {"collection": ["first watch", "next watch"]})
+        self.assertIn(".props.steps[0].cue:", issues[0])
+        self.assertIn("'next watch'", issues[1])
+        self.assertEqual(scene["props"]["steps"][0], {"cue": "first watch"})
+
+    def test_lint_accepts_numeric_timing_and_flags_unknown_cues(self):
         guessed = iso_scene()
         guessed["props"]["steps"] = [{"at": a, "target": "w", "note": "n"} for a in (0.2, 0.5, 0.8)]
         bad = iso_scene(id="other")
         bad["props"]["steps"][0]["cue"] = "explodes"
         problems = " ".join(validation._lint_cues({"scenes": [guessed, bad]}))
-        self.assertIn("scenes setup time most steps with a guessed", problems)
+        self.assertEqual(validation._lint_cues({"scenes": [guessed]}), [])
         self.assertIn("'other': 'explodes'", problems)
         self.assertEqual(validation._lint_cues({"scenes": [iso_scene()]}), [])
 

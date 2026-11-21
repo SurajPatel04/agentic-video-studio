@@ -97,7 +97,8 @@ import * as LiveDashboard from './scenes/LiveDashboardScene';
 import * as MapTracking from './scenes/MapTrackingScene';
 // A single contract for scene lookup, validation, and LLM discovery.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type SceneEntry = {component: ComponentType<any>; schema: ZodType; description: string; tags: string[]};
+/** `example`: props shown to the planner when the schema's defaults alone would be empty (checked by check:scenes). */
+export type SceneEntry = {component: ComponentType<any>; schema: ZodType; description: string; tags: string[]; example?: Record<string, unknown>};
 const baseCatalog: Record<string, SceneEntry> = {
   ...mlFoundations,
   RAGScene: {...RAG, component: RAG.RAGScene, schema: RAG.ragSceneSchema},

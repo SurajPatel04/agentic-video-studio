@@ -19,9 +19,9 @@ export const Highlight: FC<MarkProps> = ({children, at = 0, duration = 14, color
     <span style={{position: 'relative', display: 'inline-block', isolation: 'isolate', ...style}}>
       <span
         style={{
-          position: 'absolute', left: '-0.08em', right: '-0.08em', bottom: '0.08em', height: '0.62em', zIndex: -1,
-          background: color ?? `color-mix(in srgb, ${theme.accent} 55%, transparent)`,
-          borderRadius: '0.18em', transform: `scaleX(${p}) skewX(-6deg)`, transformOrigin: 'left center',
+          position: 'absolute', left: '-0.08em', right: '-0.08em', top: '50%', height: '0.96em', zIndex: -1,
+          background: color ?? `color-mix(in srgb, ${theme.accent} 23%, transparent)`,
+          borderRadius: '0.14em', transform: `translateY(-50%) scaleX(${p})`, transformOrigin: 'left center',
         }}
       />
       {children}

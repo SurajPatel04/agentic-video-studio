@@ -2,16 +2,24 @@
 import json
 import re
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from app.agent.videoGenerator import skills as teaching_skills
 from app.config import settings
 from app.utils import cues
-from app.utils.iso import expand_continuations, paper_code_scenes
-from app.utils.render import RenderError, validate
+from app.utils.iso import expand_continuations, object_references, paper_code_scenes
+from app.utils.render import DEFAULT_TRANSITION_FRAMES, RenderError, validate
 
-from .schemas.lecture import Script
 from .tools import catalog
+
+Layout = Literal["desktop", "mobile", "square"]
+LAYOUTS: dict[str, tuple[int, int]] = {"desktop": (1920, 1080), "mobile": (1080, 1920), "square": (1080, 1080)}
+
+
+def apply_layout(spec: dict[str, Any], layout: str) -> dict[str, Any]:
+    """Use the job's requested render dimensions."""
+    spec["width"], spec["height"] = LAYOUTS.get(layout, LAYOUTS["desktop"])
+    return spec
 
 
 def _extract_json(text: str) -> dict[str, Any]:
@@ -25,12 +33,15 @@ def _extract_json(text: str) -> dict[str, Any]:
     return json.loads(text[start : end + 1])
 
 
-def _normalize(spec: dict[str, Any]) -> dict[str, Any]:
+def _normalize(spec: dict[str, Any], *, layout: str = "desktop") -> dict[str, Any]:
+    """Turn the planner's scenes into a composition with backend-owned settings."""
+    for key in spec.keys() - {"scenes"}:
+        del spec[key]
+    spec.update(fps=30, defaultTransition={"type": "fade", "durationInFrames": DEFAULT_TRANSITION_FRAMES},
+                audio={"effects": True})
+    apply_layout(spec, layout)
     expand_continuations(spec)  # carry the previous picture over on supported boards
     paper_code_scenes(spec)  # paper-style video: no dark CodeScene
-    spec.setdefault("fps", 30)
-    spec.setdefault("width", 1920)
-    spec.setdefault("height", 1080)
     seen: set[str] = set()
     for i, scene in enumerate(spec.get("scenes", [])):
         sid = re.sub(r"[^a-z0-9-]+", "-", str(scene.get("id") or f"scene-{i + 1}").lower()).strip("-") or f"scene-{i + 1}"
@@ -44,10 +55,37 @@ def _normalize(spec: dict[str, Any]) -> dict[str, Any]:
             # a centred title would sit behind the panel: same title, at the top of an empty canvas
             scene["component"], props = "BlankScene", {"title": props.get("title") or "", "titleAt": "top"}
             scene["props"] = props
-        if isinstance(props, dict):  # no example footer/caption text in real videos
-            for key in catalog.filler_fields(str(scene.get("component", ""))):
+        if isinstance(props, dict):
+            component = scene.get("component", "")
+            if component == "ComparisonTableScene" and type(props.get("revealFrames")) is int and props["revealFrames"] == 0:
+                props["revealFrames"] = 1  # shortest reveal supported by the renderer
+            diagram = props if component == "IsoScene" else props.get("diagram") if component == "AnnotatedTextScene" else None
+            opening_track = props.get("stages") if component == "WorkedExampleScene" else (
+                diagram.get("exampleLines") if isinstance(diagram, dict) else None)
+            if isinstance(opening_track, list) and opening_track and isinstance(first := opening_track[0], dict):
+                first["at"] = 0
+                first.pop("cue", None)
+                first.pop("appearCue", None)
+            for key in catalog.filler_fields(str(component)):
                 props.setdefault(key, "")
     return spec
+
+
+def _diagram_reference_errors(spec: dict[str, Any]) -> list[str]:
+    errors = []
+    for i, scene in enumerate(spec.get("scenes", [])):
+        props = scene.get("props")
+        if not isinstance(props, dict):
+            continue
+        component = scene.get("component")
+        diagram = props if component == "IsoScene" else props.get("diagram") if component == "AnnotatedTextScene" else None
+        if not isinstance(diagram, dict) or not isinstance(objects := diagram.get("objects"), list):
+            continue
+        ids = {obj.get("id") for obj in objects if isinstance(obj, dict) and isinstance(obj.get("id"), str)}
+        prefix = "props" if component == "IsoScene" else "props.diagram"
+        errors.extend(f'scenes[{i}] ({scene["id"]}).{prefix}.{path}: no object with id "{oid}"'
+                      for path, oid in object_references(diagram) if oid not in ids)
+    return errors
 
 
 def _concept_card(scene: dict[str, Any]) -> bool:
@@ -56,22 +94,46 @@ def _concept_card(scene: dict[str, Any]) -> bool:
             and all(isinstance(props.get(k), str) and props[k].strip() for k in ("heading", "body")))
 
 
-async def _check(reply: str, code_demo: str | None = None, *, lecture: bool = False, explainer: bool = False,
-                 script: Script | None = None) -> tuple[dict[str, Any] | None, str]:
+def apply_reading_time(spec, *, lecture, explainer):
+    scenes = spec.get("scenes", [])
+    if not scenes or not (lecture or explainer):
+        return
+    first = scenes[0]
+    title = first.get("component") == "TitleScene" or (
+        first.get("component") == "IsoScene" and (first.get("props") or {}).get("objects") == [])
+    first_lesson = scenes[1:2] if title else scenes[:1]
+    for scene in filter(_concept_card, scenes if lecture else first_lesson):
+        props = scene["props"]
+        props.update(textAnimation="none", startAt=0)
+        # Allow a quiet reading beat even when the recorded sentence is short.
+        words = len((props["heading"] + " " + props["body"]).split())
+        reading_frames = round(spec["fps"] * max(4, words / 3))
+        scene["durationInFrames"] = max(scene["durationInFrames"], reading_frames)
+
+
+async def _check(reply: str, code_demo: str | None = None, *, lecture: bool = False,
+                 explainer: bool = False, layout: str = "desktop") -> tuple[dict[str, Any] | None, str]:
     """Parse + validate a reply. Returns (spec, "") or (None, problem to send back)."""
     try:
         spec = _extract_json(reply)
-        if script:
-            script.bind(spec)
-        _normalize(spec)
+        _normalize(spec, layout=layout)
     except (ValueError, json.JSONDecodeError) as exc:
         return None, f"Your reply was not a valid JSON object ({exc}). Reply with ONLY the corrected JSON."
+    if errors := _diagram_reference_errors(spec):
+        return None, "The JSON has these errors:\n" + "\n".join(errors) + "\nFix every missing object reference."
+    if lecture:
+        issues = []
+        for i, scene in enumerate(spec.get("scenes", [])):
+            narration = scene.get("narration")
+            if not isinstance(narration, dict):
+                issues.append(f'scenes[{i}] ({scene["id"]}).narration: Supply an object with the spoken text.')
+            elif not isinstance(narration.get("text"), str) or not narration["text"].strip():
+                issues.append(f'scenes[{i}] ({scene["id"]}).narration.text: Supply the words spoken in this scene.')
+        if issues:
+            return None, "The JSON has these errors:\n" + "\n".join(issues)
     # The plan keeps its word cues (resolved from real word times at render); check an estimated copy.
-    estimated, missing = cues.resolve(spec)
-    if script and missing:
-        issues = "\n".join(f"- scene '{sid}': Cue {', '.join(map(repr, lost))} is missing from the locked narration. "
-                           "Use the exact spoken phrase for the change." for sid, lost in missing.items())
-        return None, "The JSON has these errors:\n" + issues
+    issues: list[str] = []
+    estimated, _ = cues.resolve(spec, issues=issues if lecture or explainer else None)
     work = settings.WORKSPACE_DIR / "plans"
     work.mkdir(parents=True, exist_ok=True)
     path = work / f"{uuid.uuid4().hex[:12]}.json"
@@ -79,7 +141,9 @@ async def _check(reply: str, code_demo: str | None = None, *, lecture: bool = Fa
     try:
         await validate(path)
     except RenderError as exc:
-        return None, f"The JSON has these errors:\n{exc.details}\nFix them and reply with ONLY the full corrected JSON."
+        issues.insert(0, exc.details)
+    if issues:
+        return None, "The JSON has these errors:\n" + "\n".join(issues) + "\nFix them and reply with ONLY the full corrected JSON."
     if lecture or explainer:
         scenes = spec["scenes"]
         opening = scenes[0]
@@ -90,19 +154,11 @@ async def _check(reply: str, code_demo: str | None = None, *, lecture: bool = Fa
         if not first_lesson or not _concept_card(first_lesson[0]):
             return None, "Open the lesson with ExplainScene (or place it immediately after the title). Supply heading and body explaining the idea before showing its example."
         card = first_lesson[0]
-        if card.get("overlays") or any(card["props"].get(k) for k in ("device", "stat", "points", "arrows")):
-            return None, "Keep the opening explanation readable. Use its heading and body, then move demonstrations and animated details to the next scene."
+        if card.get("overlays") or any(card["props"].get(k) for k in ("device", "stat", "arrows")):
+            return None, "Keep the opening explanation readable with a heading, body, and optional short points. Move demonstrations to the next scene."
         if evidence := _lecture_evidence(scenes):
             return None, "Fix the lesson's visible examples:\n- " + "\n- ".join(evidence)
-        if lecture:
-            spec.setdefault("defaultTransition", {"type": "fade", "durationInFrames": 15})
-        for scene in filter(_concept_card, scenes if lecture else first_lesson):
-            props = scene["props"]
-            props.update(textAnimation="none", startAt=0)
-            # Allow a quiet reading beat even when the recorded sentence is short.
-            words = len((props["heading"] + " " + props["body"]).split())
-            reading_frames = round(spec["fps"] * max(4, words / 3))
-            scene["durationInFrames"] = max(scene["durationInFrames"], reading_frames)
+        apply_reading_time(spec, lecture=lecture, explainer=explainer)
     if any(s.get("component") == "TransactionScene" and "expectedPendingRows" not in s.get("props", {}) for s in spec.get("scenes", [])):
         return None, "Supply expectedPendingRows for each TransactionScene so its steps can be checked against the intended lesson."
     if code_demo and not any(scene.get("component") in CODE_SCENES for scene in spec.get("scenes", [])):
@@ -145,13 +201,6 @@ def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic:
         if not used & set(need):
             problems.append(f'the topic mentions "{hit}", so the viewer must SEE it: add a {" or ".join(need)} that animates '
                             "it (computed steps, not a text card or a generic diagram), with narration that follows it.")
-    lecture = "teach-lecture" in skills
-    texts = sum(s.get("component") in TEXT_SCENES for s in scenes)
-    cap = max(2, int(len(scenes) * settings.PLANNER_MAX_TEXT_SHARE))
-    if not lecture and texts > cap:
-        problems.append(f"{texts} of {len(scenes)} scenes are text-only (Definition/Explain/BulletList); the most allowed is "
-                        f"{cap}. Turn {texts - cap} of them into scenes that SHOW the idea (code, flowchart, cycle, comparison, "
-                        "chart, timeline, devices, connection).")
     if code_demo is None and settings.PLANNER_CODE_EVERY and CODE_SKILLS & set(skills):
         need = -(-len(scenes) // settings.PLANNER_CODE_EVERY)  # ceil
         have = sum(s.get("component") in CODE_SCENES for s in scenes)
@@ -159,15 +208,6 @@ def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic:
             problems.append(f"this is a programming topic: it needs at least {need} code scenes (EditorScene, or CodeScene; one per main concept, about "
                             f"1 in every {settings.PLANNER_CODE_EVERY} scenes) but has {have}. Show the code that produces "
                             "each behavior you explain, using the same running example.")
-    run, worst, at = 0, 0, ""
-    for s in spec.get("scenes", []):
-        run = run + 1 if s.get("component") in TEXT_SCENES else 0
-        if run > worst:
-            worst, at = run, s.get("id", "")
-    if not lecture and worst > settings.PLANNER_MAX_TEXT_RUN:
-        problems.append(f"{worst} text-only scenes in a row (Definition/Explain/BulletList, ending at '{at}'); the limit is "
-                        f"{settings.PLANNER_MAX_TEXT_RUN}. Replace some with a visual scene (code, diagram, flowchart, "
-                        "comparison, chart, devices) that shows the same idea.")
     covered = [f"'{s.get('id')}' ({s.get('component')}: {', '.join(sorted(kinds))})" for s in spec.get("scenes", [])
                if s.get("component") not in PANEL_HOSTS
                and (kinds := {o.get("type") for o in s.get("overlays") or [] if isinstance(o, dict)} & PANEL_OVERLAYS)]
@@ -196,8 +236,7 @@ def _alternatives(skills, used: str) -> str:
 
 
 def _lint_variety(scenes: list[dict[str, Any]], skills) -> list[str]:
-    """The same scene type over and over (any subject): a long run, most of the plan, or the same
-    IsoScene picture drawn again and again. Viewers stop seeing a picture they have seen 10 times."""
+    """Flag a scene type that dominates the plan or runs for too many scenes in a row."""
     problems = []
     limit = settings.PLANNER_MAX_SAME_RUN
     run, start = 0, 0
@@ -220,58 +259,17 @@ def _lint_variety(scenes: list[dict[str, Any]], skills) -> list[str]:
         if n > len(scenes) * share and not any(p.startswith(f"{n} {comp}s in a row") for p in problems):
             problems.append(f"{n} of {len(scenes)} scenes are {comp}; at most {share:.0%}. Replace some with scenes that show "
                             f"the real thing: {_alternatives(skills, comp)}.")
-    most = settings.PLANNER_MAX_SAME_PICTURE
-    if most:
-        seen: dict[tuple, list[str]] = {}
-        for s in scenes:
-            props = s.get("props") or {}
-            if s.get("component") != "IsoScene" or props.get("continue") or props.get("continued"):
-                continue
-            picture = tuple(sorted(f"{o.get('kind')}:{o.get('design') or o.get('icon') or ''}"
-                                   for o in props.get("objects") or [] if isinstance(o, dict)))
-            if len(picture) >= 2:
-                seen.setdefault(picture, []).append(s.get("id", ""))
-        for ids in seen.values():
-            if len(ids) > most:
-                problems.append(f"scenes {', '.join(ids)} draw the same objects from scratch {len(ids)} times (limit {most}). "
-                                "Keep one overview, use \"continue\" for changes, and give the other ideas their own "
-                                "picture: a close-up of one part, a before/after, or a non-diagram scene.")
     return problems
 
 
-def _timed(node: Any) -> tuple[int, int]:
-    """(cued, guessed) timed items in a scene's props: dicts with a word cue vs a numeric "at"."""
-    cued = guessed = 0
-    if isinstance(node, list):
-        for item in node:
-            c, g = _timed(item)
-            cued, guessed = cued + c, guessed + g
-    elif isinstance(node, dict):
-        if "cue" in node or "appearCue" in node:
-            cued += 1
-        elif isinstance(node.get("at"), (int, float)) and not isinstance(node.get("at"), bool):
-            guessed += 1
-        for value in node.values():
-            if isinstance(value, (list, dict)):
-                c, g = _timed(value)
-                cued, guessed = cued + c, guessed + g
-    return cued, guessed
-
-
 def _lint_cues(spec: dict[str, Any]) -> list[str]:
-    """Changes must land on the words that name them: cues that are not in the narration, and
-    scenes with several steps timed by guessed fractions."""
+    """Report authored cues that do not appear in their scene narration."""
     problems = []
     _, missing = cues.resolve(spec)
     if missing:
         problems.append("these cues are not words of their scene's narration: " + "; ".join(
             f"'{sid}': {', '.join(repr(c) for c in lost)}" for sid, lost in missing.items())
             + ". Use a word the narrator actually says in that scene (or add it to the narration).")
-    guessed = [s.get("id", "") for s in spec.get("scenes", []) if s.get("component") in cues.timing_paths()
-               and (t := _timed(s.get("props")))[1] >= 3 and t[0] < t[1]]
-    if guessed:
-        problems.append(f"scenes {', '.join(guessed)} time most steps with a guessed \"at\", so the picture changes "
-                        "before or after the narrator mentions it. Give each step \"cue\": \"<the word that names it>\".")
     return problems
 
 
@@ -305,7 +303,7 @@ REPLY_LABEL = re.compile(r"^(?:(?:HTTP|JSON) )?(?:response|reply)(?: body)?$|^JS
 
 
 def _lecture_evidence(scenes: list[dict[str, Any]]) -> list[str]:
-    """Flag diagrams that hide the example or represent a reply as an orphan tile."""
+    """Flag title-only diagrams and detached reply tiles."""
     problems = []
     for i, scene in enumerate(scenes):
         if scene.get("component") != "IsoScene":
@@ -316,11 +314,6 @@ def _lecture_evidence(scenes: list[dict[str, Any]]) -> list[str]:
         if i > 0 and not objects and not props.get("points"):
             problems.append(f"Scene '{scene['id']}' is a title-only diagram. Give the learner the actual example "
                             "in WorkedExampleScene, AnnotatedTextScene, or a diagram with readable exampleLines.")
-        if links and not props.get("exampleLines"):
-            tables = [obj for obj in objects if obj.get("table")]
-            if tables and all(obj.get("kind") != "table" for obj in tables):
-                problems.append(f"Scene '{scene['id']}' keeps the example rows inside icons. "
-                                "Show the rows on screen when the narration reads them.")
         connected = {link.get(key) for link in links for key in ("from", "to", "via")}
         orphan_replies = [obj["id"] for obj in objects if links and obj["id"] not in connected
                           and REPLY_LABEL.fullmatch(str(obj.get("label") or obj["id"]).strip())]
@@ -331,13 +324,10 @@ def _lecture_evidence(scenes: list[dict[str, Any]]) -> list[str]:
 
 
 def _lint_iso(scenes: list[dict[str, Any]], *, lecture: bool = False) -> list[str]:
-    """IsoScene problems the validator can't see: chains behind a hub, one layout repeated, event labels."""
+    """Check teaching evidence, hub connections, and object labels in diagrams."""
     problems: list[str] = []
-    run: list[str] = []
-    last = None
     for s in scenes:
         if s.get("component") != "IsoScene":
-            run, last = [], None
             continue
         props = s.get("props") or {}
         objs = {o.get("id"): o for o in props.get("objects") or [] if isinstance(o, dict)}
@@ -361,14 +351,4 @@ def _lint_iso(scenes: list[dict[str, Any]], *, lecture: bool = False) -> list[st
         if bad:
             problems.append(f"scene '{s.get('id')}': labels name the object, not an event: {', '.join(bad)}. "
                             "Keep 'Server A'; say what happens in a step note.")
-        layout = tuple(sorted((i, tuple(round(v, 1) for v in o.get("at", []))) for i, o in objs.items()))
-        if props.get("continued"):  # a continuation reuses the picture on purpose (and cheaply)
-            run, last = [], layout
-            continue
-        run = run + [s.get("id", "")] if layout and layout == last else [s.get("id", "")]
-        last = layout
-        if len(run) == settings.PLANNER_MAX_SAME_LAYOUT + 1:
-            problems.append(f"scenes {', '.join(run)} rewrite the same layout from scratch. If it is the same picture, write "
-                            "the later scenes with \"continue\": true and ONLY the changes (new objects / links / steps, \"remove\"); "
-                            "otherwise change the picture (close-up, rearrange, add or remove objects).")
     return problems

@@ -2,12 +2,13 @@ import {useMemo} from 'react';
 import {AbsoluteFill, Easing, useCurrentFrame, useVideoConfig} from 'remotion';
 import {z} from 'zod';
 import {formatJsonExample, JsonExampleCode} from '../components/JsonExample';
+import {previewLineWindow, wrapPreviewLines} from '../components/textPreview';
 import {PAPER} from '../iso/iso';
 import {useSceneLength, useTheme, useUnit} from '../theme';
 import {DARK, MONO_W, fraction} from './paperStage';
 
 const partSchema = z.object({
-  text: z.string().min(1).max(64),
+  text: z.string().min(1),
   label: z.string().max(24).optional(),
   tone: z.enum(['neutral', 'teal', 'amber']).default('neutral'),
 }).strict();
@@ -44,9 +45,6 @@ export const outcomeComparisonSceneSchema = z.object({
   start: z.object({rows: z.tuple([rowState, rowState]), active: focusSchema.optional()}).strict().optional(),
 }).strict().superRefine((p, ctx) => {
   p.rows.forEach((row, i) => {
-    if (row.parts.some((part) => /[\r\n]/.test(part.text)) || row.parts.map((part) => part.text).join('').length > 96) {
-      ctx.addIssue({code: 'custom', path: ['rows', i, 'parts'], message: 'Use one short example of up to 96 characters.'});
-    }
     if (row.result.split('\n').length > 4) {
       ctx.addIssue({code: 'custom', path: ['rows', i, 'result'], message: 'Show up to four result lines.'});
     }
@@ -71,7 +69,7 @@ export const outcomeComparisonSceneSchema = z.object({
   }
 });
 
-export const description = 'Compare two examples with their outcomes. Each row has text parts that concatenate into the complete example, optional labels and tones, and a result. Use editor layout for requests and code, or text layout for other subjects. Cue an input part or highlight exact output text with resultFocus. Rows with hidden true first appear when their row is cued. Set resultsOnCue true and use reveal true to introduce a result on its cue. To keep this board across consecutive scenes, use continue true with only new steps in the next scene’s plan.';
+export const description = 'Compare two examples with their outcomes. Each row has text parts that concatenate into the complete example, optional labels and tones, and a result. Use editor layout for requests and code, or text layout for other subjects. Examples may contain line breaks. Long examples wrap and keep the focused part in view. Cue an input part or highlight exact output text with resultFocus. Rows with hidden true first appear when their row is cued. Set resultsOnCue true and use reveal true to introduce a result on its cue. To keep this board across consecutive scenes, use continue true with only new steps in the next scene’s plan.';
 export const tags = ['comparison', 'outcome', 'cause and effect', 'request', 'response', 'reading', 'two examples'];
 
 const tones = {
@@ -106,6 +104,9 @@ export function OutcomeComparisonScene(input: z.input<typeof outcomeComparisonSc
   const resultsOnCue = p.resultsOnCue ?? p.steps.some((step) => step.reveal);
   const longest = Math.max(...p.rows.map((row) => row.parts.reduce((size, part) => size + part.text.length, 0)));
   const fontSize = Math.min(editor ? 48 : 44, Math.max(23, (portrait ? 620 : 1120) / longest)) * u;
+  const previewSize = 24 * u;
+  const columns = Math.max(12, Math.floor((panelWidth / (portrait ? 0.83 : 0.78) - 52 * u) /
+    (previewSize * (editor ? MONO_W : 0.65))));
 
   return (
     <AbsoluteFill style={{fontFamily: theme.fontFamily, color: theme.text}}>
@@ -129,6 +130,18 @@ export function OutcomeComparisonScene(input: z.input<typeof outcomeComparisonSc
           const resultFocus = current ? active?.resultFocus : undefined;
           const resultStartIndex = resultFocus ? row.result.indexOf(resultFocus) : -1;
           const json = examples[index];
+          const source = row.parts.map(part => part.text).join('');
+          const usePreview = /[\r\n]/.test(source) || source.length > columns * 2;
+          const activePart = current ? active?.part : undefined;
+          let offset = 0;
+          const parts = row.parts.map(part => {
+            const start = offset;
+            offset += part.text.length;
+            return {...part, start, end: offset};
+          });
+          const focusedPart = activePart === undefined ? undefined : parts[activePart];
+          const preview = usePreview ? previewLineWindow(wrapPreviewLines(source, columns), 6,
+            focusedPart?.start, focusedPart?.text.length) : null;
           return (
             <div key={index} style={{display: 'grid', gridTemplateColumns: tracks, alignItems: 'stretch',
               transform: `translateY(${(1 - rowOpacity) * 9 * u}px)`,
@@ -136,14 +149,35 @@ export function OutcomeComparisonScene(input: z.input<typeof outcomeComparisonSc
               <div style={{background: editor ? DARK.bg : PAPER.card, color: editor ? DARK.text : theme.text,
                 border: `${2 * u}px solid ${current ? '#af7a40' : '#8f8170'}`, borderRadius: 17 * u, padding: `${22 * u}px ${24 * u}px`,
                 display: 'flex', alignItems: 'center', minWidth: 0, minHeight: (portrait ? 140 : 160) * u}}>
-                <div style={{display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', rowGap: 6 * u, maxWidth: '100%'}}>
+                {preview ? (
+                  <div style={{fontFamily: editor ? PAPER.font : theme.fontFamily, fontSize: previewSize, fontWeight: 700,
+                    whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0, lineHeight: 1.3}}>
+                    {preview.leading ? <div>…</div> : null}
+                    {preview.lines.map((line, i) => <div key={i} style={{minHeight: '1.3em'}}>
+                      {parts.map((part, partIndex) => {
+                        const start = Math.max(line.start, part.start);
+                        const end = Math.min(line.start + line.text.length, part.end);
+                        if (end <= start) return null;
+                        const [background, color] = tones[part.tone];
+                        const marked = partIndex === activePart || part.tone !== 'neutral';
+                        return <span key={partIndex} style={{background: marked ? background : undefined,
+                          color: marked ? color : undefined, borderRadius: 4 * u,
+                          boxShadow: partIndex === activePart ? `0 0 0 ${2 * u}px #e08a35` : undefined}}>
+                          {source.slice(start, end)}
+                        </span>;
+                      })}
+                    </div>)}
+                    {preview.trailing ? <div>…</div> : null}
+                    {focusedPart?.label ? <div style={{fontFamily: theme.fontFamily, fontSize: 18 * u}}>{focusedPart.label}</div> : null}
+                  </div>
+                ) : <div style={{display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', rowGap: 6 * u, maxWidth: '100%'}}>
                   {row.parts.map((part, partIndex) => {
                     const focused = current && active?.part === partIndex;
                     const [background, color] = tones[part.tone];
                     const badge = focused || part.tone !== 'neutral' || (editor && part.label);
                     return (
                       <div key={partIndex} style={{display: 'grid', gridTemplateRows: hasLabels ? 'auto 1.4em' : 'auto',
-                        maxWidth: '100%', fontSize: (portrait ? 16 : 19) * u}}>
+                        minWidth: 0, maxWidth: '100%', fontSize: (portrait ? 16 : 19) * u}}>
                         <span style={{fontFamily: editor ? PAPER.font : theme.fontFamily, fontWeight: 750,
                           whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize, lineHeight: 1.33, borderRadius: 4 * u,
                           background: badge ? background : undefined, color: badge ? color : undefined,
@@ -154,7 +188,7 @@ export function OutcomeComparisonScene(input: z.input<typeof outcomeComparisonSc
                       </div>
                     );
                   })}
-                </div>
+                </div>}
               </div>
               <div aria-hidden style={{alignSelf: 'center', textAlign: 'center', opacity: resultOpacity,
                 fontSize: 38 * u, lineHeight: 1, color: '#81552d'}}>→</div>

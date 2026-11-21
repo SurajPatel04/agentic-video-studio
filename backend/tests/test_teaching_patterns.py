@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, patch
 from langchain_core.messages import AIMessage
 
 from app.agent.videoGenerator.nodes import select_skills
-from app.agent.videoGenerator.schemas.lecture import Script
 from app.agent.videoGenerator.teaching_patterns import PREDICTION_PAUSE_SECONDS, pattern_hint
 from app.config import settings
 from app.utils import render
@@ -46,13 +45,12 @@ class TeachingPatternTests(unittest.IsolatedAsyncioTestCase):
         model.ainvoke.assert_awaited_once()
 
     async def test_prediction_hold_delays_answer_by_configured_time(self):
-        script = Script.model_validate({"beats": [
-            {"narration": "What would you change to request post two?", "visual": "Hold the request.", "prediction": True},
-            {"narration": "Change the one to a two.", "visual": "Show the new path."},
-        ]})
-        spec = {"fps": 30, "defaultTransition": {"type": "fade", "durationInFrames": 15},
-                "scenes": [{"id": sid, "durationInFrames": 30} for sid in script.by_id()]}
-        script.bind(spec)
+        spec = {"fps": 30, "defaultTransition": {"type": "fade", "durationInFrames": 15}, "scenes": [
+            {"id": "question", "durationInFrames": 30,
+             "narration": {"text": "What would you change to request post two?",
+                           "pauseAfterSeconds": PREDICTION_PAUSE_SECONDS}},
+            {"id": "answer", "durationInFrames": 30, "narration": {"text": "Change the one to a two."}},
+        ]}
         clip = SpeechClip(path=Path("test.wav"), src="audio/test.wav", seconds=2.0, cached=True)
         with patch.object(render, "synthesize", AsyncMock(return_value=clip)):
             voiced, *_ = await render.add_narration(spec, captions=False)

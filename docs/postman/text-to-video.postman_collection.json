@@ -56,16 +56,7 @@
     {
       "name": "Advanced",
       "item": [
-        {"name": "Skills (list)", "request": {"method": "GET", "url": "{{baseUrl}}/skills"}},
-        {
-          "name": "Plan only (no render)",
-          "request": {
-            "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "url": "{{baseUrl}}/plan",
-            "body": {"mode": "raw", "raw": "{\n  \"prompt\": \"How HTTPS keeps data private\",\n  \"layout\": \"desktop\"\n}", "options": {"raw": {"language": "json"}}}
-          }
-        },
-        {"name": "Long: resume / retry", "request": {"method": "POST", "url": "{{baseUrl}}/long/{{videoId}}/run"}},
-        {"name": "Long: chapter 1 plan", "request": {"method": "GET", "url": "{{baseUrl}}/long/{{videoId}}/chapters/1/plan"}}
+        {"name": "Skills (list)", "request": {"method": "GET", "url": "{{baseUrl}}/skills"}}
       ]
     }
   ]

@@ -1,4 +1,4 @@
-"""Planner style check: one retry for long runs of text scenes; a valid plan is never lost."""
+"""Planner validation and retries for scene plans."""
 
 import json
 import unittest
@@ -20,11 +20,13 @@ settings.SKILL_ROUTER = "keyword"  # offline tests: no skill-router LLM call (te
 
 
 def spec(components: list[str]) -> dict:
-    return {"scenes": [{"id": f"s{i}", "component": c, "props": {}} for i, c in enumerate(components)]}
+    return {"scenes": [{"id": f"s{i}", "component": c, "props": {},
+                        "narration": {"text": f"Explanation {i}."}} for i, c in enumerate(components)]}
 
 
 TEXTY = spec(["TitleScene"] + ["ExplainScene", "DefinitionScene"] * 3)
 GOOD = spec(["TitleScene", "ExplainScene", "CodeScene", "DefinitionScene", "FlowchartScene"])
+REPETITIVE = spec(["TitleScene"] + ["QuoteScene"] * 6)
 
 
 class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
@@ -86,7 +88,7 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
             checked, error = await planner._check(json.dumps(plan), lecture=True)
             self.assertIsNone(checked)
             self.assertIn("'s1' is a title-only diagram", error)
-            self.assertIn("'s2' keeps the example rows inside icons", error)
+            self.assertNotIn("keeps the example rows inside icons", error)
             self.assertIn("'s2' has detached replies", error)
             self.assertNotIn("'s3'", error)
             checked, error = await planner._check(json.dumps(plan))
@@ -115,10 +117,9 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(original["scenes"][0]["props"]["links"][0]["label"], "too long")
         self.assertEqual(edited["scenes"][1], original["scenes"][1])
 
-    def test_lint_counts_runs(self):
-        self.assertIn("6 text-only scenes in a row", validation._lint(TEXTY))
-        lecture_feedback = validation._lint(TEXTY, ["teach-lecture"])
-        self.assertNotIn("text-only", lecture_feedback)
+    def test_mixed_text_scenes_can_be_used_for_a_readable_lesson(self):
+        self.assertEqual(validation._lint(TEXTY), "")
+        self.assertEqual(validation._lint(TEXTY, ["teach-lecture"]), "")
         self.assertEqual(validation._lint(GOOD), "")
 
     def test_new_lecture_layouts_are_discoverable_and_cueable(self):
@@ -149,9 +150,24 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         return plan, llm
 
     async def test_style_retry_then_better_plan(self):
-        plan, llm = await self.run_catalog([TEXTY, GOOD])
+        plan, llm = await self.run_catalog([REPETITIVE, GOOD])
         self.assertEqual([s["component"] for s in plan.spec["scenes"]], [s["component"] for s in GOOD["scenes"]])
-        self.assertIn("text-only scenes in a row", llm.ainvoke.call_args_list[1].args[0][-1].content)
+        self.assertIn("6 QuoteScenes in a row", llm.ainvoke.call_args_list[1].args[0][-1].content)
+
+    async def test_valid_text_heavy_plan_is_used_on_the_first_attempt(self):
+        plan, llm = await self.run_catalog([TEXTY])
+        self.assertEqual(llm.ainvoke.call_count, 1)
+        self.assertEqual(len(plan.spec["scenes"]), len(TEXTY["scenes"]))
+
+    async def test_composition_settings_come_from_the_backend(self):
+        scene_only = {"scenes": GOOD["scenes"]}
+        plan, llm = await self.run_catalog([scene_only], layout="mobile")
+        expected = {"fps": 30, "width": 1080, "height": 1920,
+                    "defaultTransition": {"type": "fade", "durationInFrames": 15}, "audio": {"effects": True}}
+        self.assertEqual({k: v for k, v in plan.spec.items() if k != "scenes"}, expected)
+        self.assertIn("only the scenes field", llm.ainvoke.call_args.args[0][0].content)
+        plan, _ = await self.run_catalog([{**scene_only, "fps": 60, "brand": False, "audio": {"effects": False}}], layout="mobile")
+        self.assertEqual({k: v for k, v in plan.spec.items() if k != "scenes"}, expected)
 
     async def test_chapter_code_requirement(self):
         conceptual = spec(["TitleScene", "FlowchartScene"])
@@ -165,9 +181,9 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(plan.spec["scenes"][1]["component"], "EditorScene")
 
     async def test_only_one_style_retry_and_valid_plan_kept(self):
-        plan, llm = await self.run_catalog([TEXTY, TEXTY])
+        plan, llm = await self.run_catalog([REPETITIVE, REPETITIVE])
         self.assertEqual(llm.ainvoke.call_count, 2)  # second texty plan accepted, no third call
-        self.assertEqual(len(plan.spec["scenes"]), len(TEXTY["scenes"]))
+        self.assertEqual(len(plan.spec["scenes"]), len(REPETITIVE["scenes"]))
 
     def test_panel_overlay_only_on_blank_scene(self):
         term = {"type": "terminal", "lines": [{"text": "hi"}]}
@@ -197,10 +213,10 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(validation._lint(spec(["IsoScene"]), ["teach-data"], "Python list basics"), "")  # nothing required
         self.assertEqual(validation._visual_hint(topic, []), "")  # rules come only from the selected guides
 
-    def test_text_share_and_code_density(self):
+    def test_text_share_is_flexible_and_code_density_is_still_checked(self):
         mostly_text = spec(["TitleScene", "ExplainScene", "FlowchartScene", "DefinitionScene", "ChartScene",
                             "ExplainScene", "FlowchartScene", "DefinitionScene", "SummaryScene", "QuizScene"])
-        self.assertIn("4 of 10 scenes are text-only", validation._lint(mostly_text))
+        self.assertEqual(validation._lint(mostly_text), "")
         one_code = spec(["TitleScene", "CodeScene", "FlowchartScene", "ExplainScene", "ChartScene",
                          "FlowchartScene", "ComparisonTableScene", "BlankScene", "SummaryScene", "QuizScene"])
         self.assertEqual(validation._lint(one_code), "")  # not a programming topic: fine
@@ -233,7 +249,7 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("a->b chains servers", chained)
         self.assertIn("labels name the object", validation._lint({"scenes": [iso(0, fan, label="Request 3")]}))
         same = [iso(i, fan) for i in range(3)]
-        self.assertIn("s0, s1, s2 rewrite the same layout", validation._lint({"scenes": same}))
+        self.assertEqual(validation._lint({"scenes": same}), "")
         varied = [iso(0, fan), iso(1, fan), iso(2, fan, at=(9, -4))]
         self.assertEqual(validation._lint({"scenes": varied}), "")
 
@@ -241,89 +257,150 @@ class PlannerLintTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("300..", catalog.overlay_text("terminal"))
 
 
-class LessonScriptTests(unittest.IsolatedAsyncioTestCase):
-    async def test_script_locks_narration_and_review_repairs_only_the_flagged_example(self):
-        beats = [
-            {"narration": "Imagine your watch shop app needs the inventory. The app sends a request to ask for it.",
-             "visual": "Introduce the idea of requesting inventory in one readable sentence."},
-            {"narration": "Get asks to read something. The watches path tells the shop which list to read.",
-             "visual": "Keep GET /watches intact. Highlight GET on Get asks, then /watches on watches path."},
-            {"narration": "The returned list includes the watch with ID W one oh five.",
-             "visual": 'Show a readable JSON list containing the watch: [{"id":"w-105"}].'},
+class LecturePlanningTests(unittest.IsolatedAsyncioTestCase):
+    async def test_chapters_reuse_lookups_on_demand_without_carrying_tool_messages(self):
+        model = AsyncMock()
+        model.ainvoke.side_effect = [
+            AIMessage("", tool_calls=[{"name": "get_scene", "args": {"name": "GitGraphScene"}, "id": "first"}]),
+            AIMessage(json.dumps(GOOD)),
+            AIMessage(json.dumps(GOOD)),
+            AIMessage("", tool_calls=[{"name": "get_scene", "args": {"name": "GitGraphScene"}, "id": "third"}]),
+            AIMessage(json.dumps(GOOD)),
         ]
+        cache = {}
+        with patch.object(planner, "get_tool_llm") as tool_llm, \
+                patch.object(planner, "scene_details", return_value="lookup result") as scene_details, \
+                patch("app.agent.videoGenerator.validation.validate", AsyncMock()):
+            tool_llm.return_value.bind_tools.return_value = model
+            for topic in ("First part", "Second part", "Third part"):
+                await plan_video(topic, mode="tools", skills=[], lookup_cache=cache)
+
+        requests = [call.args[0] for call in model.ainvoke.call_args_list]
+        self.assertEqual([len(messages) for messages in requests], [2, 4, 2, 2, 4])
+        scene_details.assert_called_once_with("GitGraphScene", include_fields=True, link_diagram=True)
+        self.assertEqual(requests[4][-1].content, "lookup result")
+        self.assertEqual(requests[4][-1].tool_call_id, "third")
+
+    async def test_relevant_previous_lookups_are_available_on_the_first_turn(self):
+        model = AsyncMock()
+        model.ainvoke.side_effect = [
+            AIMessage("", tool_calls=[
+                {"name": "get_scene", "args": {"name": "GitGraphScene"}, "id": "git"},
+                {"name": "get_scene", "args": {"name": "MatrixScene"}, "id": "matrix"},
+                {"name": "find_iso_objects", "args": {"query": "collection"}, "id": "iso"},
+            ]),
+            AIMessage(json.dumps(GOOD)),
+            AIMessage(json.dumps(GOOD)),
+        ]
+        cache = {}
+        with patch.object(planner, "get_tool_llm") as tool_llm, \
+                patch("app.agent.videoGenerator.validation.validate", AsyncMock()):
+            tool_llm.return_value.bind_tools.return_value = model
+            await plan_video("First part", mode="tools", skills=[], lookup_cache=cache)
+            second = await plan_video("Second part", mode="tools", skills=[], lookup_cache=cache,
+                                      lookup_focus="Git branch, commit graph and a collection of commits.")
+
+        system, reference, brief = model.ainvoke.call_args.args[0]
+        self.assertEqual(reference.type, "ai")
+        self.assertIn("### GitGraphScene\nfields:", reference.content)
+        self.assertIn('design="collection"', reference.content)
+        self.assertNotIn("MatrixScene", reference.content)
+        self.assertNotIn("GitGraphScene", system.content)
+        self.assertIn("Second part", brief.content)
+        self.assertEqual(second.llm_calls, 1)
+
+    async def test_tool_prompts_send_known_scene_fields_once(self):
+        tool_model = AsyncMock()
+        tool_model.ainvoke.side_effect = [
+            AIMessage("", tool_calls=[
+                {"name": "search_scenes", "args": {"query": "REST request response diagram"}, "id": "search"},
+                {"name": "get_scene", "args": {"name": "IsoScene"}, "id": "iso"},
+                {"name": "get_scene", "args": {"name": "AnnotatedTextScene"}, "id": "annotation"},
+            ]),
+            AIMessage(json.dumps(GOOD)),
+        ]
+        with patch.object(planner, "get_tool_llm") as tool_llm, \
+                patch("app.agent.videoGenerator.validation.validate", AsyncMock()):
+            tool_llm.return_value.bind_tools.return_value = tool_model
+            plan = await planner._plan_tools("REST requests", "Teaching beats (key_points): Show GET and its response.",
+                                            None, ["iso-diagrams"])
+        self.assertEqual(plan.llm_calls, 2)
+        system, brief, _, search, iso, annotation = tool_model.ainvoke.call_args.args[0]
+        self.assertIn("### IsoScene\nfields:", system.content)
+        self.assertIn("diagram?: IsoScene props", system.content)
+        self.assertIn("Teaching beats (key_points)", brief.content)
+        self.assertLess(len(search.content), 1100)
+        self.assertNotIn("- IsoScene:", search.content)
+        self.assertNotIn("- AnnotatedTextScene:", search.content)
+        for message in (iso, annotation):
+            self.assertIn("example props:", message.content)
+            self.assertNotIn("\nfields:", message.content)
+
+    async def test_catalog_writes_scene_content_and_repairs_a_cue_in_place(self):
         scenes = [
-            {"id": "beat-1", "component": "ExplainScene", "durationInFrames": 180,
-             "props": {"heading": "Read the inventory", "body": "The app sends a request to ask for the watch list."}},
-            {"id": "beat-2", "component": "AnnotatedTextScene", "durationInFrames": 210,
+            {"id": "inventory", "component": "ExplainScene", "durationInFrames": 180,
+             "props": {"heading": "Read the inventory", "body": "The app sends a request to ask for the watch list."},
+             "narration": {"text": "The app sends a request to ask for the watch list."}},
+            {"id": "request", "component": "AnnotatedTextScene", "durationInFrames": 210,
              "props": {"layout": "editor", "text": "GET /watches", "steps": [
                  {"cue": "method keyword", "focus": "GET", "explanation": "Read"},
                  {"cue": "watches path", "focus": "/watches", "explanation": "Choose the watch list"}]},
-             "narration": {"text": "The method keyword asks to fetch it."}},
-            {"id": "beat-3", "component": "AnnotatedTextScene", "durationInFrames": 180,
-             "props": {"layout": "editor", "text": '[{"id":"w-107"}]'}},
+             "narration": {"text": "Get asks to read something. The watches path tells the shop which list to read."}},
         ]
         props = {**scenes[1]["props"], "steps": [
             {**scenes[1]["props"]["steps"][0], "cue": "Get asks"}, scenes[1]["props"]["steps"][1]]}
-        replacement = {"narration": "The returned list includes the watch with ID W one oh four.",
-                       "visual": 'Show the original sample watch in the returned JSON list: [{"id":"w-104"}].'}
-        repaired = {**scenes[2], "props": {"layout": "editor", "text": '[{"id":"w-104"}]'}}
         model = AsyncMock()
         model.ainvoke.side_effect = [AIMessage(json.dumps(reply)) for reply in [
-            {"beats": beats}, {"scenes": scenes}, {"updates": {"scenes[1].props": props}},
-            {"issues": [{"scene_id": "beat-3", "problem": "Restore the supplied watch ID in the script and result.",
-                         "replacement": replacement}]},
-            {"updates": {"scenes[2]": repaired}}, {"issues": []},
+            {"scenes": scenes}, {"updates": {"scenes[1].props.steps": props["steps"]}},
         ]]
 
         with patch.object(planner, "get_llm", return_value=model):
-            plan = await plan_video("A beginner lecture on GET requests. Use watch w-104.",
-                                            mode="catalog", skills=["teach-lecture"])
+            plan = await plan_video("A beginner lecture on reading a watch inventory.",
+                                    mode="catalog", skills=["teach-lecture"])
 
-        self.assertEqual(plan.llm_calls, 6)
-        self.assertEqual([scene["narration"]["text"] for scene in plan.spec["scenes"]],
-                         [beats[0]["narration"], beats[1]["narration"], replacement["narration"]])
+        self.assertEqual(plan.llm_calls, 2)
+        self.assertEqual([scene["narration"] for scene in plan.spec["scenes"]],
+                         [scene["narration"] for scene in scenes])
         self.assertEqual(plan.spec["scenes"][1]["props"], props)
-        self.assertEqual(plan.spec["scenes"][2]["props"], repaired["props"])
-        self.assertEqual(set(json.loads(model.ainvoke.call_args_list[2].args[0][-1].content)), {"scenes[1].props"})
-        self.assertEqual(set(json.loads(model.ainvoke.call_args_list[4].args[0][-1].content)), {"scenes[2]"})
+        repair = json.loads(model.ainvoke.call_args.args[0][-1].content)
+        self.assertEqual(set(repair), {"scenes[1].props.steps"})
+        self.assertIn("method keyword", repair["scenes[1].props.steps"]["issue"])
+        self.assertEqual(repair["scenes[1].props.steps"]["context"]["narration"], scenes[1]["narration"]["text"])
         self.assertEqual(cues.resolve(plan.spec)[1], {})
 
-    async def test_long_nontechnical_lesson_uses_script_in_tools_mode(self):
-        beats = [
-            {"narration": "Imagine you open a news story because you want to know what happened. The lead is the opening that tells you.",
-             "visual": "Explain what a lead tells the reader."},
-            {"narration": "Here the key fact is that the library reopens on Monday. The next sentence adds that the roof was repaired.",
-             "visual": "Show the whole excerpt and highlight its key fact when spoken."},
-        ]
-        word_budget = sum(len(beat["narration"].split()) for beat in beats)
+    async def test_long_nontechnical_lesson_is_written_in_tools_mode(self):
+        draft = {"scenes": [
+            {"id": "lead", "component": "ExplainScene", "durationInFrames": 200,
+             "props": {"heading": "The news lead", "body": "The opening tells the reader what happened."},
+             "narration": {"text": "The lead is the opening of a news story. It tells the reader what happened."}},
+            {"id": "library", "component": "AnnotatedTextScene", "durationInFrames": 200,
+             "props": {"layout": "text", "text": "The library reopens on Monday. Its roof was repaired.",
+                       "steps": [{"cue": "key fact", "focus": "reopens on Monday", "explanation": "What happened"}]},
+             "narration": {"text": "Here the key fact is that the library reopens on Monday."}},
+        ]}
+        word_budget = sum(len(scene["narration"]["text"].split()) for scene in draft["scenes"])
         outline = long_video.Outline(title="Writing a news lead", chapters=[long_video.ChapterOutline(
             title="The opening", goal="Recognize the main fact in a news lead", key_points=["lead", "key fact"],
             minutes=1, words=word_budget)])
-        state = long_video._new_state("A beginner journalism lesson", 1, outline, mode="tools", skills=["teach-lecture"])
-        draft = {"scenes": [
-            {"id": "beat-1", "component": "ExplainScene", "durationInFrames": 200,
-             "props": {"heading": "The news lead", "body": "The opening tells the reader what happened."}},
-            {"id": "beat-2", "component": "AnnotatedTextScene", "durationInFrames": 200,
-             "props": {"layout": "text", "text": "The library reopens on Monday. Its roof was repaired.",
-                       "steps": [{"cue": "key fact", "focus": "reopens on Monday", "explanation": "What happened"}]}},
-        ]}
-        writer = AsyncMock()
-        writer.ainvoke.side_effect = [AIMessage('{"beats":[{"narration":"Too short.","visual":"Opening"},'
-                                                 '{"narration":"End.","visual":"Example"}]}'),
-                                     AIMessage(json.dumps({"beats": beats})), AIMessage('{"issues":[]}')]
+        state = long_video._new_state("A beginner journalism lesson", 1, outline, mode="tools", skills=["teach-lecture"],
+                                      scene_shortlist=["QuoteScene", "ExplainScene", "UnregisteredScene"])
+        state = type(state).model_validate_json(state.model_dump_json())
         tool_model = AsyncMock()
-        tool_model.ainvoke.side_effect = [AIMessage("", tool_calls=[
-            {"name": "load_skill", "args": {"name": "teach-lecture"}, "id": "load-lecture"},
-        ]), AIMessage(json.dumps(draft))]
+        tool_model.ainvoke.return_value = AIMessage(json.dumps(draft))
 
-        with patch.object(planner, "get_llm", return_value=writer), patch.object(planner, "get_tool_llm") as tool_llm:
+        with patch.object(planner, "get_tool_llm") as tool_llm:
             tool_llm.return_value.bind_tools.return_value = tool_model
             planned = await long_video.plan_chapter(state, 1)
 
-        self.assertEqual(state.chapters[0].llm_calls, 5)
-        self.assertIn("A beginner journalism lesson", writer.ainvoke.call_args_list[0].args[0][-1].content)
-        self.assertIn("Adjust the script", writer.ainvoke.call_args_list[1].args[0][-1].content)
-        self.assertEqual([scene["narration"]["text"] for scene in planned["scenes"]], [beat["narration"] for beat in beats])
+        self.assertEqual(state.chapters[0].llm_calls, 1)
+        system, brief = tool_model.ainvoke.call_args.args[0]
+        self.assertIn("A beginner journalism lesson", brief.content)
+        self.assertIn(f"about {word_budget} spoken words", brief.content)
+        self.assertIn("### QuoteScene\nfields:", system.content)
+        self.assertEqual(system.content.count("### ExplainScene\nfields:"), 1)
+        self.assertNotIn("UnregisteredScene", system.content)
+        self.assertEqual([scene["narration"] for scene in planned["scenes"]],
+                         [scene["narration"] for scene in draft["scenes"]])
         self.assertEqual(cues.resolve(planned)[1], {})
 
 
@@ -418,14 +495,11 @@ class VarietyTests(unittest.TestCase):
                            "narration": {"text": "x"}})
         self.assertTrue(any("of 10 scenes are QuoteScene" in p for p in validation._lint_variety(scenes, [])))
 
-    def test_same_picture_drawn_again_and_again(self):
+    def test_same_objects_can_be_used_for_different_teaching_beats(self):
         scenes = []
         for i in range(4):
             scenes += [_iso(i), {"id": f"q{i}", "component": "QuoteScene", "props": {}, "narration": {"text": "x"}}]
-        problems = validation._lint_variety(scenes, [])
-        self.assertTrue(any("same objects from scratch 4 times" in p for p in problems))
-        scenes[2]["props"]["continue"] = True  # a continuation is the cheap, correct way to reuse it
-        self.assertFalse(any("from scratch" in p for p in validation._lint_variety(scenes, [])))
+        self.assertEqual(validation._lint_variety(scenes, []), [])
 
 
 class NarrationTests(unittest.TestCase):
@@ -450,14 +524,14 @@ class NarrationTests(unittest.TestCase):
 class ShowTheRealThingTests(unittest.TestCase):
     def test_topics_require_real_artifacts_in_tech_and_non_tech(self):
         names = set(catalog.scene_names())
-        cases = {"REST API design and pagination": (["teach-code"], "TerminalScene"),
-                 "The French Revolution in ten minutes": (["video-foundation"], "TimelineScene"),
+        cases = {"The French Revolution in ten minutes": (["video-foundation"], "TimelineScene"),
                  "How newspapers choose a front page headline": (["video-foundation"], "FrontPageScene"),
                  "Why do things go viral on social media": (["video-foundation"], "FeedScene"),
                  "Inflation and your budget explained": (["video-foundation"], "ChartScene")}
         for topic, (guides, scene) in cases.items():
             need = skills.required_visuals(topic, guides, names)
             self.assertTrue(any(scene in s for _, s in need), (topic, need))
+        self.assertEqual(skills.required_visuals("REST API design and pagination", ["teach-code"], names), [])
         self.assertEqual(skills.required_visuals("Hash map lookups", ["video-foundation"], names), [])
 
 

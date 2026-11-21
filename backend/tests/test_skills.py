@@ -6,7 +6,9 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import httpx
+from langchain_core.decisions import ChoiceAnswer, ClassifierResponse, NoulAnswer
 from langchain_core.messages import AIMessage
+from pydantic import SecretStr
 
 from app.agent.videoGenerator import skills
 from app.agent.videoGenerator.generator import plan_video
@@ -140,21 +142,24 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(state.topic, long_video.chapter_context(state, 1))
         self.assertNotIn('ends with a short quiz', long_video.OUTLINE_RULES)
 
-    async def test_tools_load_guides_before_accepting_plan(self):
+    async def test_tools_preload_guides_and_common_scene_contracts(self):
         model = AsyncMock()
-        # First response tries to skip loading; the planner must ask again.
-        model.ainvoke.side_effect = [AIMessage('{}'), AIMessage('', tool_calls=[
-            {'name': 'load_skill', 'args': {'name': 'teach-code'}, 'id': 'load-1', 'type': 'tool_call'},
-            {'name': 'load_skill', 'args': {'name': 'video-foundation'}, 'id': 'load-2', 'type': 'tool_call'}]), AIMessage('{}')]
+        model.ainvoke.return_value = AIMessage('{}')
         with patch.object(planner, 'get_tool_llm') as get, patch.object(planner, '_check', AsyncMock(return_value=({'scenes': []}, ''))) as check, \
                 patch.object(settings, 'PLANNER_DEFAULT_STYLE', ''):  # no house style: only the two guides below
             get.return_value.bind_tools.return_value = model
             result = await plan_video('Node.js', mode='tools')
-        self.assertEqual(result.skills, ['teach-code', 'video-foundation'])
-        self.assertEqual(result.llm_calls, 3)
+        self.assertCountEqual(result.skills, ['teach-code', 'video-foundation'])
+        self.assertEqual(result.llm_calls, 1)
         check.assert_awaited_once()
         prompt = model.ainvoke.call_args.args[0][0].content
-        self.assertNotIn('Teach observable behavior', prompt)  # body arrived only via tool
+        self.assertIn('Teaching guide: teach-code', prompt)
+        self.assertIn('### OutcomeComparisonScene', prompt)
+        self.assertIn('### TerminalScene', prompt)
+        names = [t.name for t in get.return_value.bind_tools.call_args.args[0]]
+        self.assertIn('get_scene', names)
+        self.assertIn('find_iso_objects', names)
+        self.assertNotIn('load_skill', names)
 
     async def test_tools_can_be_disabled(self):
         model = AsyncMock(); model.ainvoke.return_value = AIMessage('{}')
@@ -196,7 +201,11 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_api_rejects_invalid_skills_before_model_call(self):
         from app.main import app
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
-            for endpoint, body in [('/plan', {'prompt': 'Node.js'}), ('/long', {'prompt': 'Node.js'}), ('/components', {'request': 'A useful new scene'})]:
+            for endpoint, body in [
+                ('/videos', {'prompt': 'Node.js'}),
+                ('/videos', {'prompt': 'Node.js', 'length': 'long'}),
+                ('/components', {'request': 'A useful new scene'}),
+            ]:
                 response = await client.post(endpoint, json={**body, 'skills': ['missing']})
                 self.assertEqual(response.status_code, 422, response.text)
 
@@ -257,3 +266,55 @@ class RouterTests(unittest.IsolatedAsyncioTestCase):
         from app.agent.videoGenerator.nodes import select_skills as skill_router
         r = await skill_router.route("anything", ["teach-code"])
         self.assertEqual((r.source, r.skills, r.calls), ("requested", ["teach-code"], 0))
+
+    async def test_typesafe_routes_in_one_request_and_records_usage(self):
+        from app.agent.videoGenerator.nodes import select_skills as skill_router
+        from app.utils.llm_accounting import collect_usage
+
+        response = ClassifierResponse(
+            model="jev-latest",
+            answers={
+                "format": ChoiceAnswer(type="choice", choice="make-explainer", confidence=1,
+                                       probabilities={"make-explainer": 1}),
+                "objective": ChoiceAnswer(type="choice", choice="trace", confidence=1, probabilities={"trace": 1}),
+                "teach-data": NoulAnswer(type="noul", noul=0.9),
+                "scene_QueryScene": NoulAnswer(type="noul", noul=0.95),
+                "scene_TransactionScene": NoulAnswer(type="noul", noul=0.8),
+                "scene_RAGScene": NoulAnswer(type="noul", noul=0.7),
+                "scene_UnregisteredScene": NoulAnswer(type="noul", noul=1),
+            },
+            usage={"input_tokens": 100, "output_tokens": 8, "total_tokens": 108},
+        )
+        classifier = AsyncMock()
+        classifier.ainvoke.return_value = response
+        with patch.object(settings, "SKILL_ROUTER", "typesafe"), \
+                patch.object(settings, "TYPESAFE_API_KEY", SecretStr("test-key")), \
+                patch("langchain_typesafe.TypeSafeClassifier", return_value=classifier), \
+                patch.object(skill_router, "get_llm") as llm, collect_usage() as usage:
+            routed = await skill_router.route("Follow a request through a database", long_video=True)
+
+        classifier.ainvoke.assert_awaited_once()
+        llm.assert_not_called()
+        questions = classifier.ainvoke.await_args.args[0]["questions"]
+        self.assertTrue({"format", "style", "objective", "teach-data"} <= questions.keys())
+        self.assertIn("scene_QueryScene", questions)
+        self.assertNotIn("scene_ExplainScene", questions)
+        self.assertEqual((routed.source, routed.calls, routed.input_tokens, routed.output_tokens), ("typesafe", 1, 100, 8))
+        self.assertEqual(routed.objective, "trace")
+        self.assertIn("teach-data", routed.skills)
+        self.assertIn("long-video-pacing", routed.skills)
+        self.assertEqual(routed.scene_shortlist, ["QueryScene", "TransactionScene"])
+        self.assertEqual(usage.details.usage_details_calls, 1)
+
+    async def test_typesafe_missing_key_or_error_uses_keyword_router(self):
+        from app.agent.videoGenerator.nodes import select_skills as skill_router
+
+        classify = AsyncMock(side_effect=RuntimeError("test error"))
+        topic = "Explain bubble sort"
+        with patch.object(settings, "SKILL_ROUTER", "typesafe"), patch.object(skill_router, "decide", classify):
+            with patch.object(settings, "TYPESAFE_API_KEY", SecretStr("")):
+                self.assertEqual((await skill_router.route(topic)).source, "keyword")
+                classify.assert_not_awaited()
+            with patch.object(settings, "TYPESAFE_API_KEY", SecretStr("test-key")):
+                failed = await skill_router.route(topic)
+        self.assertEqual((failed.source, failed.skills), ("keyword (typesafe failed)", skills.select(topic)))

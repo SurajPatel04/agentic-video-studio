@@ -3,8 +3,9 @@
  * Pure drawing: every value (position, size, progress) comes from the caller, so all motion is
  * frame-driven in IsoScene.
  */
-import type {FC, ReactNode} from 'react';
+import type {FC} from 'react';
 import {Settings, type LucideIcon} from 'lucide-react';
+import {wrapPreviewLines} from '../components/textPreview';
 import {faces, PAPER, poly, project, roundedPath, statusColor, type Pt, C30, S30} from './iso';
 
 type Space = {T: number; o: Pt; sw: number}; // tile size, origin, stroke width
@@ -154,12 +155,12 @@ export const noteSize = (text: string, u: number) => {
 };
 
 /** Speech bubble pointing at `at`: above it (pointer down), or to its right / left (pointer sideways). */
-export const Note: FC<{at: Pt; text: string; u: number; scale: number; side?: 'above' | 'right' | 'left'; tipOffset?: number; accent?: string}> = ({
-  at, text, u, scale, side = 'above', tipOffset = 0, accent = '#f6d28b',
+export const Note: FC<{at: Pt; text: string; u: number; scale: number; side?: 'above' | 'right' | 'left'; tipOffset?: number; gap?: number; accent?: string}> = ({
+  at, text, u, scale, side = 'above', tipOffset = 0, gap = 16 * u, accent = '#f6d28b',
 }) => {
   if (scale <= 0.01) return null;
   const {lines, fs, lh, w, h} = noteSize(text, u);
-  const sw = 2.6 * u, gap = 16 * u;
+  const sw = 2.6 * u;
   // bubble's top-left corner relative to `at`, and the pointer triangle
   const box = side === 'above' ? {x: -w / 2, y: -h - gap} : side === 'right' ? {x: gap, y: -h / 2} : {x: -w - gap, y: -h / 2};
   const base = Math.max(-w / 2 + 28 * u, Math.min(tipOffset, w / 2 - 28 * u));
@@ -170,13 +171,26 @@ export const Note: FC<{at: Pt; text: string; u: number; scale: number; side?: 'a
       : [{x: -gap - 1, y: -12 * u}, {x: -gap - 1, y: 12 * u}, {x: -1, y: 0}];
   const cover = side === 'above' ? {x: base - 13 * u, y: -gap - 4 * u, w: 26 * u, h: 5 * u}
     : side === 'right' ? {x: gap - 1 * u, y: -13 * u, w: 5 * u, h: 26 * u} : {x: -gap - 4 * u, y: -13 * u, w: 5 * u, h: 26 * u};
+  const hasLeader = side === 'above' && gap > 20 * u;
+  const leaderTip = {x: tipOffset, y: -2 * u};
+  const leaderBase = toward(leaderTip, {x: base, y: -gap}, 12 * u);
+  const leaderAngle = Math.atan2(leaderTip.y - leaderBase.y, leaderTip.x - leaderBase.x);
+  const wing = {x: Math.sin(leaderAngle) * 5 * u, y: Math.cos(leaderAngle) * 5 * u};
   return (
     <g transform={`translate(${at.x} ${at.y}) scale(${scale})`}>
+      {hasLeader ? <>
+        <line x1={base} x2={leaderBase.x} y1={-gap} y2={leaderBase.y}
+          stroke={PAPER.ink} strokeWidth={2.4 * u} strokeLinecap="round" />
+        <polygon points={poly([leaderTip, {x: leaderBase.x + wing.x, y: leaderBase.y - wing.y},
+          {x: leaderBase.x - wing.x, y: leaderBase.y + wing.y}])} fill={PAPER.ink} />
+      </> : null}
       <rect x={box.x + 4 * u} y={box.y + 5 * u} width={w} height={h} rx={16 * u} fill={PAPER.shadow} />
       <rect x={box.x} y={box.y} width={w} height={h} rx={16 * u} fill={PAPER.card} stroke={PAPER.ink} strokeWidth={sw} />
       <rect x={box.x + 9 * u} y={box.y + 12 * u} width={8 * u} height={h - 24 * u} rx={4 * u} fill={accent} />
-      <polygon points={poly(tri)} fill={PAPER.card} stroke={PAPER.ink} strokeWidth={sw} strokeLinejoin="round" />
-      <rect x={cover.x} y={cover.y} width={cover.w} height={cover.h} fill={PAPER.card} />
+      {!hasLeader ? <>
+        <polygon points={poly(tri)} fill={PAPER.card} stroke={PAPER.ink} strokeWidth={sw} strokeLinejoin="round" />
+        <rect x={cover.x} y={cover.y} width={cover.w} height={cover.h} fill={PAPER.card} />
+      </> : null}
       {lines.map((l, i) => (
         <text key={i} x={box.x + w / 2 + 6 * u} y={box.y + 22 * u + fs * 0.8 + i * lh} textAnchor="middle" fontFamily={PAPER.sans} fontWeight={600} fontSize={fs} fill={PAPER.ink}>{l}</text>
       ))}
@@ -184,13 +198,27 @@ export const Note: FC<{at: Pt; text: string; u: number; scale: number; side?: 'a
   );
 };
 
+export function tagLayout(text: string, u: number, maxWidth: number) {
+  const value = text.replace(/\s+/g, ' ').trim();
+  const available = Math.max(48 * u, maxWidth - 26 * u);
+  const fs = Math.min(20 * u, Math.max(15 * u, available / (Math.max(1, value.length) * 0.62)));
+  const columns = Math.max(1, Math.floor(available / (fs * 0.62) + 1e-6));
+  const wrapped = wrapPreviewLines(value, columns);
+  const lines = wrapped.slice(0, 2).map(line => line.text);
+  if (wrapped.length > 2) lines[1] = lines[1].slice(0, columns - 1).trimEnd() + '…';
+  const lineHeight = fs * 1.25;
+  return {lines, fs, lineHeight, w: Math.max(...lines.map(line => line.length)) * fs * 0.62 + 26 * u,
+    h: Math.max(36 * u, lineHeight * lines.length + 12 * u)};
+}
+
 /** Small rounded label (link labels, crowd labels). */
-export const Tag: FC<{at: Pt; text: string; u: number; opacity?: number; fill?: string; children?: ReactNode}> = ({at, text, u, fill = PAPER.card, opacity = 1}) => {
-  const fs = 20 * u, w = text.length * fs * 0.62 + 26 * u, h = 36 * u;
+export const Tag: FC<{at: Pt; layout: ReturnType<typeof tagLayout>; u: number; opacity?: number; fill?: string}> =
+  ({at, layout: {lines, fs, lineHeight, w, h}, u, fill = PAPER.card, opacity = 1}) => {
   return (
     <g transform={`translate(${at.x} ${at.y})`} opacity={opacity}>
       <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={h / 2} fill={fill} stroke={PAPER.ink} strokeWidth={2.2 * u} />
-      <text x={0} y={fs * 0.36} textAnchor="middle" fontFamily={PAPER.font} fontWeight={700} fontSize={fs} fill={PAPER.ink}>{text}</text>
+      {lines.map((line, i) => <text key={i} x={0} y={fs * 0.36 + (i - (lines.length - 1) / 2) * lineHeight}
+        textAnchor="middle" fontFamily={PAPER.font} fontWeight={700} fontSize={fs} fill={PAPER.ink}>{line}</text>)}
     </g>
   );
 };

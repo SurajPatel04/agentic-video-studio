@@ -1,11 +1,12 @@
 import time
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 
 from app.utils.llm_accounting import SavedUsage
 
 from ..schemas.outline import Outline
+from ..tools.scene_lookup import LookupCache
 
 
 class ChapterState(SavedUsage):
@@ -22,6 +23,7 @@ class ChapterState(SavedUsage):
 
 
 class LongState(SavedUsage):
+    _lookup_cache: LookupCache = PrivateAttr(default_factory=dict)
     id: str
     topic: str
     minutes: float
@@ -31,6 +33,7 @@ class LongState(SavedUsage):
     model: str | None = None
     objective: str = ""
     skills: list[str] | None = None  # None migrates older jobs; [] explicitly disables guides
+    scene_shortlist: list[str] = Field(default_factory=list)
     layout: Literal["desktop", "mobile", "square"] = "desktop"  # frame size of every chapter
     max_minutes: float = 0  # the limit asked for; ``minutes`` is what the outline planned (content decides, up to the limit)
     status: Literal["outlined", "running", "planned", "done", "failed"] = "outlined"

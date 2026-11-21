@@ -1,6 +1,6 @@
 """Readable, coloured console output for the server and the CLI.
 
-    setup_logging()                         # once at startup (main.py / cli.py)
+    setup_logging()                         # once at HTTP or CLI startup
 
     with step("render", job=job_id) as s:   # ▶ render job=…   …   ✓ render 12.4s job=… video=…
         ...
@@ -56,7 +56,7 @@ class PrettyFormatter(logging.Formatter):
         name = "server" if name.startswith("uvicorn") else name
         head = " ".join([
             paint(t, "grey"),
-            paint(f"[{rid}]", "magenta") if rid else paint("[------]", "grey"),
+            paint(f"[{rid[:8]}]", "magenta") if rid else paint("[------]", "grey"),  # UUID4 ids: first 8 is enough
             paint(f"{record.levelname:<5}", _LEVEL.get(record.levelname, "blue"), bold=record.levelno >= logging.WARNING),
             paint(f"{name[:12]:<12}", "cyan"),
         ])

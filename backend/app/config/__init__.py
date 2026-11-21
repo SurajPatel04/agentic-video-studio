@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.utils.llm_accounting import ModelRates
@@ -19,12 +19,23 @@ class Settings(BaseSettings):
     CELERY_VIDEO_QUEUE: str = "video"
     VIDEO_JOB_RUNNER: Literal["local", "celery"] = "local"
     CELERY_VISIBILITY_TIMEOUT: int = Field(default=86400, gt=0)
+    CELERY_WORKERS: int = Field(default=50, ge=1)  # jobs at once per worker machine (one job per worker process)
+    CELERY_JOBS_PER_PROCESS: int = Field(default=1, ge=0)  # fresh process after this many jobs (0 = never)
+    # Job status / progress / logs mirrored to Redis (celery runner only). Every key expires after the TTL.
+    JOB_REDIS_URL: str = "redis://127.0.0.1:6379/2"  # "" = off
+    JOB_TTL_SECONDS: int = Field(default=7 * 86400, gt=0)  # 7 days after the last update
+    JOB_LOG_MAX: int = Field(default=2000, ge=10)  # log lines kept per job (oldest dropped)
+    JOB_LOG_MAX_CHARS: int = Field(default=2000, ge=100)  # per log line
+    JOB_LOG_PROMPTS: bool = False  # true = LLM prompts / replies also go to the Redis job log (large, may hold user data)
+    JOB_HEARTBEAT_SECONDS: float = Field(default=5.0, gt=0)  # worker publishes progress this often
 
     # Same convention as the discovery service: credentials live in the tracking URI,
     # e.g. https://user:password@dev.landnextrole.com/mlflow
     MLFLOW_TRACKING_URI: str = ""
     # Optional. When empty it is derived as {MLFLOW_TRACKING_URI}/gateway/openai/v1.
     MLFLOW_GATEWAY_BASE_URL: str = ""
+    # MLflow route used by video generation when no call-specific model is supplied.
+    VIDEO_GENERATION_ENDPOINT: str = "video_generation"
     # Gateway route name (the "model" sent to the OpenAI-compatible gateway).
     DEFAULT_MODEL: str = "summary"
     LLM_TIMEOUT_SECONDS: float = 1200.0  # 20 min per call; rich diagram plans (IsoScene) can take several minutes
@@ -53,18 +64,17 @@ class Settings(BaseSettings):
     PLANNER_MAX_ATTEMPTS: int = 3
     PLANNER_MODE: str = "auto"  # auto | catalog | tools
     PLANNER_TOOLS_THRESHOLD: int = 80  # auto: use tools once the library has more scenes than this
+    STREAM_VIDEO_SCENES: bool = True  # overlap complete streamed scenes with narration and rendering
     PLANNER_MAX_STEPS: int = 30  # tools mode: max LLM calls (lookups + answers)
-    PLANNER_MAX_TEXT_SHARE: float = 0.3  # at most 30% of scenes may be text-only
     PLANNER_CODE_EVERY: int = 5  # programming topics: >= 1 CodeScene per 5 scenes (0 = off)
     PLANNER_STYLE_RETRIES: int = 1  # retries for style problems; then the plan with the fewest problems is used
-    SKILL_ROUTER: str = "llm"  # how guides are chosen: llm (one small call reads the descriptions; keyword fallback) | keyword
-    SKILL_ROUTER_MODEL: str = ""  # route for that call; empty = the planner's model
+    SKILL_ROUTER: Literal["typesafe", "llm", "keyword"] = "typesafe"
+    SKILL_ROUTER_MODEL: str = ""  # Only used by SKILL_ROUTER=llm. Empty uses the planner's model.
+    TYPESAFE_API_KEY: SecretStr = SecretStr("")
+    TYPESAFE_BASE_URL: str = "https://api.typesafe.ai"
     PLANNER_DEFAULT_STYLE: str = "iso-diagrams"  # visual style skill used when no style matches the topic ("" = none)
-    PLANNER_MAX_SAME_LAYOUT: int = 2  # IsoScene: the same objects in the same places in at most 2 scenes in a row
-    PLANNER_MAX_TEXT_RUN: int = 3  # max Definition/Explain/BulletList scenes in a row (1 style retry, then accepted)
     PLANNER_MAX_SAME_RUN: int = 5  # any one scene component at most 5 times in a row (0 = off)
     PLANNER_MAX_SAME_SHARE: float = 0.7  # plans of 8+ scenes: one component in at most 70% of them (0 = off)
-    PLANNER_MAX_SAME_PICTURE: int = 3  # IsoScene: the same set of objects drawn fresh at most 3 times per plan (0 = off)
 
     # Component agent (writes new scenes when nothing in the library fits).
     AGENT_MODEL: str = ""  # MLflow gateway route; empty = DEFAULT_MODEL

@@ -101,7 +101,7 @@ Existing scene names (don't reuse): {existing}
 
 async def build_component(request: str, *, name: str | None = None, model: str | None = None, skills: list[str] | None = None) -> ComponentResult:
     selected = teaching_skills.select(request, skills, role="component")
-    job_id = "comp-" + uuid.uuid4().hex[:10]
+    job_id = str(uuid.uuid4())
     job_dir = settings.WORKSPACE_DIR / "jobs" / job_id
     box = Sandbox(job_dir)
     state: dict[str, Any] = {"passed": {}, "checks": 0, "finished": None, "stills": [], "reviewed": set()}

@@ -1,4 +1,4 @@
-"""Editable teaching guidance shared by routing, writing and scene planning."""
+"""Editable teaching guidance shared by routing and scene planning."""
 import re
 from pathlib import Path
 

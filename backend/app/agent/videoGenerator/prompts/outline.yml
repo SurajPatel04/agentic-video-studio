@@ -8,7 +8,7 @@ outline_rules: |
     "glossary": [{{"term": "...", "meaning": "one line"}}],
     "examples": ["running example followed through the whole video"],
     "chapters": [{{"title": "...", "goal": "one sentence: the intended viewer outcome, appropriate to the format",
-                   "key_points": ["3-6 concrete things to explain, show or demonstrate"],
+                   "key_points": ["3-6 ordered teaching beats, each naming what appears on screen and what the narrator explains about it"],
                    "code_demo": "", "minutes": 5}}]
   }}
   Rules:
@@ -17,6 +17,14 @@ outline_rules: |
     examples and application. For explainers, develop the central answer. For promotional videos, connect
     needs, benefits, supported evidence and a next action. Do not force teaching exercises into other formats.
   - Open with relevant context and end by delivering the promised outcome. Use a quiz only when it helps learning.
+  - Use chapters as internal planning divisions. Arrange their beats so the finished video teaches continuously,
+    with one opening and one conclusion. Chapter titles describe scope for the planner.
+  - Allocate a teaching beat to each distinct outcome explicitly requested in the brief. For a broad REST design
+    lesson that requests these topics, carry one catalog across the resource and collection, endpoint methods and
+    paths, actual response JSON, valid and invalid submitted fields with a useful error, and a paginated request
+    with the next-page result or control. Compare a consistent contract with an ad hoc one using equivalent calls.
+    Show how the client reads the response and which field or path change would break that logic. Use only the
+    beats relevant to the brief and adapt the visible evidence to the subject for other lessons.
   - glossary: shared terms when terminology matters (otherwise empty). examples: recurring examples or situations
     when relevant. Establish the people, facts or sample data shared across chapters. For data examples,
     specify stable identifiers, field names, types and values. Use examples from the requested subject.

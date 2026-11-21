@@ -1,6 +1,7 @@
 """Design missing IsoScene artwork and publish validated, immutable assets for reuse.
 
-Order for new tiles: built-in iso art, Lucide or React Icons, then saved or custom designs.
+An explicit saved design or alias reuses that artwork. New designs prefer built-in iso art,
+then Lucide or React Icons.
 The designer can select a matching icon or describe 3D shapes (boxes, cylinders, spheres, flat
 polygons); this module projects them at the house 30-degree angle, shades them like the built-in
 objects and fits them into the 100 x 100 ``faces`` the renderer draws.
@@ -358,6 +359,8 @@ def builtin_for(key: str) -> tuple[str, str] | None:
 
 def resolve(key: str, assets: dict) -> str | None:
     """The saved design for ``key`` by ID or alias."""
+    # Older watch catalog plans refer to these IDs.
+    key = {"watch-collection": "collection", "watch-resource": "watch"}.get(key, key)
     if key in assets:
         return key
     return next((k for k, art in assets.items() if key in {_norm(a) for a in art.aliases}), None)
@@ -450,19 +453,28 @@ def _plain(obj):
     obj.pop("faces", None)
 
 
-async def materialize(plan, model):
+async def materialize(plan, model, *, generate_missing=True):
     """Give every tile with a "design" its picture: a built-in kind, a Lucide icon, a saved
     design, or a new drawing. A design that cannot be drawn falls back to the plain tile (its
     icon, if any), so one missing picture never fails the whole video."""
     assets, failed, built = inventory(), set(), {}
     for scene in plan.spec.get("scenes", []):
-        if scene.get("component") != "IsoScene":
+        props = scene.get("props") or {}
+        standalone = scene.get("component") == "IsoScene"
+        diagram = props if standalone else props.get("diagram")
+        if not isinstance(diagram, dict):
             continue
-        for obj in (scene.get("props") or {}).get("objects", []):
+        for obj in diagram.get("objects", []):
             raw = obj.get("design")
             if not raw:
                 continue
             key = _norm(raw)
+            if saved := resolve(key, assets):
+                _apply(obj, saved, assets[saved])
+                continue
+            if not standalone:
+                # Use known designs beside examples without sending a new design request.
+                continue
             builtin = builtin_for(key)
             if builtin:
                 what, name = builtin
@@ -473,7 +485,8 @@ async def materialize(plan, model):
                 else:
                     obj["icon"] = name
                 continue
-            key = resolve(key, assets) or key
+            if not generate_missing:
+                continue
             if key not in assets and key not in failed and key not in built:
                 try:
                     art = await _design(key, obj, plan, model, assets)

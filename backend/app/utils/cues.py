@@ -21,6 +21,12 @@ from app.config import PROJECT_ROOT
 
 REGISTRY = PROJECT_ROOT / "library" / "registry.json"
 LEAD = 3  # frames: show the change just as the word starts
+ORDERED_TRACKS = {
+    "AnnotatedTextScene": {("steps",): True, ("diagram", "exampleLines"): False},
+    "OutcomeComparisonScene": {("steps",): True},
+    "WorkedExampleScene": {("stages",): True},
+    "IsoScene": {("exampleLines",): False},
+}
 
 
 def _norm(word: str) -> str:
@@ -69,12 +75,14 @@ def _find(tokens: list[str], cue: str, start: int) -> int | None:
     if not want:
         return None
 
-    for order in (range(start, len(tokens)), range(start)):
+    orders = (range(start, len(tokens)), range(start))
+    for order in orders:
         for i in order:
             if tokens[i:i + len(want)] == want:
                 return i
-        # Prefer the actual word to a prefix such as /watches/w-104.
-        if len(want) == 1 and len(want[0]) >= 4:
+    # Prefer the actual word anywhere to a prefix such as /watches/w-104.
+    if len(want) == 1 and len(want[0]) >= 4:
+        for order in orders:
             for i in order:
                 t = tokens[i]
                 if len(t) >= 4 and (t.startswith(want[0]) or want[0].startswith(t)):
@@ -92,22 +100,23 @@ def _fraction(scene: dict[str, Any], index: int, total: int) -> float:
     return round(0.05 + 0.85 * index / max(1, total), 3)
 
 
-def resolve_scene(scene: dict[str, Any]) -> list[str]:
+def resolve_scene(scene: dict[str, Any], *, issues: dict[str, str] | None = None) -> list[str]:
     """Replace cues in one scene with fractions (in place). Returns the cues not found in the narration."""
     allowed = timing_paths().get(str(scene.get("component")), frozenset())
     words = (scene.get("voice") or {}).get("words") or []
-    tokens = [_norm(w["t"]) for w in words] if words else \
-        [_norm(w) for w in str((scene.get("narration") or {}).get("text", "")).split()]
-    tokens = [t for t in tokens if t] if not words else tokens
+    script_tokens = [token for w in str((scene.get("narration") or {}).get("text", "")).split()
+                     if (token := _norm(w))]
+    tokens = [_norm(w["t"]) for w in words] if words else script_tokens
     missing: list[str] = []
+    unresolved = set()
     # Objects, arrows, annotations and written lines can refer to the same utterance.
     # Advance only within a track so traversal order cannot change another track's timing.
     cursors: dict[str, int] = {}
 
-    def visit(node: Any, path: str) -> None:
+    def visit(node: Any, path: str, address: str, position: float = 0.0) -> None:
         if isinstance(node, list):
-            for item in node:
-                visit(item, path + "[]")
+            for index, item in enumerate(node):
+                visit(item, path + "[]", f"{address}[{index}]", (index + 1) / (len(node) + 1))
             return
         if not isinstance(node, dict):
             return
@@ -117,30 +126,67 @@ def resolve_scene(scene: dict[str, Any]) -> list[str]:
             cue = node.pop(cue_key)
             # "cue" on an object whose "at" is a grid position means "appear when said"
             target = field if f"{path}.{field}" in allowed else "appearAt" if f"{path}.appearAt" in allowed else None
-            if target is None or not isinstance(cue, str):
+            if target is None:
                 continue
-            i = _find(tokens, cue, cursors.get(path, 0))
+            track = address.rsplit("[", 1)[0] if address.endswith("]") else path
+            i = _find(tokens, cue, cursors.get(track, 0)) if isinstance(cue, str) else None
             if i is None:
-                missing.append(cue)
-                node.setdefault(target, 0.5)  # keep it valid; the planner is told the cue is not in the narration
+                missing.append(str(cue))
+                if issues is not None:
+                    issues[f"{address}.{cue_key}"] = f"Use a distinct phrase from the narration for cue {cue!r}."
+                script_index = _find(script_tokens, cue, 0) if words and isinstance(cue, str) else None
+                if target not in node:
+                    if target == "at":
+                        unresolved.add(id(node))
+                    if script_index is None:
+                        node[target] = position
+                    else:
+                        node[target] = _fraction({}, script_index, len(script_tokens))
                 continue
-            cursors[path] = i + 1
+            cursors[track] = i + 1
             node[target] = _fraction(scene, i, len(tokens))
         for key, value in node.items():
-            visit(value, f"{path}.{key}")
+            visit(value, f"{path}.{key}", f"{address}.{key}", position)
 
-    visit(scene.get("props"), "")
+    visit(scene.get("props"), "", "")
+    if not unresolved:
+        return missing
+    # Keep the estimated plan valid enough to check other fields. A missing cue is
+    # still rejected by the planner using its original address and phrase.
+    for track, strict in ORDERED_TRACKS.get(scene.get("component"), {}).items():
+        items = scene.get("props")
+        for key in track:
+            items = items.get(key) if isinstance(items, dict) else None
+        if not isinstance(items, list) or not all(isinstance(item, dict) for item in items):
+            continue
+        times = [item.get("at") for item in items]
+        if all(type(at) in (float, int) for at in times) and all(
+            left < right or (not strict and left == right) for left, right in zip(times, times[1:])
+        ):
+            continue
+        anchors = [(-1, 0.0), *((i, item["at"]) for i, item in enumerate(items)
+                               if id(item) not in unresolved and type(item.get("at")) in (float, int)),
+                   (len(items), 1.0)]
+        for (left, start), (right, end) in zip(anchors, anchors[1:]):
+            for i in range(left + 1, right):
+                if id(items[i]) in unresolved:
+                    items[i]["at"] = start + (end - start) * (i - left) / (right - left)
     return missing
 
 
-def resolve(spec: dict[str, Any], *, inplace: bool = False) -> tuple[dict[str, Any], dict[str, list[str]]]:
+def resolve(spec: dict[str, Any], *, inplace: bool = False,
+            issues: list[str] | None = None) -> tuple[dict[str, Any], dict[str, list[str]]]:
     """Resolve every scene's cues. Returns (spec, {scene id: cues not found in its narration})."""
     if not inplace:
         spec = copy.deepcopy(spec)
     missing = {}
-    for scene in spec.get("scenes", []):
+    for index, scene in enumerate(spec.get("scenes", [])):
         if isinstance(scene, dict):
-            lost = resolve_scene(scene)
+            details = {} if issues is not None else None
+            lost = resolve_scene(scene, issues=details)
             if lost:
                 missing[str(scene.get("id"))] = lost
+            if details and issues is not None:
+                issues.extend(f"scenes[{index}] ({scene.get('id')}).props{path}: {message}"
+                              for path, message in details.items())
     return spec, missing

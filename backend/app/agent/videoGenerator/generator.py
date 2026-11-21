@@ -3,15 +3,19 @@ from app.config import settings
 from app.utils.console import step
 
 from .graph import video_graph
-from .nodes.plan_scenes import Layout, Mode, apply_layout
+from .nodes.plan_scenes import Mode
 from .prompts.catalog import LAYOUT_HINT
 from .schemas.plan import Plan
 from .tools import catalog
+from .tools.scene_lookup import LookupCache
+from .validation import Layout
 
 
 async def plan_video(topic: str, *, scenes: int | None = None, model: str | None = None, mode: Mode | None = None,
                      context: str = "", skills: list[str] | None = None, layout: Layout = "desktop",
-                     code_demo: str | None = None, narration_budget: int | None = None, objective: str = "") -> Plan:
+                     code_demo: str | None = None, narration_budget: int | None = None, objective: str = "",
+                     scene_shortlist: list[str] | None = None, lookup_cache: LookupCache | None = None,
+                     lookup_focus: str = "") -> Plan:
     """Ask the LLM for a valid composition about ``topic`` (printed as one step with its result).
     ``layout``: desktop 1920x1080 (default) | mobile 1080x1920 | square 1080x1080."""
     with step("plan", topic=topic, scenes=scenes, mode=mode or settings.PLANNER_MODE, layout=layout) as s:
@@ -19,6 +23,8 @@ async def plan_video(topic: str, *, scenes: int | None = None, model: str | None
         hint = f"- Make about {scenes} scenes.\n" if scenes else "- Use the number of scenes needed to teach the requested outcome. Keep a focused explanation brief.\n"
         if context:
             hint += "\n" + context.strip() + "\n"
+        if narration_budget:
+            hint += f"\nAim for about {narration_budget} spoken words across all scene narrations.\n"
         # None selects the standalone policy. An empty string is a chapter with no required demo.
         if code_demo:
             hint += f"\nUse an EditorScene to demonstrate this chapter's required source code: {code_demo}\n"
@@ -29,10 +35,12 @@ async def plan_video(topic: str, *, scenes: int | None = None, model: str | None
             mode = "tools" if len(catalog.scene_names()) > settings.PLANNER_TOOLS_THRESHOLD else "catalog"
         result = await video_graph.ainvoke({
             "topic": topic, "hint": hint, "model": model, "mode": mode, "skills": skills,
-            "code_demo": code_demo, "budget": narration_budget, "objective": objective,
+            "code_demo": code_demo, "objective": objective, "layout": layout,
+            "scene_shortlist": scene_shortlist or [],
+            "lookup_cache": lookup_cache if lookup_cache is not None else {},
+            "lookup_focus": lookup_focus,
         })
         plan = result["plan"]
-        apply_layout(plan.spec, layout)
         s.update(mode=plan.mode, skills=",".join(plan.skills), scenes=len(plan.spec.get("scenes", [])),
                  attempts=plan.attempts, llm_calls=plan.llm_calls, tokens_in=plan.input_tokens, tokens_out=plan.output_tokens)
         return plan

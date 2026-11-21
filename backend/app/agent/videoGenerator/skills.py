@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from app.config import PROJECT_ROOT, settings
 
 ROOT = PROJECT_ROOT / "skills"
+MAX_SKILL_BODY_CHARS = 8000
 log = logging.getLogger(__name__)
 Role = Literal["planner", "component"]
 
@@ -74,8 +75,8 @@ def load(name: str, role: Role = "planner") -> str:
     lines = path.read_text().splitlines(keepends=True)
     end = next(i for i, line in enumerate(lines[1:], 1) if line.strip() == "---")
     body = "".join(lines[end + 1:]).strip()
-    if not body or len(body) > 7000:
-        raise ValueError(f"Skill {name} must have a nonempty body under 7000 characters")
+    if not body or len(body) > MAX_SKILL_BODY_CHARS:
+        raise ValueError(f"Skill {name} must have a nonempty body of up to {MAX_SKILL_BODY_CHARS} characters")
     return f"### Teaching guide: {name}\n{body}"
 
 
@@ -142,10 +143,22 @@ def index(role: Role = "planner", allowed: list[str] | None = None) -> str:
                      if allowed is None or name in allowed)
 
 
-def guidance(names: list[str], role: Role = "planner") -> str:
+def guidance(names: list[str], role: Role = "planner", *, asset_lookup: bool = False) -> str:
     if not names:
         return ""
-    return "\nTeaching guides (adapt to the task; scene contracts and user instructions take precedence):\n" + "\n\n".join(load(n, role) for n in names)
+    guides = []
+    for name in names:
+        guide = load(name, role)
+        if asset_lookup and name == "iso-diagrams":
+            guide = re.sub(
+                r"(?ms)^Objects \(kinds.*?(?=^- For concepts that need distinct artwork)",
+                "Use find_iso_objects for specialized kinds. Common kinds: server, database, client, router, file, user. "
+                "For road diagrams use z: 0.12 for vehicles, or 0.18 on a highway.\n",
+                guide,
+            )
+            guide = re.sub(r"(?m)^More media kinds:.*\n?", "", guide)
+        guides.append(guide)
+    return "\nTeaching guides (adapt to the task; scene contracts and user instructions take precedence):\n" + "\n\n".join(guides)
 
 
 def tools(role: Role = "planner", allowed: list[str] | None = None, loaded: set[str] | None = None):

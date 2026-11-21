@@ -3,7 +3,7 @@ import {useCurrentFrame, useVideoConfig} from 'remotion';
 import {z} from 'zod';
 import {entrance, type Entrance} from '../animation';
 import {Sfx} from '../audio';
-import {useTheme, useUnit} from '../theme';
+import {useSceneWords, useTheme, useUnit} from '../theme';
 import {CircleMark, Highlight, Underline} from './marks';
 import {parseMarkup, type Segment} from './markup';
 
@@ -19,6 +19,7 @@ export type AnimatedTextProps = {
   charsPerSecond?: number; // typewriter speed
   entrance?: Entrance; // how each word / letter / line enters
   markDelay?: number; // frames after a marked word appears before its mark draws
+  syncHighlights?: boolean;
   as?: 'h1' | 'h2' | 'h3' | 'p' | 'span' | 'div';
   style?: CSSProperties;
   boldStyle?: CSSProperties;
@@ -28,6 +29,10 @@ export type AnimatedTextProps = {
 };
 
 type Token = {text: string; mark: Segment['mark']; line: number; space: boolean};
+
+// STT can write "special-case" as one token while the slide says "special cases".
+const speechTokens = (text: string) => (text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [])
+  .map(word => word.length > 4 && /[^s]s$/.test(word) ? word.slice(0, -1) : word);
 
 /** Split into words (keeping marked phrases together) on lines. */
 const tokenize = (text: string): Token[] => {
@@ -59,6 +64,7 @@ export const AnimatedText: FC<AnimatedTextProps> = ({
   charsPerSecond = 28,
   entrance: enter = 'rise',
   markDelay = 6,
+  syncHighlights = false,
   as: Tag = 'p',
   style,
   boldStyle,
@@ -70,6 +76,10 @@ export const AnimatedText: FC<AnimatedTextProps> = ({
   const {fps} = useVideoConfig();
   const theme = useTheme();
   const u = useUnit();
+  const spoken = useSceneWords();
+  const speech = syncHighlights && spoken?.length
+    ? spoken.flatMap(({t, s}) => speechTokens(t).map(word => ({word, s})))
+    : undefined;
   const tokens = tokenize(text);
   const local = frame - startAt;
 
@@ -86,8 +96,16 @@ export const AnimatedText: FC<AnimatedTextProps> = ({
     switch (tok.mark) {
       case 'bold':
         return <span style={{color: markColor ?? theme.accent, fontWeight: 800, ...boldStyle}}>{content}</span>;
-      case 'highlight':
+      case 'highlight': {
+        if (speech) {
+          const phrase = speechTokens(tok.text);
+          const start = phrase.length ? speech.findIndex((_, i) =>
+            phrase.every((word, j) => speech[i + j]?.word === word)) : -1;
+          if (start < 0) return content;
+          return <Highlight at={Math.max(appearAt, speech[start].s)} duration={9} color={markColor}>{content}</Highlight>;
+        }
         return <Highlight at={at} color={markColor}>{content}</Highlight>;
+      }
       case 'underline':
         return <Underline at={at} color={markColor}>{content}</Underline>;
       case 'circle':

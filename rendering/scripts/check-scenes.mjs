@@ -7,8 +7,8 @@ import './export-react-icons.mjs';
 const root = path.resolve(import.meta.dirname, '..');
 await mkdir(path.join(root, 'out'), {recursive: true});
 const output = path.join(root, 'out', 'catalog-check.mjs');
-await build({stdin: {contents: `export {terminalTimeline} from './src/scenes/TerminalScene'; export {formatJsonExample} from './src/components/JsonExample'; export {sceneCatalog, overlaySchema} from './src/registry'; export {networkLayout} from './src/components/networkLayout'; export {algorithmLessons} from './src/scenes/AlgorithmLessons'; export {mathLessons} from './src/scenes/MathLessons';`, resolveDir: root, loader: 'ts'}, outfile: output, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: {'.css': 'empty'}, plugins: [{name:'bundle-world-map',setup(b){b.onResolve({filter:/^world-atlas\//},args=>({path:path.join(root,'node_modules',args.path),external:false}));}}], logLevel: 'silent'});
-const {sceneCatalog, overlaySchema, networkLayout, algorithmLessons, mathLessons, terminalTimeline, formatJsonExample} = await import(pathToFileURL(output));
+await build({stdin: {contents: `export {terminalTimeline} from './src/scenes/TerminalScene'; export {formatJsonExample, formatJsonExamples, httpResponseStatus, jsonFieldRange, previewJsonExample} from './src/components/JsonExample'; export {sceneCatalog, overlaySchema} from './src/registry'; export {networkLayout} from './src/components/networkLayout'; export {algorithmLessons} from './src/scenes/AlgorithmLessons'; export {mathLessons} from './src/scenes/MathLessons';`, resolveDir: root, loader: 'ts'}, outfile: output, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: {'.css': 'empty'}, plugins: [{name:'bundle-world-map',setup(b){b.onResolve({filter:/^world-atlas\//},args=>({path:path.join(root,'node_modules',args.path),external:false}));}}], logLevel: 'silent'});
+const {sceneCatalog, overlaySchema, networkLayout, algorithmLessons, mathLessons, terminalTimeline, formatJsonExample, formatJsonExamples, httpResponseStatus, jsonFieldRange, previewJsonExample} = await import(pathToFileURL(output));
 const {existsSync} = await import('node:fs');
 const {z} = await import('zod');
 for (const [name, entry] of Object.entries(sceneCatalog)) {
@@ -34,6 +34,10 @@ assert.equal(sceneCatalog.BlankScene.schema.parse({}).focusOverlay, true);
 assert.equal(sceneCatalog.BlankScene.schema.parse({focusOverlay:false}).focusOverlay, false);
 // IsoScene: objects that cover each other on screen, and links/steps to unknown ids, are rejected with a fix hint.
 const iso = sceneCatalog.IsoScene.schema;
+const customDiagram = iso.parse({objects: [{id: 'client', kind: 'client', at: [0, 0]}]});
+assert.deepEqual(customDiagram.links, []);
+assert.deepEqual(customDiagram.steps, []);
+assert(iso.parse({}).steps.length > 0);
 const crowded = iso.safeParse({objects: [{id: 'a', kind: 'server', at: [0, 0]}, {id: 'b', kind: 'server', at: [1, 1]}], links: [], steps: []});
 assert.equal(crowded.success, false);
 assert.match(crowded.error.issues[0].message, /covers "a" on screen/);
@@ -108,6 +112,59 @@ assert(annotation.safeParse({layout:'editor', text:responseWithHeaders, steps:[
   {at:0.1, focus:'HTTP/1.1 200 OK', explanation:'Check the status.'},
   {at:0.5, focus:'"Trail Bottle"', explanation:'Read the product name.'},
 ]}).success);
+const collectionJson = '200 OK\n{"data":[{"id":"w-104"},{"id":"w-105","a/b~":true}]}';
+const prettyCollection = formatJsonExample(collectionJson);
+for (const [pointer, expected] of [['/data', '"data"'], ['/data/1/id', '"id":"w-105"'], ['/data/1/a~1b~0', '"a/b~":true']]) {
+  const range = jsonFieldRange(prettyCollection, pointer);
+  assert.equal(collectionJson.slice(range.start, range.start + range.length), expected);
+  assert(annotation.safeParse({layout:'editor', text:collectionJson,
+    steps:[{at:0.5, focusPath:pointer, explanation:'Read the response.'}]}).success);
+}
+assert(!annotation.safeParse({layout:'editor', text:collectionJson,
+  steps:[{at:0.5, focusPath:'/data/2/id', explanation:'Read the response.'}]}).success);
+const inlineResponse = formatJsonExample('200 OK · {"id":"w-104","available":true}');
+assert.equal(inlineResponse.header, '200 OK');
+for (const status of ['HTTP 200', 'HTTP/2 200', '200', '200 OK']) {
+  const text = `GET /watches/w-104\n\n${status}\n{"data":{"id":"w-104"}}`;
+  const example = formatJsonExample(text);
+  assert.equal(httpResponseStatus(example.header).label, 'Status 200 OK');
+  const range = jsonFieldRange(example, '/data/id');
+  assert.equal(text.slice(range.start, range.start + range.length), '"id":"w-104"');
+}
+const collectionResponse = '200 {"data":[{"id":42,"brand":"Northstar","model":"Field 38"}]}';
+const bareStatusResponse = formatJsonExample(collectionResponse);
+assert.equal(httpResponseStatus(bareStatusResponse.header).label, 'Status 200 OK');
+assert.deepEqual(JSON.parse(bareStatusResponse.lines.join('\n')).data[0], {id:42, brand:'Northstar', model:'Field 38'});
+assert(iso.safeParse({exampleLines:[{at:0, text:'GET /catalogs/7/watches'}, {at:0.5,
+  text:'200 '+JSON.stringify({data:[{id:42, brand:'Northstar', model:'Field 38', currency:'USD', available:true}]})}]}).success);
+
+assert.deepEqual(inlineResponse.lines, ['{', '  "id": "w-104",', '  "available": true', '}']);
+const exchanges = 'GET /watches/w-104\n200 OK\n{"id":"w-104"}\n\nGET /getWatch?id=w-104\n200 OK\n{"watchId":"w-104"}';
+const formattedExchanges = formatJsonExamples(exchanges);
+assert.equal(formattedExchanges.length, 2);
+assert.equal(formattedExchanges[1].headerStart, exchanges.indexOf('GET /getWatch'));
+const field = jsonFieldRange(formattedExchanges[1], '/watchId');
+assert.equal(exchanges.slice(field.start, field.start + field.length), '"watchId":"w-104"');
+for (const status of ['Response · 422', 'HTTP/1.1 422 Unprocessable Content', '422']) {
+  const text = `POST /watches\n{ "price": -5 }\n\n${status}\n{"price":-5,"error":{"fields":{"price":"must be greater than 0"}}}`;
+  const [request, response] = formatJsonExamples(text);
+  assert.equal(request.header, 'POST /watches');
+  assert.equal(response.header, status);
+  const errorField = jsonFieldRange(response, '/error/fields/price');
+  assert.equal(text.slice(errorField.start, errorField.start + errorField.length), '"price":"must be greater than 0"');
+  const steps = [
+    {at: 0.28, focusPath: '/price', explanation: 'Check the submitted price.'},
+    {at: 0.63, focusPath: '/error/fields/price', explanation: 'Read the error.'},
+    {at: 0.8, focusPath: '/price', occurrence: 2, explanation: 'Check the price echoed in the response.'},
+  ];
+  assert(annotation.safeParse({layout: 'editor', text, steps}).success);
+  assert(!annotation.safeParse({layout: 'editor', text, steps: [{...steps[2], occurrence: 3}]}).success);
+}
+const errorResponse = '{"error":{"code":"validation_failed","message":"Price must be greater than 0","fields":[{"field":"price","issue":"must_be_positive"}]}}';
+const prettyError = formatJsonExample(errorResponse);
+const arrayItem = jsonFieldRange(prettyError, '/error/fields/0');
+assert.equal(errorResponse.slice(arrayItem.start, arrayItem.start + arrayItem.length), '{"field":"price","issue":"must_be_positive"}');
+assert.equal(previewJsonExample(prettyError, arrayItem.start, arrayItem.length, 80, 16).abbreviated, false);
 assert.equal(formatJsonExample('Use {sample} to see the idea'), null);
 assert.equal(formatJsonExample('{"id": ...}'), null);
 const outcome = sceneCatalog.OutcomeComparisonScene.schema;
@@ -117,6 +174,10 @@ const comparison = {
   steps: [{at: 0.1, row: 0, reveal: true}, {at: 0.5, row: 1, part: 1, reveal: true}],
 };
 assert(outcome.safeParse(comparison).success);
+assert(outcome.safeParse({...comparison, layout: 'editor', rows: [
+  {...comparison.rows[0], parts: [{text: 'GET /watches\n→ {"data":[]}' }]},
+  {...comparison.rows[1], parts: [{text: 'GET /watches/w-104\n'}, {text: '→ ' + 'long example '.repeat(20)}]},
+]}).success);
 assert(!outcome.safeParse({...comparison, steps: [{at: 0.5, row: 0, part: 1}]}).success);
 assert(!outcome.safeParse({...comparison, steps: [...comparison.steps].reverse()}).success);
 assert(outcome.safeParse({...comparison, steps: [{at: 0.5, row: 1, reveal: true, resultFocus: 'w-104'}]}).success);
@@ -259,7 +320,9 @@ const sceneSources = {
   ...Object.fromEntries(Object.keys(algorithmLessons).map(name => [name,'AlgorithmLessons'])),
   ...Object.fromEntries(Object.keys(mathLessons).map(name => [name,'MathLessons'])),
 };
-const entries=Object.entries(sceneCatalog).map(([name,e])=>({name,version:'1.0.0',description:e.description,tags:e.tags,path:existsSync(path.join(root,`src/staging/${name}.tsx`))?`rendering/src/staging/${name}.tsx`:`rendering/src/scenes/${sceneSources[name]??name}.tsx`,staged:existsSync(path.join(root,`src/staging/${name}.tsx`)),propsSchema:z.toJSONSchema(e.schema,{io:'input'}),example:e.schema.parse({})}));
+const entries=Object.entries(sceneCatalog).map(([name,e])=>({name,version:'1.0.0',description:e.description,tags:e.tags,path:existsSync(path.join(root,`src/staging/${name}.tsx`))?`rendering/src/staging/${name}.tsx`:`rendering/src/scenes/${sceneSources[name]??name}.tsx`,staged:existsSync(path.join(root,`src/staging/${name}.tsx`)),propsSchema:z.toJSONSchema(e.schema,{io:'input'}),example:e.example?e.schema.parse(e.example):e.schema.parse({})}));
+const emptyExamples=entries.filter(e=>!Object.keys(e.example).length).map(e=>e.name);
+assert.deepEqual(emptyExamples,[],`scenes with empty example props (export an "example"): ${emptyExamples}`);
 await mkdir(path.join(root,'../library'), {recursive:true});
 await writeFile(path.join(root,'../library/registry.json'),JSON.stringify(entries,null,2)+'\n');
 const overlays=overlaySchema.options.map((o)=>{const s=z.toJSONSchema(o,{io:'input'});const type=s.properties.type.const;delete s.properties.type;s.required=(s.required??[]).filter((k)=>k!=='type');return {type,propsSchema:s};});

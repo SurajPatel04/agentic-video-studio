@@ -15,18 +15,28 @@
     python -m app.cli long-run <id> [--plan-only]          start / resume (skips finished chapters)
     python -m app.cli long-status <id>                     outline, chapter status, tokens, timestamps
     python -m app.cli long-redo <id> 3 [--stage render] [--cascade]   then long-run again
+
+  Queued on the Celery workers (VIDEO_JOB_RUNNER=celery; same as POST /videos):
+    python -m app.cli videos "How DNS works" [--length long --minutes 20] [--layout mobile] [--follow]
+    python -m app.cli status <id> [--follow]               status, step, progress
+    python -m app.cli log <id> [--limit 200] [--follow]    log from Redis: status changes + worker log lines
+    python -m app.cli cancel <id>                          stop a queued / worker-running job
 """
 
 import argparse
 import asyncio
 import json
+import time
+from contextlib import nullcontext
 from pathlib import Path
 
 from app.agent.videoGenerator.components.component_agent import build_component
 from app.agent.videoGenerator.components.staging import manifest, promote, unstage
-from app.agent.videoGenerator.jobs import long_video
+from app.agent.videoGenerator.jobs.scene_stream import streaming_video
+from app.agent.videoGenerator.jobs import job_store, long_video, video_jobs
 from app.agent.videoGenerator.generator import plan_video
 from app.agent.videoGenerator.nodes.plan_scenes import PlanError
+from app.config import settings
 from app.utils.console import setup_logging
 from app.utils.render import RenderError, add_narration, render_video
 from app.utils.tts import synthesize
@@ -88,10 +98,36 @@ async def main() -> None:
     rd.add_argument("chapter", type=int)
     rd.add_argument("--stage", choices=["plan", "render"], default="plan")
     rd.add_argument("--cascade", action="store_true", help="also re-plan the chapters after it")
-    for command in (p, vd, c, lg):
+    q = sub.add_parser("videos", help="queue a video on the Celery workers (VIDEO_JOB_RUNNER=celery); same as POST /videos")
+    q.add_argument("prompt")
+    q.add_argument("--length", choices=["short", "long"], default="short")
+    q.add_argument("--scenes", type=int, help="short: rough number of scenes")
+    q.add_argument("--minutes", type=float, default=30, help="long: the most it may take")
+    q.add_argument("--fixed-length", action="store_true", help="long: make it exactly --minutes long")
+    q.add_argument("--chapters", type=int)
+    q.add_argument("--no-captions", action="store_true")
+    q.add_argument("--captions-mode", choices=["burn", "track", "both"])
+    q.add_argument("--no-narrate", action="store_true")
+    q.add_argument("--scale", type=float, default=1.0)
+    q.add_argument("--mode", choices=["auto", "catalog", "tools"])
+    q.add_argument("--follow", action="store_true", help="then print progress and log lines until it ends")
+    st = sub.add_parser("status", help="status, step and progress of a /videos job (short or long)")
+    st.add_argument("id")
+    st.add_argument("--follow", action="store_true", help="keep printing until it ends")
+    sub.add_parser("cancel", help="cancel a queued or Celery-running video job (jobs run inside the API: POST /cancel/{id})").add_argument("id")
+    lgl = sub.add_parser("log", help="a Celery job's log from Redis (status changes + worker log lines)")
+    lgl.add_argument("id")
+    lgl.add_argument("--limit", type=int, default=200)
+    lgl.add_argument("--follow", action="store_true", help="keep printing new lines until it ends")
+    for command in (p, vd, c, lg, q):
         command.add_argument("--skills", nargs="*", default=None, help="Guide names; omit for automatic selection, use --skills alone to disable")
+    for command in (p, vd, lg, q):
+        command.add_argument("--layout", choices=["desktop", "mobile", "square"], default="desktop")
     args = parser.parse_args()
 
+    if args.cmd in ("videos", "status", "log", "cancel"):
+        await jobs_cmd(args)
+        return
     if args.cmd.startswith("long"):
         await long_cmd(args)
         return
@@ -116,23 +152,28 @@ async def main() -> None:
         return
 
     if args.cmd in ("plan", "video"):
-        try:
-            plan = await plan_video(args.prompt, scenes=args.scenes, mode=args.mode, skills=args.skills)
-        except PlanError as exc:
-            raise SystemExit(f"{exc}\n{exc.details}")
-        spec = plan.spec
-        print(f"planned {len(spec['scenes'])} scenes | mode={plan.mode} attempts={plan.attempts} llm_calls={plan.llm_calls} "
-              f"tokens in={plan.input_tokens} out={plan.output_tokens}")
-        if args.cmd == "plan":
-            out = args.out or Path("plan.json")
-            out.write_text(json.dumps(spec, indent=2) + "\n")
-            print(out)
-            return
-        try:
-            result = await render_video(spec, narrate=not args.no_narrate, captions=not args.no_captions, scale=args.scale,
-                                        captions_mode=args.captions_mode)
-        except RenderError as exc:
-            raise SystemExit(f"{exc}\n{exc.details}")
+        session = streaming_video(layout=args.layout, scale=args.scale, captions=not args.no_captions,
+                                  narrate=not args.no_narrate, captions_mode=args.captions_mode) if args.cmd == "video" else nullcontext()
+        async with session as work:
+            try:
+                plan = await plan_video(args.prompt, scenes=args.scenes, mode=args.mode, skills=args.skills, layout=args.layout)
+            except PlanError as exc:
+                raise SystemExit(f"{exc}\n{exc.details}")
+            spec = plan.spec
+            print(f"planned {len(spec['scenes'])} scenes | mode={plan.mode} attempts={plan.attempts} llm_calls={plan.llm_calls} "
+                  f"tokens in={plan.input_tokens} out={plan.output_tokens}")
+            if args.cmd == "plan":
+                out = args.out or Path("plan.json")
+                out.write_text(json.dumps(spec, indent=2) + "\n")
+                print(out)
+                return
+            if work:
+                await work.finish()
+            try:
+                result = await render_video(spec, narrate=not args.no_narrate, captions=not args.no_captions, scale=args.scale,
+                                            captions_mode=args.captions_mode)
+            except RenderError as exc:
+                raise SystemExit(f"{exc}\n{exc.details}")
         print("\n".join(result.log))
         print(f"{result.video}  ({result.seconds:.0f}s)")
         if result.subtitles:
@@ -161,6 +202,80 @@ async def main() -> None:
             print(f"{result.subtitles}  (captions: {result.captions_mode})")
 
 
+ENDED = ("done", "failed", "paused", "planned", "cancelled")
+
+
+def print_status(job: dict) -> None:
+    line = f"{job['id']}  {job['length']}  [{job['status']}] {job.get('progress_percent', '')}  {job.get('step', '')}"
+    print(line + (f"\n  ERROR: {job['error'][:1000]}" if job.get("error") else ""))
+    if job.get("status") == "done":
+        print(f"  video: {job.get('video_url')}  transcript: {job.get('transcript_url')}")
+
+
+def print_log_line(x: dict) -> None:
+    t = time.strftime("%H:%M:%S", time.localtime(x["t"]))
+    if x["kind"] == "status":
+        pct = video_jobs.progress_percent(x.get("progress") or 0)
+        print(f"{t} STATUS {x.get('status')} {pct} {x.get('step') or ''}" + (f"  ERROR: {x['error']}" if x.get("error") else ""))
+    else:
+        print(f"{t} {x.get('level', ''):7} {x.get('logger', '')}: {x.get('message', '')}")
+
+
+async def jobs_cmd(args) -> None:
+    if args.cmd == "videos":
+        if settings.VIDEO_JOB_RUNNER != "celery":
+            raise SystemExit("videos queues the job for the Celery workers: set VIDEO_JOB_RUNNER=celery "
+                             "(or run it here with: python -m app.cli video / long)")
+        req = {"prompt": args.prompt, "length": args.length, "layout": args.layout, "scenes": args.scenes,
+               "minutes": args.minutes, "fixed_length": args.fixed_length, "chapters": args.chapters,
+               "narrate": not args.no_narrate, "captions": not args.no_captions, "captions_mode": args.captions_mode,
+               "scale": args.scale, "skills": args.skills, "model": None, "planner": args.mode}
+        start = video_jobs.start_long if args.length == "long" else video_jobs.start_short
+        try:
+            job_id = start(req)
+        except video_jobs.QueueUnavailable as exc:
+            raise SystemExit(str(exc))
+        print_status(video_jobs.view(job_id) or {"id": job_id, "length": args.length, "status": "queued"})
+        if not args.follow:
+            print(f"follow it with: python -m app.cli log {job_id} --follow")
+            return
+        args.id, args.limit = job_id, 200
+        args.cmd = "log"
+
+    if video_jobs.view(args.id) is None:
+        raise SystemExit(f"unknown video id {args.id}")
+    if args.cmd == "cancel":
+        try:
+            print_status(video_jobs.cancel(args.id))
+        except video_jobs.JobNotActive as exc:
+            raise SystemExit(str(exc))
+        print("a Celery worker stops it within", settings.JOB_HEARTBEAT_SECONDS, "s")
+        return
+    if args.cmd == "status":
+        while True:
+            job = video_jobs.view(args.id)
+            print_status(job)
+            if not args.follow or job["status"] in ENDED:
+                return
+            await asyncio.sleep(settings.JOB_HEARTBEAT_SECONDS)
+            print()
+
+    last = 0.0  # time of the newest line printed
+    while True:
+        lines = job_store.lines(args.id, args.limit if not last else settings.JOB_LOG_MAX)
+        if lines is None:
+            raise SystemExit("the job log needs VIDEO_JOB_RUNNER=celery and a reachable JOB_REDIS_URL")
+        for x in lines:
+            if x["t"] > last:
+                print_log_line(x)
+                last = x["t"]
+        job = video_jobs.view(args.id)
+        if not args.follow or job["status"] in ENDED:
+            print_status(job)
+            return
+        await asyncio.sleep(settings.JOB_HEARTBEAT_SECONDS)
+
+
 def print_long(state: long_video.LongState) -> None:
     print(f"{state.id}  {state.outline.title}  [{state.status}] {state.progress:.0%}  {state.step}")
     for cs, ch in zip(state.chapters, state.outline.chapters):
@@ -181,7 +296,7 @@ async def long_cmd(args) -> None:
         try:
             state = await long_video.create_long_video(args.prompt, args.minutes, chapters=args.chapters,
                                                        captions=not args.no_captions, scale=args.scale, mode=args.mode, skills=args.skills,
-                                                       fixed_length=args.fixed_length)
+                                                       fixed_length=args.fixed_length, layout=args.layout)
         except PlanError as exc:
             raise SystemExit(f"{exc}\n{exc.details}")
         print_long(state)
@@ -196,7 +311,3 @@ async def long_cmd(args) -> None:
     else:
         state = long_video.load(args.id)
     print_long(state)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

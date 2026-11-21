@@ -11,7 +11,8 @@ Used two ways by the planner:
 
 import json
 import re
-from typing import Any
+from textwrap import shorten
+from typing import Any, Iterable
 
 from app.config import PROJECT_ROOT
 
@@ -23,6 +24,10 @@ CORE_SCENES = [
     "TitleScene", "ExplainScene", "DefinitionScene", "ExampleCardScene", "AnnotatedTextScene", "WorkedExampleScene", "StepsScene", "BulletListScene",
     "ComparisonTableScene", "OutcomeComparisonScene", "ChartScene", "FlowchartScene", "QuizScene", "SummaryScene",
 ]
+TOOLS_PRELOADED_SCENES = (
+    "TitleScene", "ExplainScene", "DefinitionScene", "AnnotatedTextScene",
+    "ComparisonTableScene", "OutcomeComparisonScene", "SummaryScene",
+)
 # Words that mean the same topic (expands the search a little).
 SYNONYMS = {
     "internet": "network wan packet globe router", "wifi": "wireless router waves network", "lan": "network lan local",
@@ -54,18 +59,25 @@ def _type_of(schema: Any, defs: dict[str, Any], depth: int = 0) -> str:
         return json.dumps(schema["const"])
     t = schema.get("type")
     if t == "array":
-        return f"[{_type_of(schema.get('prefixItems') or schema.get('items', {}), defs, depth + 1)}]"
+        items = _type_of(schema.get("prefixItems") or schema.get("items", {}), defs, depth + 1)
+        maximum = schema.get("maxItems")
+        return f"[{items}]" + (f" (max {maximum} items)" if maximum is not None else "")
     if t == "object" and "properties" in schema and depth < 3:
         req = set(schema.get("required", []))
         inner = ", ".join(f"{k}{'' if k in req else '?'}: {_type_of(v, defs, depth + 1)}" for k, v in schema["properties"].items())
         return "{" + inner + "}"
     name = {"integer": "int", "number": "num", "boolean": "bool"}.get(t, t or "any")
+    if t == "string" and "maxLength" in schema:
+        return f"string (max {schema['maxLength']} chars)"
     if t in ("integer", "number"):  # show limits, e.g. num 300..1600, so the LLM doesn't guess
-        lo, hi = schema.get("minimum", schema.get("exclusiveMinimum")), schema.get("maximum", schema.get("exclusiveMaximum"))
+        lo, hi = schema.get("minimum"), schema.get("maximum")
         lo = None if lo is not None and lo <= -1e9 else lo  # zod int() adds +-MAX_SAFE_INTEGER: not a real limit
         hi = None if hi is not None and hi >= 1e9 else hi
         if lo is not None or hi is not None:
             name += f" {'' if lo is None else f'{lo:g}'}..{'' if hi is None else f'{hi:g}'}"
+        for key, op in (("exclusiveMinimum", ">"), ("exclusiveMaximum", "<")):
+            if key in schema:
+                name += f" {op}{schema[key]:g}"
     return name
 
 
@@ -206,15 +218,31 @@ def filler_fields(name: str) -> list[str]:
     return [k for k in FILLER_FIELDS if isinstance((props.get(k) or {}).get("default"), str) and props[k]["default"]]
 
 
-def scene_text(name: str) -> str:
-    """Everything the LLM needs to use one scene: description, fields, example props."""
+def scene_text(name: str, *, compact: bool = False, include_fields: bool = True,
+               link_diagram: bool = False) -> str:
+    """Show the scene fields, with guidance and example props in the full form."""
     e = _load()["scenes"].get(name)
     if not e:
         close = [n for n in scene_names() if name.lower().replace("scene", "") in n.lower()]
         return f"No scene named {name!r}." + (f" Did you mean: {', '.join(close)}?" if close else "")
-    example = json.dumps(e.get("example", {}), separators=(",", ":"))
     staged = " (new, agent-made)" if e.get("staged") else ""
-    return f"### {name}{staged}\n{e['description']}\nfields: {_fields(e['propsSchema'])}\nexample props: {example}"
+    heading = f"### {name}{staged}"
+    lines = [heading]
+    if not compact:
+        lines.append(e["description"])
+    if include_fields:
+        schema = e["propsSchema"]
+        shared_diagram = link_diagram and name in ("AnnotatedTextScene", "ScreenScene") and "diagram" in schema["properties"]
+        if shared_diagram:
+            schema = {**schema, "properties": {k: v for k, v in schema["properties"].items() if k != "diagram"}}
+        lines.append(f"fields: {_fields(schema)}")
+        if shared_diagram:
+            lines[-1] += '; diagram?: IsoScene props (use get_scene("IsoScene") if its fields are unavailable)'
+    if compact:
+        return "\n".join(lines)
+    example = json.dumps(e.get("example", {}), separators=(",", ":"))
+    lines.append(f"example props: {example}")
+    return "\n".join(lines)
 
 
 def _words(text: str) -> set[str]:
@@ -227,11 +255,19 @@ def _words(text: str) -> set[str]:
     return out
 
 
-def search_scenes(query: str, limit: int = 10) -> list[tuple[str, str, float]]:
+def scene_summary(description: str) -> str:
+    sentence = re.split(r"(?<=[.!?])\s+", description, maxsplit=1)[0]
+    return shorten(sentence, width=140, placeholder="…")
+
+
+def search_scenes(query: str, limit: int = 10, *, exclude: Iterable[str] = ()) -> list[tuple[str, str, float]]:
     """Scenes ranked by how well their name, tags and description match ``query``."""
     q = _words(query)
+    excluded = set(exclude)
     ranked = []
     for name, e in _load()["scenes"].items():
+        if name in excluded:
+            continue
         tags = _words(" ".join(e.get("tags", [])) + " " + re.sub(r"(?<!^)(?=[A-Z])", " ", name))
         desc = _words(e["description"])
         score = 3 * len(q & tags) + len(q & desc)
@@ -241,7 +277,7 @@ def search_scenes(query: str, limit: int = 10) -> list[tuple[str, str, float]]:
     return ranked[:limit]
 
 
-def catalog_text(topic: str | None = None, extra: int = 12, known: str = "") -> str:
+def catalog_text(topic: str | None = None, extra: int = 12, known: str = "", *, preferred: Iterable[str] = ()) -> str:
     """Scene catalog for the prompt. With a topic: core teaching scenes + the best matches only."""
     names = scene_names()
     if topic:
@@ -251,7 +287,7 @@ def catalog_text(topic: str | None = None, extra: int = 12, known: str = "") -> 
                 chosen.append(name)
             if len(chosen) >= len(CORE_SCENES) + extra:
                 break
-        names = chosen
+        names = list(dict.fromkeys([*chosen, *(name for name in preferred if name in names)]))
     blocks = [scene_text(n) for n in names]
     return kind_legend(*blocks, known=known) + "\n\n".join(blocks)
 

@@ -52,6 +52,7 @@ langchain==1.5.0
 langchain-core==1.8.3
 langchain-openai==1.8.0
 langchain-protocol==0.0.21
+langchain-typesafe==0.1.0
 langgraph==1.2.23
 langgraph-checkpoint==4.3.2
 langgraph-prebuilt==1.1.3

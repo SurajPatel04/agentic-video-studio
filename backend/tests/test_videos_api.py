@@ -14,6 +14,7 @@ from app.main import app
 from app.agent.videoGenerator.nodes import plan_scenes as planner
 from app.agent.videoGenerator.jobs import video_jobs
 from app.agent.videoGenerator.schemas.plan import Plan
+from app.utils import ids
 from app.utils.render import RenderResult
 
 settings.SKILL_ROUTER = "keyword"
@@ -83,7 +84,7 @@ class VideosApiTests(unittest.IsolatedAsyncioTestCase):
         with patch("app.agent.videoGenerator.jobs.long_video.create_long_video", side_effect=slow_outline) as create:
             job = (await self.client.post("/videos", json={"prompt": "Full course on networks", "length": "long", "minutes": 12})).json()
             self.assertEqual((job["length"], job["status"], job["step"]), ("long", "running", "writing the outline"))
-            self.assertEqual(len(job["id"]), 10)
+            self.assertTrue(ids.UUID4_RE.fullmatch(job["id"]), job["id"])
             gate.set()
             done = await self.wait(job["id"])
         self.assertEqual(create.call_args.kwargs["job_id"], job["id"])
@@ -101,6 +102,81 @@ class VideosApiTests(unittest.IsolatedAsyncioTestCase):
                 status = (await self.client.get(job["status_url"])).json()
                 self.assertEqual((status["length"], status["status"], status["progress_percent"]),
                                  (length, "queued", "0%"))
+
+    async def test_short_ids_are_uuid4(self):
+        with patch("app.agent.videoGenerator.jobs.video_jobs.plan_video", AsyncMock(side_effect=RuntimeError("stop"))):
+            job = (await self.client.post("/videos", json={"prompt": "Explain DNS"})).json()
+            await self.wait(job["id"])
+        self.assertTrue(ids.UUID4_RE.fullmatch(job["id"]), job["id"])
+
+    async def test_cancel_a_running_job(self):
+        started = asyncio.Event()
+
+        async def slow_plan(*_, **__):
+            started.set()
+            await asyncio.sleep(60)
+
+        with patch("app.agent.videoGenerator.jobs.video_jobs.plan_video", side_effect=slow_plan):
+            job = (await self.client.post("/videos", json={"prompt": "Explain DNS"})).json()
+            await started.wait()
+            r = await self.client.post(f"/cancel/{job['id']}")
+            self.assertEqual(r.status_code, 200, r.text)
+            self.assertEqual((r.json()["kind"], r.json()["status"]), ("video", "cancelled"))
+            await asyncio.sleep(0)
+            self.assertTrue(video_jobs._tasks[job["id"]].cancelled())
+        v = (await self.client.get(f"/videos/{job['id']}")).json()
+        self.assertEqual(v["status"], "cancelled")
+        self.assertEqual((await self.client.post(f"/cancel/{job['id']}")).status_code, 409)  # already ended
+        self.assertEqual((await self.client.post(f"/cancel/{ids.new_id()}")).status_code, 404)
+
+    async def test_cancel_a_queued_celery_job_is_skipped_by_the_worker(self):
+        with patch.object(settings, "VIDEO_JOB_RUNNER", "celery"), \
+                patch("app.agent.videoGenerator.jobs.tasks.generate_video.apply_async"), \
+                patch("app.agent.videoGenerator.jobs.job_store.enabled", return_value=False):
+            job = (await self.client.post("/videos", json={"prompt": "Explain DNS"})).json()
+            self.assertEqual((await self.client.post(f"/cancel/{job['id']}")).json()["status"], "cancelled")
+            with patch.object(video_jobs, "_run_short") as run:
+                await video_jobs.run_queued_video(job["id"], {"prompt": "Explain DNS", "layout": "desktop"}, "short")
+            run.assert_not_called()
+
+    async def test_worker_stops_when_cancelled_while_running(self):
+        started = asyncio.Event()
+
+        async def slow_plan(*_, **__):
+            started.set()
+            await asyncio.sleep(60)
+
+        with patch.object(settings, "VIDEO_JOB_RUNNER", "celery"), patch.object(settings, "JOB_HEARTBEAT_SECONDS", 0.01), \
+                patch("app.agent.videoGenerator.jobs.tasks.generate_video.apply_async"), \
+                patch("app.agent.videoGenerator.jobs.job_store.enabled", return_value=False), \
+                patch("app.agent.videoGenerator.jobs.video_jobs.plan_video", side_effect=slow_plan):
+            job = (await self.client.post("/videos", json={"prompt": "Explain DNS"})).json()
+            worker = asyncio.create_task(video_jobs.run_queued_video(
+                job["id"], {"prompt": "Explain DNS", "layout": "desktop"}, "short"))
+            await started.wait()
+            video_jobs.cancel(job["id"])  # as another process would: only status.json changes
+            await asyncio.wait_for(worker, 2)  # the worker notices, stops and returns normally
+        self.assertEqual(video_jobs.view(job["id"])["status"], "cancelled")
+
+    async def test_cancel_an_in_flight_request_by_its_request_id(self):
+        rid = ids.new_id()
+        started = asyncio.Event()
+
+        async def slow_component(*_, **__):
+            started.set()
+            await asyncio.sleep(60)
+
+        with patch("app.api.routes.components.build_component", side_effect=slow_component):
+            request = asyncio.create_task(self.client.post("/components", json={"request": "Build a DNS scene"},
+                                                           headers={"X-Request-ID": rid}))
+            await started.wait()
+            r = await self.client.post(f"/cancel/{rid}")
+            self.assertEqual(r.json(), {"id": rid, "kind": "request", "status": "cancelled"})
+            answer = await asyncio.wait_for(request, 2)
+        self.assertEqual(answer.status_code, 499)
+        self.assertEqual(answer.json()["detail"], "request cancelled")
+        ok = await self.client.get("/videos")
+        self.assertTrue(ids.UUID4_RE.fullmatch(ok.headers["x-request-id"]))  # no id sent: a new UUID4
 
     async def test_bad_input_and_unknown_id(self):
         self.assertEqual((await self.client.post("/videos", json={"prompt": "x y z", "layout": "tv"})).status_code, 422)

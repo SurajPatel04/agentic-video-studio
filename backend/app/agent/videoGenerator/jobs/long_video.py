@@ -21,20 +21,20 @@ import asyncio
 import os
 import fcntl
 import inspect
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from functools import wraps
 import json
 import logging
 import math
 import re
 import time
-import uuid
 from pathlib import Path
 from typing import Any, Literal
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import ValidationError
 
+from .scene_stream import SceneStream
 from app.agent.videoGenerator import skills as teaching_skills
 from app.agent.videoGenerator.nodes import select_skills as skill_router
 from app.agent.videoGenerator.teaching_patterns import pattern_hint
@@ -46,6 +46,7 @@ from app.agent.videoGenerator.state.long_video import ChapterState, LongState
 from app.config import settings
 from app.utils import cues, subtitles
 from app.utils.console import step
+from app.utils import ids
 from app.utils.iso import expand_continuations
 from app.utils.llm import get_llm, text_of, usage_of
 from app.utils.llm_accounting import UsageDetails, collect_usage
@@ -53,7 +54,7 @@ from app.utils.render import RenderError, captions_enabled, default_caption_mode
 
 log = logging.getLogger(__name__)
 
-ID_RE = re.compile(r"^[a-f0-9]{10}$")
+ID_RE = ids.JOB_ID_RE  # UUID4 (new) or the older 10-hex ids
 
 
 # ---------------------------------------------------------------------------- state
@@ -199,7 +200,7 @@ def set_budgets(outline: Outline, minutes: float, *, fixed: bool = True) -> Outl
 
 
 def new_id() -> str:
-    return uuid.uuid4().hex[:10]
+    return ids.new_id()
 
 
 def _new_state(topic: str, minutes: float, outline: Outline, *, job_id: str | None = None, **opts: Any) -> LongState:
@@ -226,7 +227,7 @@ async def create_long_video(topic: str, minutes: float, *, chapters: int | None 
             planned = round(sum(c.minutes for c in outline.chapters), 1)
             s.update(chapters=len(outline.chapters), planned_min=planned, limit_min=minutes, tokens_in=tin, tokens_out=tout)
     state = _new_state(topic, planned, outline, max_minutes=minutes, job_id=job_id, captions=captions, scale=scale, mode=mode, model=model,
-                       skills=selected, layout=layout, objective=chosen.objective)
+                       skills=selected, layout=layout, objective=chosen.objective, scene_shortlist=chosen.scene_shortlist)
     state.llm_calls, state.input_tokens, state.output_tokens = calls + chosen.calls, tin + chosen.input_tokens, tout + chosen.output_tokens
     state.processing_seconds = {"routing": round(routing_seconds, 3),
                                 "outline": round(time.perf_counter() - outline_started, 3)}
@@ -265,14 +266,17 @@ def chapter_context(state: LongState, n: int, note: str = "") -> str:
     scenes = max(4, math.ceil(ch.words / settings.LONG_WORDS_PER_SCENE))
     lines = [
         f'LONG VIDEO: "{o.title}" for {o.audience}. You plan ONLY chapter {n} of {total}.',
+        "Chapter boundaries are internal planning divisions. The viewer sees and hears one continuous video. "
+        "Keep chapter numbers, chapter labels, and planning headings out of the on-screen text and narration.",
         f"Original user brief (preserve its purpose, format and language): {state.topic}",
         "Outline (stay inside your chapter; don't repeat what other chapters cover):",
         *[f"  {i}. {c.title}: {c.goal}{'   <- THIS CHAPTER' if i == n else ''}" for i, c in enumerate(o.chapters, 1)],
         f"This chapter: {ch.title}. Goal: {ch.goal}",
-        "Cover in a logical order for the requested format: " + "; ".join(ch.key_points),
+        "Teaching beats (key_points) for this section. Show the evidence while the narration explains it:",
+        *[f"  - {point}" for point in ch.key_points],
     ]
     if o.glossary:
-        lines.append("Glossary (use exactly these words): " + "; ".join(f"{t.term} = {t.meaning}" for t in o.glossary))
+        lines.append("Shared terms (keep their meaning consistent, define each at first use, then apply it in context): " + "; ".join(f"{t.term}: {t.meaning}" for t in o.glossary))
     if o.examples:
         lines.append("Shared examples (preserve identifiers, types and values across chapters; show any state change explicitly): " + "; ".join(o.examples))
     if o.style:
@@ -286,13 +290,14 @@ def chapter_context(state: LongState, n: int, note: str = "") -> str:
         f"of ~{settings.LONG_WORDS_PER_SCENE} words each."
     )
     if n == 1:
-        lines.append("Start with a title scene for the whole video, then teach this chapter.")
+        lines.append("Open with the video title once, then start teaching the first idea.")
     else:
-        lines.append(f'Start with a short title scene "Chapter {n}: {ch.title}" (no intro for the whole video).')
+        lines.append("Open directly on the next teaching idea. Pick up the shared example or outcome from the previous section. "
+                     "For a lesson, use a content heading that teaches the next idea. Skip title and section divider cards.")
     if n == total:
         lines.append("End by delivering the original brief’s promised outcome. For a lecture, connect the key ideas and use a learning check if helpful; for an ad, give a supported next action. Do not force a quiz into other formats.")
     else:
-        lines.append(f'The last scene\'s narration leads into the next chapter: "{o.chapters[n].title}".')
+        lines.append(f"Bridge into the next idea through the example or a question it raises. Next teaching goal: {o.chapters[n].goal}")
     if note:
         lines.append(note)
     return "\n".join(lines)
@@ -305,6 +310,10 @@ def _handoff(state: LongState, n: int, spec: dict[str, Any]) -> str:
     last = next(((s.get("narration") or {}).get("text", "") for s in reversed(scenes) if s.get("narration")), "")
     used = sorted({s.get("component", "") for s in scenes} - {""})
     summary = f"Ch {n} {ch.title}: {'; '.join(ch.key_points)}. Scenes used: {', '.join(used)}. It ended with: \"{last[:200]}\""
+    defined_terms = [s["props"]["term"] for s in scenes if s.get("component") == "DefinitionScene"
+                     and (s.get("props") or {}).get("term")]
+    if defined_terms:
+        summary += "\nTerms already defined on screen: " + ", ".join(dict.fromkeys(defined_terms)) + ". Apply them in the next example."
     # Carry the concrete exchanges forward as well as the outline's description of them.
     exchanges = []
     for scene in scenes:
@@ -333,12 +342,15 @@ async def plan_chapter(state: LongState, n: int) -> dict[str, Any]:
     best: dict[str, Any] | None = None
     note = ""
     for _ in range(2):
-        topic = f"{state.outline.title}: chapter {n}, {ch.title}"
+        topic = f"{state.outline.title} — {ch.title}"
         with collect_usage() as usage:
             try:
                 plan = await plan_video(
                     topic, scenes=scenes, mode=state.mode, model=state.model, context=chapter_context(state, n, note),
                     skills=state.skills, layout=state.layout, objective=state.objective, code_demo=ch.code_demo.strip(), narration_budget=ch.words,  # type: ignore[arg-type]
+                    scene_shortlist=state.scene_shortlist,
+                    lookup_cache=state._lookup_cache,
+                    lookup_focus="\n".join([ch.title, ch.goal, *ch.key_points]),
                 )
             except BaseException:
                 cs.llm_calls += usage.details.usage_details_calls
@@ -380,10 +392,12 @@ def _accept_plan(state: LongState, n: int, spec: dict[str, Any]) -> None:
 
 
 def render_concurrency() -> int:
-    """Remotion threads per chapter render: LONG_RENDER_CONCURRENCY, or the cores shared by the workers."""
+    """Remotion threads per chapter render: LONG_RENDER_CONCURRENCY, or the cores shared by the renders
+    (LONG_RENDER_WORKERS per job, times CELERY_WORKERS jobs at once on a Celery machine)."""
     if settings.LONG_RENDER_CONCURRENCY > 0:
         return settings.LONG_RENDER_CONCURRENCY
-    return max(1, (os.cpu_count() or 2) // max(1, settings.LONG_RENDER_WORKERS))
+    jobs = settings.CELERY_WORKERS if settings.VIDEO_JOB_RUNNER == "celery" else 1
+    return max(1, (os.cpu_count() or 2) // (max(1, settings.LONG_RENDER_WORKERS) * jobs))
 
 
 async def _render_chapter(state: LongState, n: int) -> None:
@@ -408,9 +422,12 @@ async def _ffmpeg(*args: str, timeout: float = 1800) -> tuple[int, str]:
     proc = await asyncio.create_subprocess_exec(*args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
     try:
         out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
-        proc.kill()
+    except (asyncio.TimeoutError, asyncio.CancelledError) as exc:  # cancelled job: don't leave ffmpeg running
+        if proc.returncode is None:
+            proc.kill()
         await proc.wait()
+        if isinstance(exc, asyncio.CancelledError):
+            raise
         raise RenderError(f"timed out: {args[0]}")
     return proc.returncode or 0, out.decode(errors="replace")
 
@@ -627,6 +644,7 @@ async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
     rendering: set[int] = set()
     errors: list[str] = []
     renders: list[asyncio.Task] = []
+    streams: dict[int, SceneStream] = {}
     render_slots = asyncio.Semaphore(max(1, settings.LONG_RENDER_WORKERS))
 
     def mark(text: str = "") -> None:
@@ -656,7 +674,9 @@ async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
             stage_started = time.perf_counter()
             try:
                 with step(f"chapter {cs.n}/{total} render", title=state.outline.chapters[cs.n - 1].title) as s:
-                    await _render_chapter(state, cs.n)
+                    stream = streams.get(cs.n)
+                    with stream.use() if stream else nullcontext():
+                        await _render_chapter(state, cs.n)
                     s.update(length=f"{cs.seconds / 60:.1f}min", target=f"{state.outline.chapters[cs.n - 1].minutes:g}min")
             except Exception as exc:
                 fail(cs, "render", exc)
@@ -676,7 +696,15 @@ async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
         try:
             with step(f"chapter {cs.n}/{total} plan", title=state.outline.chapters[cs.n - 1].title,
                       budget_words=state.outline.chapters[cs.n - 1].words) as s:
-                _accept_plan(state, cs.n, await plan_chapter(state, cs.n))
+                stream = None
+                if render and settings.STREAM_VIDEO_SCENES:
+                    stream = streams[cs.n] = SceneStream(layout=state.layout, scale=state.scale, captions=state.captions,
+                                                          intro=cs.n == 1, concurrency=render_concurrency(), slots=render_slots)
+                with stream.use() if stream else nullcontext():
+                    spec = await plan_chapter(state, cs.n)
+                if stream:
+                    await stream.finish()
+                _accept_plan(state, cs.n, spec)
                 s.update(scenes=cs.scenes, words=cs.words, tokens_in=cs.input_tokens, tokens_out=cs.output_tokens)
         except Exception as exc:
             fail(cs, "plan", exc)
@@ -740,6 +768,8 @@ async def _run_long_video(job_id: str, *, render: bool = True) -> LongState:
         for t in renders:  # cancelled run: don't leave renders behind
             if not t.done():
                 t.cancel()
+        await asyncio.gather(*renders, return_exceptions=True)
+        await asyncio.gather(*(stream.close() for stream in streams.values()))
     return state
 
 

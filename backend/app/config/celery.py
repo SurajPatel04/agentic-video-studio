@@ -1,4 +1,8 @@
-"""Celery worker entry point for video jobs."""
+"""Celery worker entry point for video jobs.
+
+One task = one whole video (skill choice, planning, voice, render), run by one worker process.
+CELERY_WORKERS processes run at once; each takes one job at a time and asks for the next only when done.
+"""
 
 from celery import Celery
 
@@ -15,10 +19,13 @@ celery_app.conf.update(
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],
+    task_ignore_result=True,  # status, progress and logs live in workspace/ and the job Redis keys
+    result_expires=settings.JOB_TTL_SECONDS,
+    worker_concurrency=settings.CELERY_WORKERS,
+    worker_prefetch_multiplier=1,  # a process reserves only the job it runs
+    worker_max_tasks_per_child=settings.CELERY_JOBS_PER_PROCESS or None,
     broker_connection_retry_on_startup=True,
-    worker_prefetch_multiplier=1,
     broker_connection_timeout=3,
-    broker_transport_options={"visibility_timeout": settings.CELERY_VISIBILITY_TIMEOUT, "max_retries": 0, "socket_connect_timeout": 3},
-    result_backend_transport_options={"visibility_timeout": settings.CELERY_VISIBILITY_TIMEOUT},
-    visibility_timeout=settings.CELERY_VISIBILITY_TIMEOUT,
+    broker_transport_options={"visibility_timeout": settings.CELERY_VISIBILITY_TIMEOUT, "max_retries": 0,
+                              "socket_connect_timeout": 3},
 )

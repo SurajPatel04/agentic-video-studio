@@ -29,3 +29,12 @@ export const useUnit = () => {
 const SceneLengthContext = createContext<number>(150);
 export const SceneLengthProvider = SceneLengthContext.Provider;
 export const useSceneLength = () => useContext(SceneLengthContext);
+
+type SpokenWord = {t: string; s: number};
+const SceneWordsContext = createContext<readonly SpokenWord[] | undefined>(undefined);
+export const SceneWordsProvider = SceneWordsContext.Provider;
+export const useSceneWords = () => useContext(SceneWordsContext);
+
+const BottomCaptionInsetContext = createContext(0);
+export const BottomCaptionInsetProvider = BottomCaptionInsetContext.Provider;
+export const useBottomCaptionInset = () => useContext(BottomCaptionInsetContext);

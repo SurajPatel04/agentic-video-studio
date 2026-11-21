@@ -22,7 +22,6 @@ _Updated November 19, 2026. The catalog contains 118 scene contracts._
 
 - [x] FastAPI app — `backend/app/main.py` (`uvicorn app.main:app` from `backend/`)
 - [x] LLM via MLflow AI Gateway (OpenAI-compatible) — `backend/app/utils/llm.py`
-- [x] `POST /llm/chat` endpoint, tested end to end (gpt-6-luna)
 - [~] Gateway route: using `summary` for now
   - [ ] Create dedicated `text-to-video` route in MLflow and set `DEFAULT_MODEL`
 - [ ] Move `utils/llm.py` → `services/llm.py` (optional, matches the brief)
@@ -130,17 +129,16 @@ The course graphics showcase covers 14 examples in `rendering/examples/course-gr
 
 ### Audio
 - [x] Deepgram TTS in the backend: `app/utils/tts.py` (cached WAV clips in `rendering/public/audio/tts/`), `app/utils/render.py` (narration → voice + scene lengths, validate, Remotion render to `workspace/jobs/<id>/video.mp4`)
-- [x] API: `POST /tts` (text → WAV), `POST /render` (composition → MP4), `GET /render/{id}/video`, `GET /render/{id}/composition`; CLI: `python -m app.cli tts|voice|render`
+- [x] CLI commands for standalone text-to-speech, narration, and rendering via `python -m app.cli` (`tts`, `voice`, `render`)
 - [x] Code-generated SFX (`npm run sfx` → `public/sfx/`): click, pop, whoosh, typing, ding, success, error, lock, notify
 - [x] Built-in sounds: pointer clicks, device pop-in, ✓ ding / ✗ error, badge / callout / chat pop, toast notify, toggle click, lock, typing (terminal, text field, typewriter), progress success, whoosh on transitions
 - [x] JSON: composition `audio` (effects on/off + volume, transitions, voice, voiceVolume, `music` with ducking under narration); scene `voice` (own recording works too) and `sfx` cues
-- [x] Captions from the narration: word timings via Deepgram speech-to-text on our own clip (estimate fallback), word-by-word highlight; on/off + style from JSON `captions`, API (`captions: true/false` on `/render` and `/video`), CLI (`--captions` / `--no-captions`)
-- [x] Planner (`app/agent/videoGenerator/nodes/plan_scenes.py`): LLM writes the composition with narration per scene from a compact scene catalog; validated, errors fed back (3 tries). API `POST /plan`, `POST /video` (prompt → plan → voice → captions → MP4); CLI `plan`, `video`
-- [x] Transcripts: every render writes `transcript.json` (per scene, sentences with start/end seconds) + `transcript.txt` (`[mm:ss]` lines); `GET /render/{id}/transcript`; older jobs get them on first request
+- [x] Captions from the narration: word timings via Deepgram speech-to-text on our own clip (estimate fallback), word-by-word highlight; on/off + style from JSON `captions`, API (`captions: true/false` on `/videos`), CLI (`--captions` / `--no-captions`)
+- [x] Planner (`app/agent/videoGenerator/nodes/plan_scenes.py`): LLM writes the composition with narration per scene from a compact scene catalog; validated, errors fed back (3 tries). Used by `POST /videos` and the `plan` and `video` CLI commands.
+- [x] Transcripts: renders with narration write `transcript.json` (per scene, sentences with start/end seconds) and `transcript.txt` (`[mm:ss]` lines). Download via `GET /videos/{id}/transcript`.
 - [x] Deepgram limits: per-loop semaphore (`DEEPGRAM_CONCURRENCY`) + backoff on 429 (`DEEPGRAM_RETRIES`)
 - [x] **Word-synced animation** (`app/utils/cues.py`): steps/actions/messages take `"cue": "<spoken word>"`, objects/links `"appearCue"`; resolved from Deepgram word times after TTS (text estimate for validation). Only 0-1 timing fields from the registry are filled. Live test: 7/7 changes land on their word
   - [ ] Scenes with a fixed built-in animation (Transaction, Summary, Timeline…) have no cue-able steps yet
-- [ ] Long renders: move `/render` onto the job queue (now it waits for the MP4)
 
 ### Long videos (20-40 min) — `app/agent/videoGenerator/jobs/long_video.py`
 - [x] Outline (1 LLM call): chapters, goals, key points, minutes → word budgets (150 wpm), glossary, running examples, visual style
@@ -148,11 +146,10 @@ The course graphics showcase covers 14 examples in `rendering/examples/course-gr
 - [x] Saved, resumable state (`workspace/long/<id>/state.json`, `chNN.plan.json`): pending → planned → rendered / failed; a rerun skips finished chapters
 - [x] Edit: replace the outline, replace a chapter's plan (validated), redo one chapter (plan or render, optional cascade)
 - [x] Render each chapter (sequential), join with ffmpeg (stream copy, re-encode fallback) + chapter markers + YouTube timestamps
-- [x] API `POST /long`, `GET /long[/{id}]`, `POST /long/{id}/run`, `PUT /long/{id}/outline`, `GET|PUT /long/{id}/chapters/{n}/plan`, `POST /long/{id}/chapters/{n}/redo`, `GET /long/{id}/video`; CLI `long`, `long-run`, `long-status`, `long-redo`
-- [x] Whole-video captions (`captions.srt` / `.vtt`) and transcript with chapter headings; `GET /long/{id}/captions`, `GET /long/{id}/transcript`
-- [x] Resume endpoint runs on the event loop; per-job file locks prevent overlapping runs and edits, including during plan validation
+- [x] Create long videos with `POST /videos` and `"length": "long"`. CLI commands include `long`, `long-run`, `long-status`, and `long-redo`.
+- [x] Whole-video captions (`captions.srt` / `.vtt`) and transcript with chapter headings via `GET /videos/{id}/captions` and `GET /videos/{id}/transcript`.
+- [x] Per-job file locks prevent overlapping runs and edits, including during plan validation.
 - [x] With `VIDEO_JOB_RUNNER=celery`, new long jobs submitted to `/videos` run in the Redis-backed worker and can reuse saved chapter state on redelivery.
-- [ ] Queue manual resume from `/long/{id}/run`, which still uses an in-process task.
 - [x] Parallel chapter rendering (bounded): `LONG_RENDER_WORKERS`, planning overlaps rendering
 - [x] Planner variety: `teach-code` hard rules (CodeScene per chapter + terminal output), style check `PLANNER_MAX_TEXT_RUN=3` (one retry, valid plan never lost), catalog shows number limits (`width: num 300..1800`)
 - [x] More CodeScenes per chapter: planner check asks for one per concept (`PLANNER_CODE_EVERY`)

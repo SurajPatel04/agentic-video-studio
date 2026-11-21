@@ -2,9 +2,10 @@ import {createContext, useContext, useId} from 'react';
 import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {z} from 'zod';
 import {Sfx, sfxNames} from '../audio';
+import {formatJsonExample, httpResponseStatus, JsonExampleCode, previewJsonExample} from '../components/JsonExample';
 import {useSceneLength, useUnit} from '../theme';
 import {ISO_COLORS, isoColorNames, mix, PAPER, project, shade, type IsoColor, type Pt, C30, S30} from '../iso/iso';
-import {IsoBox, IsoPerson, IsoShadow, Note, noteSize, StatusPill, Tag} from '../iso/shapes';
+import {IsoBox, IsoPerson, IsoShadow, Note, noteSize, StatusPill, Tag, tagLayout} from '../iso/shapes';
 import {cueFields, newsCycleRemaining, ObjectCues} from '../iso/ObjectCues';
 import {TableCard, tableSchema, users} from '../database/table';
 import {LookupBadge, lookupState, badgeSchema} from '../iso/LookupBadge';
@@ -177,14 +178,14 @@ const objectSchema = z.object({
 const linkSchema = z.object({
   from: z.string(),
   to: z.string(),
-  label: z.string().max(22).optional(),
+  label: z.string().optional(),
   flow: z.enum(['dots', 'people', 'car', 'key', 'coin', 'wave', 'none']).default('dots'), // what travels along the arrow
   via: z.string().min(1).optional(),
   noise: z.boolean().optional(),
   transform: z.literal('clean').optional(),
   drop: z.boolean().optional(),
   replyAfter: z.number().gt(0).lt(1).optional(), // fraction of visible link time spent on the request
-  returnLabel: z.string().max(22).optional(),
+  returnLabel: z.string().optional(),
   bidirectional: z.boolean().optional(), // a return lane from the target to the source
   dashed: z.boolean().default(false),
   appearAt: fraction.optional(), // default: when both ends have landed
@@ -395,12 +396,12 @@ export const isoSceneSchema = z.object({
   eyebrow: z.string().max(40).optional(),
   title: z.string().max(80).optional(),
   subtitle: z.string().max(140).optional(),
-  objects: z.array(z.preprocess(fixKind, objectSchema)).max(24).default(() => EXAMPLE_OBJECTS),
-  links: z.array(linkSchema).max(30).default(() => EXAMPLE_LINKS),
-  steps: z.array(stepSchema).max(40).default(() => EXAMPLE_STEPS),
+  objects: z.array(z.preprocess(fixKind, objectSchema)).max(24).optional(),
+  links: z.array(linkSchema).max(30).optional(),
+  steps: z.array(stepSchema).max(40).optional(),
   points: z.array(z.string().max(70)).max(4).optional(), // short note cards beside the diagram
   exampleLines: z.array(z.object({
-    text: z.string().min(1).max(72), at: fraction,
+    text: z.string().min(1), at: fraction,
   }).strict()).min(1).max(4).optional(),
   sideNote: isoSideNoteSchema.optional(),
   zoom: z.number().min(0.5).max(1.6).default(1),
@@ -408,7 +409,12 @@ export const isoSceneSchema = z.object({
   continued: z.boolean().optional(), // set by the backend: this scene continues the previous picture
   continue: z.boolean().optional(), // planner shorthand, expanded by the backend before rendering
   remove: z.array(z.string()).optional(), // with continue: ids to drop from the previous picture
-}).strict().superRefine((p, ctx) => {
+}).strict().transform(p => ({
+  ...p,
+  objects: p.objects ?? EXAMPLE_OBJECTS,
+  links: p.links ?? (p.objects === undefined ? EXAMPLE_LINKS : []),
+  steps: p.steps ?? (p.objects === undefined ? EXAMPLE_STEPS : []),
+})).superRefine((p, ctx) => {
   p.exampleLines?.forEach((line, i, lines) => {
     if ((i === 0 && line.at !== 0) || (i > 0 && line.at < lines[i - 1].at)) {
       ctx.addIssue({code: 'custom', path: ['exampleLines', i, 'at'],
@@ -452,8 +458,9 @@ export const isoSceneSchema = z.object({
 });
 
 export const description =
+  'For a group of items or records use kind "tile", design "collection". In a collection-to-item diagram, link it to one representative item. Use kind "tile", design "watch" for an individual watch. ' +
   'Use mug for a concrete mug product. Use a solid arrow for a database lookup. Use a separate return arrow for the response data. Add sideNote with text, optional detail, side, at and optional until to make room for written evidence, then restore the diagram. ' +
-  'Use http-get, http-post, http-put, http-patch, http-delete, http-head or http-options for request method tiles. Put paths and payload details on links or in exampleLines. ' +
+  'Use http-get, http-post, http-put, http-patch, http-delete, http-head or http-options for request method tiles. Use exampleLines or sideNote for complete HTTP bodies, with the known status before the JSON. Use Response on the return arrow when the status is shown beside the body. ' +
   'Place kind table with table:{name,columns,rows,indexed?,locked?,duplicateKey?} next to a database to show the actual records. ' +
   'Timed steps support timer, count, meter, progress, ttl, retry, queue, think, react, say and mood. A reply step such as cache→app returns on an existing request link. Links can clean or drop packets and carry keys or coins. ' +
   'Use badge on objects or timed steps for animated lookup, worker, access or health states. Use none to clear, or {icon,text,tone} for a custom Lucide badge. ' +
@@ -507,6 +514,11 @@ type Box3 = {x: number; y: number; z: number; w: number; d: number; h: number; s
 const geometry = (o: Obj): Box3 => {
   const kind = KINDS[o.kind] as Kind;
   let [w, d, h] = o.size ?? kind.size;
+  if (o.kind === 'table') {
+    const table = o.table ?? users;
+    w = Math.max(w, table.columns.length * 1.55);
+    h = Math.max(h, (table.rows.length + 2) * 0.48);
+  }
   if (kind.shape === 'people') {
     const n = o.count ?? 12, cols = Math.ceil(Math.sqrt(n * 1.6));
     w = cols * 0.62;
@@ -643,10 +655,40 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const opening = sideNote?.at ? noteProgress(f - Math.round(sideNote.at * len)) : 1;
   const closing = sideNote?.until === undefined ? 1 : 1 - noteProgress(f - Math.round(sideNote.until * len));
   const noteAmount = sideNote ? Math.min(opening, closing) : 0;
-  const noteWidth = W * 0.32;
+  const sideNotes = sideNote ? (replacingNote ? [previousNote, sideNote] : [sideNote]) : [];
+  const noteViews = sideNotes.map(note => ({note, json: formatJsonExample(note.text)}));
+  const noteWidth = portraitNote ? W - 180 * u : W * (noteViews.some(view => view.json) ? 0.37 : 0.32);
+  const noteColumns = Math.max(16, Math.floor((noteWidth - 54 * u) / (24 * u * 0.64)));
+  const noteContent = noteViews.map(({note, json}) => ({
+    note, json: json ? previewJsonExample(json, -1, 0, noteColumns, 14) : null,
+  }));
+  const noteHeight = Math.max(340 * u, ...noteContent.map(({note, json}) => {
+    const rows = json ? json.lines.length + (json.header ? json.header.split(/\r?\n/).length : 0)
+      : note.text.split(/\r?\n/).reduce((total, line) => total + Math.max(1, Math.ceil(line.length / noteColumns)), 0);
+    const detailRows = note.detail ? Math.ceil(note.detail.length / noteColumns) : 0;
+    return (96 + (rows + detailRows) * 32) * u;
+  }));
   const noteSpace = (noteWidth + 40 * u) * noteAmount;
   const example = !region && p.objects.length && !sideNote ? p.exampleLines : undefined;
   const stacked = Boolean(example && W <= H);
+  const exampleViews = example?.map(line => ({...line, json: formatJsonExample(line.text)}));
+  const responseExamples = exampleViews?.filter(line => line.json) ?? [];
+  const hasJsonExample = responseExamples.length > 0;
+  const activeExample = responseExamples.filter(line => f >= Math.round(line.at * len)).at(-1) ?? responseExamples[0];
+  const exampleRows = exampleViews?.filter(line => !line.json || line === activeExample);
+  const writtenStatuses = new Map([...noteViews, ...(exampleViews ?? [])]
+    .flatMap(view => {
+      const status = httpResponseStatus(view.json?.header);
+      return status ? [[status.code, status.label.slice('Status '.length)]] : [];
+    }));
+  const linkLabel = (text?: string) => {
+    const status = text?.match(/^([1-5]\d{2})([^+·]*)(?:[+·]\s*(.+))?$/);
+    if (!status) return text;
+    const [, code, reason, detail] = status;
+    const printed = writtenStatuses.get(code);
+    if (!printed || (reason?.trim() && (code + reason.trimEnd()).toLowerCase() !== printed.toLowerCase())) return text;
+    return detail ? `Response · ${detail}` : 'Response';
+  };
   const cards = region || example || sideNote ? [] : p.points ?? [];
   const onlyCard = !region && p.objects.length === 0;
 
@@ -654,22 +696,23 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const tall = p.objects.map(() => true); // pill room for every object, so the layout depends only on positions (continued scenes match)
   const geos = separate(p.objects.map(geometry), tall, p.objects.map((ob) => ob.id));
   const headingBottom = region ? region.top : hasTitle ? (p.subtitle ? 250 : 205) * u : 80 * u;
-  const top = headingBottom + (stacked ? 320 * u : portraitNote ? 340 * u * noteAmount : 0);
   const bottom = H - 200 * u; // captions live below
+  const stackedExampleHeight = hasJsonExample ? Math.min(440 * u, (bottom - headingBottom) * 0.63) : 310 * u;
+  const top = headingBottom + (stacked ? stackedExampleHeight + 10 * u : portraitNote ? noteHeight * noteAmount : 0);
   const right = region ? region.right : cards.length ? W - 600 * u : W - 90 * u - (!portraitNote && sideNote?.side === 'right' ? noteSpace : 0);
   const left = region ? region.left : example && !stacked ? W * 0.46 : 90 * u + (!portraitNote && sideNote?.side === 'left' ? noteSpace : 0);
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  geos.forEach((g, i) => {
-    for (const [a, b] of [[g.x, g.y], [g.x + g.w, g.y], [g.x + g.w, g.y + g.d], [g.x, g.y + g.d]]) {
-      for (const c of [g.z, g.z + g.h]) {
-        const q = project(a, b, c, 1);
-        minX = Math.min(minX, q.x); maxX = Math.max(maxX, q.x); minY = Math.min(minY, q.y); maxY = Math.max(maxY, q.y + (g.shape !== 'slab' && c === g.z ? 0.55 : 0)); // label room for every object: layout must not depend on labels
-      }
-    }
+  geos.forEach(g => {
+    const box = rectOf(outline(g, 1, {x: 0, y: 0}));
+    minX = Math.min(minX, box.l);
+    maxX = Math.max(maxX, box.r);
+    minY = Math.min(minY, box.t);
+    maxY = Math.max(maxY, box.b + (g.shape === 'slab' ? 0 : 0.55));
   });
   const room = 95 * u; // pills and notes above the tallest object
   const T = geos.length
-    ? Math.min((right - left) / Math.max(0.1, maxX - minX), (bottom - top - room) / Math.max(0.1, maxY - minY), 120 * u) * p.zoom
+    ? Math.min((right - left) / Math.max(0.1, maxX - minX), (bottom - top - room) / Math.max(0.1, maxY - minY), 120 * u)
+      * (geos.some(g => g.kind === KINDS.table) ? Math.min(1, p.zoom) : p.zoom)
     : 80 * u;
   const centre = {x: (left + right) / 2, y: (top + room + bottom) / 2};
   const o: Pt = geos.length ? {x: centre.x - ((minX + maxX) / 2) * T, y: centre.y - ((minY + maxY) / 2) * T} : {x: W / 2, y: H / 2};
@@ -737,8 +780,8 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const camera = `translate(${centre.x} ${centre.y}) scale(${zoom}) translate(${-F.x} ${-F.y})`;
   const stageTop = region ? region.top : stacked || (hasTitle && !onlyCard) ? top - 55 * u : 0;
   const clipLeft = example && !stacked ? left : 0;
-  const stageLeft = region?.left ?? clipLeft;
-  const stageRight = region?.right ?? (cards.length ? right : W);
+  const stageLeft = region?.left ?? (!portraitNote && sideNote?.side === 'left' && noteAmount > 0 ? left : clipLeft);
+  const stageRight = region?.right ?? (cards.length || (!portraitNote && sideNote?.side === 'right' && noteAmount > 0) ? right : W);
   const cueBounds = {
     left: F.x + (stageLeft + 18 * u - centre.x) / zoom,
     right: F.x + (stageRight - 18 * u - centre.x) / zoom,
@@ -858,6 +901,7 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     return [{l: cx - w / 2, r: cx + w / 2, t: y - fsLabel, b: y + fsLabel * 0.3}];
   });
   const placedTags: Rect[] = [];
+  const arrowTracks: Pt[] = [];
 
   // links
   /** Frame a link starts drawing. A new link between objects already on screen (continued scene) draws early on. */
@@ -922,6 +966,7 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     const towards = (q: Pt, to: Pt, d: number) => {const L = Math.hypot(to.x - q.x, to.y - q.y) || 1; return {x: q.x + ((to.x - q.x) / L) * d, y: q.y + ((to.y - q.y) / L) * d};};
     const a = towards(ea, c0, 10 * u), b = towards(eb, c0, 14 * u);
     const k2 = curve(a, bendPoint(a, b, bend), b);
+    if (!labelOnly && note) arrowTracks.push(...sample(k2, 12));
     const visibleStart = Math.max(start, 0);
     const reply = stepsFor(l.to).find(step => step.reply?.split('→').map(id => id.trim()).join('→') === l.to+'→'+l.from);
     const twoWay = l.bidirectional || !!reply;
@@ -939,26 +984,40 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     if (labelOnly) {
       // Older plans may use a single “request / reply” caption for both lanes.
       const legacyPair = twoWay && !l.returnLabel ? l.label?.match(/^(request)\s*\/\s*(reply|response)$/i) : null;
-      const outbound = legacyPair?.[1] ?? l.label ?? (reply ? 'Request' : undefined);
-      const inbound = twoWay ? l.returnLabel ?? legacyPair?.[2] ?? (reply ? 'Reply' : undefined) : undefined;
+      const outbound = linkLabel(legacyPair?.[1] ?? l.label ?? (reply ? 'Request' : undefined));
+      const inbound = twoWay ? linkLabel(l.returnLabel ?? legacyPair?.[2] ?? (reply ? 'Reply' : undefined)) : undefined;
       return <g key={`label-${k}`} opacity={fade}>{[outbound, inbound].map((text, lane) => {
         if (!text || (activeLane === 'request' && lane === 1)) return null;
         const labelUnit = twoWay ? u * 1.4 : u;
-        const tw = (text.length * 20 * 0.62 + 26) * labelUnit, th = 36 * labelUnit;
+        const layout = tagLayout(text, labelUnit, Math.min(350 * labelUnit, (cueBounds.right - cueBounds.left) * 0.58));
+        const {w: tw, h: th} = layout;
         const obstacles = [...geos.flatMap((gg, j) => gg.shape === 'slab' || !state[j].shown ? [] : [rectOf(outline(gg, T, o))]),
           ...labelRects, ...placedTags];
         const requestSide = activeLane ? (b.x >= a.x ? -1 : 1) : 1;
         const sides = twoWay ? [lane === 0 ? requestSide : -requestSide] : [-1, 1];
-        const spots = [0.5, 0.38, 0.62, 0.28, 0.72].flatMap(t => sides.map(side => {
+        const spots = (lift: number) => [0.5, 0.38, 0.62, 0.28, 0.72].flatMap(t => sides.map(side => {
           const {p, angle} = along(k2, t);
-          const gap = (twoWay ? 34 : 10) * u + Math.abs(Math.sin(angle)) * tw / 2 + Math.abs(Math.cos(angle)) * th / 2;
-          return {x: p.x - side * Math.sin(angle) * gap, y: p.y + side * Math.cos(angle) * gap};
+          const gap = lift + (twoWay ? 34 : 10) * u + Math.abs(Math.sin(angle)) * tw / 2 + Math.abs(Math.cos(angle)) * th / 2;
+          const x = p.x - side * Math.sin(angle) * gap;
+          return {x: Math.max(cueBounds.left + tw / 2, Math.min(cueBounds.right - tw / 2, x)),
+            y: p.y + side * Math.cos(angle) * gap};
         }));
         const box = (p: Pt) => ({l: p.x - tw / 2, r: p.x + tw / 2, t: p.y - th / 2, b: p.y + th / 2});
         const cost = (p: Pt) => obstacles.reduce((sum, rect) => sum + overlapArea(rect, box(p)), 0) + outside(box(p)) * th * 40;
-        const at = spots.reduce((best, p) => cost(p) < cost(best) - 1 ? p : best);
+        let at = spots(0)[0];
+        let bestCost = Infinity;
+        for (const lift of [0, 28 * u, 56 * u]) {
+          for (const point of spots(lift)) {
+            const overlap = cost(point);
+            if (overlap < bestCost - 1) {
+              at = point;
+              bestCost = overlap;
+            }
+          }
+          if (bestCost <= 1) break;
+        }
         placedTags.push(box(at));
-        return <Tag key={lane} opacity={lane === 0 && activeLane === 'reply' ? 1 : prog} at={at} text={text} u={labelUnit} fill={twoWay ? (lane === 0 ? '#ded4f0' : '#c9e8d9') : undefined} />;
+        return <Tag key={lane} opacity={lane === 0 && activeLane === 'reply' ? 1 : prog} at={at} layout={layout} u={labelUnit} fill={twoWay ? (lane === 0 ? '#ded4f0' : '#c9e8d9') : undefined} />;
       })}</g>;
     }
     const receiver = state[ib], sender = state[ia];
@@ -1032,6 +1091,9 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
     sounds.push({sound, at: Math.round(st.at * len), volume});
   });
 
+  const renderedArrows = links.map((link, index) => renderLink(link, index));
+  const renderedLabels = links.map((link, index) => renderLink(link, index, true));
+
   return (
     <AbsoluteFill style={{background: region ? 'transparent' : `radial-gradient(ellipse at 50% 45%, ${PAPER.bgCenter} 0%, ${PAPER.bg} 70%)`, fontFamily: PAPER.sans}}>
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', inset: 0}}>
@@ -1040,34 +1102,74 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
         <g clipPath={`url(#${stageId})`}><g transform={camera}>
           {slabs.map(renderObject)}
           {[...waveSources].map(([index,{start,radius}]) => <BroadcastWaves key={index} origin={anchor(index)} radius={radius} seconds={(f-start)/fps} u={u}/>)}
-          {links.map((l, k) => renderLink(l, k))}
+          {renderedArrows}
           {rest.map(renderObject)}
-          {links.map((l, k) => renderLink(l, k, true))}
           {note && byId[note.target] !== undefined && state[byId[note.target]].shown ? (() => {
             const i = byId[note.target], g = geos[i];
-            const box = rectOf(outline(g, T, o));
+            const silhouette = outline(g, T, o);
+            const box = rectOf(silhouette);
             const pillRoom = state[i].status !== undefined ? 66 * u : 0;
-            const {w: nw, h: nh} = noteSize(note.note ?? '', u);
+            const noteText = note.note ?? '';
+            const noteUnit = u * Math.min(1, (cueBounds.right - cueBounds.left) / (noteSize(noteText, u).w + 16 * u));
+            const {w: nw, h: nh} = noteSize(noteText, noteUnit);
             const others = geos.map((gg, j) => (j === i || gg.shape === 'slab' || !state[j].shown ? null : rectOf(outline(gg, T, o)))).filter(Boolean) as Rect[];
-            const cx = (box.l + box.r) / 2, cy = (box.t + box.b) / 2;
+            const cy = (box.t + box.b) / 2;
             const others2 = [...others, ...geos.map((gg, j) => (j !== i && state[j].shown && state[j].status !== undefined ? (() => {const r = rectOf(outline(gg, T, o)); return {l: r.l, r: r.r, t: r.t - 70 * u, b: r.t};})() : null)).filter(Boolean) as Rect[]];
-            // above, slid inward so it stays on screen near the frame edge (the pointer still lands on the object)
-            const ax = Math.max(cueBounds.left + nw / 2, Math.min(cx, cueBounds.right - nw / 2));
+            // Leave room above request labels. The pointer still points to the highlighted actor.
+            const texts = [...placedTags, ...labelRects];
+            const apex = silhouette.reduce((highest, point) => point.y < highest.y ? point : highest);
+            const tipClear = (point: Pt) => !texts.some(rect => point.x >= rect.l - 7 * u && point.x <= rect.r + 7 * u &&
+              point.y - pillRoom >= rect.t - 5 * u && point.y - pillRoom <= rect.b + 17 * u);
+            const target = tipClear(apex) ? apex : [0.24, -0.24, 0.36, -0.36].map(shift => {
+              const x = Math.max(box.l + 4 * u, Math.min(apex.x + shift * (box.r - box.l), box.r - 4 * u));
+              return exitPoint(silhouette, {x, y: box.b + u}, {x, y: box.t - u});
+            }).find(point => point.y < box.b && tipClear(point)) ?? apex;
+            const centreNote = (x: number) => Math.max(cueBounds.left + nw / 2, Math.min(x, cueBounds.right - nw / 2));
+            const gap = 16 * noteUnit;
+            const anchorY = target.y - pillRoom;
             const options = [
-              {side: 'above' as const, at: {x: cx, y: box.t - pillRoom}, r: {l: cx - nw / 2, r: cx + nw / 2, t: box.t - pillRoom - nh - 16 * u, b: box.t - pillRoom}},
-              {side: 'above' as const, at: {x: ax, y: box.t - pillRoom}, r: {l: ax - nw / 2, r: ax + nw / 2, t: box.t - pillRoom - nh - 16 * u, b: box.t - pillRoom}},
-              {side: 'right' as const, at: {x: box.r, y: cy}, r: {l: box.r + 16 * u, r: box.r + 16 * u + nw, t: cy - nh / 2, b: cy + nh / 2}},
-              {side: 'left' as const, at: {x: box.l, y: cy}, r: {l: box.l - 16 * u - nw, r: box.l - 16 * u, t: cy - nh / 2, b: cy + nh / 2}},
-              {side: 'right' as const, at: {x: box.r - 10 * u, y: box.t + 20 * u}, r: {l: box.r + 6 * u, r: box.r + 6 * u + nw, t: box.t + 20 * u - nh / 2, b: box.t + 20 * u + nh / 2}},
-              {side: 'left' as const, at: {x: box.l + 10 * u, y: box.t + 20 * u}, r: {l: box.l - 6 * u - nw, r: box.l - 6 * u, t: box.t + 20 * u - nh / 2, b: box.t + 20 * u + nh / 2}},
+              ...[0, 32, 64, 96, 128].flatMap(lift => [0, 42, -42, 84, -84].map(shift => {
+                const space = gap + lift * u;
+                const ax = centreNote(target.x + shift * u);
+                return {side: 'above' as const, at: {x: ax, y: anchorY}, gap: space, tipOffset: target.x - ax,
+                  r: {l: ax - nw / 2, r: ax + nw / 2, t: anchorY - space - nh, b: anchorY - space}};
+              })),
+              {side: 'right' as const, at: {x: box.r, y: cy}, gap, tipOffset: 0,
+                r: {l: box.r + gap, r: box.r + gap + nw, t: cy - nh / 2, b: cy + nh / 2}},
+              {side: 'left' as const, at: {x: box.l, y: cy}, gap, tipOffset: 0,
+                r: {l: box.l - gap - nw, r: box.l - gap, t: cy - nh / 2, b: cy + nh / 2}},
             ];
             // text over text is the worst overlap: link labels ("data", "resource") and object names count double
-            const texts = [...placedTags, ...labelRects];
             const cost = (r: Rect) => others2.reduce((acc, x) => acc + overlapArea(x, r), 0) + 2 * texts.reduce((acc, x) => acc + overlapArea(x, r), 0)
+              + arrowTracks.filter(point => point.x >= r.l - 8 * u && point.x <= r.r + 8 * u &&
+                point.y >= r.t - 8 * u && point.y <= r.b + 8 * u).length * 280 * u * u
               + outside(r) * nh * 40; // off-screen is worse than touching
-            const pick = options.reduce((best, c) => (cost(c.r) < cost(best.r) - 1 ? c : best), options[0]);
-            return <Note at={pick.at} side={pick.side} tipOffset={cx - pick.at.x} text={note.note ?? ''} u={u} scale={Math.min(1, noteScale)} />;
+            const score = (option: typeof options[number]) => {
+              let total = cost(option.r);
+              if (option.side !== 'above') return total;
+              const margin = nw / 2 - 28 * noteUnit;
+              const leaderX = option.at.x + Math.max(-margin, Math.min(option.tipOffset, margin));
+              for (const part of [0.2, 0.4, 0.6, 0.8, 0.95]) {
+                const x = leaderX + (target.x - leaderX) * part;
+                const y = option.r.b + option.gap * part;
+                if (texts.some(rect => x >= rect.l - 6 * u && x <= rect.r + 6 * u &&
+                  y >= rect.t - 6 * u && y <= rect.b + 6 * u)) total += 450 * u * u;
+              }
+              return total;
+            };
+            let pick = options[0];
+            let bestScore = score(pick);
+            for (const option of options.slice(1)) {
+              if (bestScore <= 1) break;
+              const nextScore = score(option);
+              if (nextScore < bestScore - 1) {
+                pick = option;
+                bestScore = nextScore;
+              }
+            }
+            return <Note at={pick.at} side={pick.side} gap={pick.gap} tipOffset={pick.tipOffset} text={noteText} u={noteUnit} scale={Math.min(1, noteScale)} />;
           })() : null}
+          {renderedLabels}
         </g></g>
       </svg>
 
@@ -1084,17 +1186,22 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
           left: portraitNote || sideNote.side === 'left' ? 90 * u : undefined,
           right: !portraitNote && sideNote.side === 'right' ? 90 * u : undefined,
           top: portraitNote ? headingBottom : (headingBottom + bottom) / 2,
-          width: portraitNote ? W - 180 * u : noteWidth, boxSizing: 'border-box',
+          width: noteWidth, boxSizing: 'border-box',
           transform: portraitNote ? undefined : `translateY(-50%)`,
           opacity: noteAmount * noteAmount, padding: 24 * u,
           border: `1px solid ${PAPER.inkSoft}`, borderRadius: 16 * u, background: PAPER.card,
           color: PAPER.ink, fontSize: 31 * u, fontWeight: 650, lineHeight: 1.25}}>
-          <div style={{display: 'grid'}}>
-            {(replacingNote ? [previousNote, sideNote] : [sideNote]).map((note, i) => (
-              <div key={i} style={{gridArea: '1 / 1',
+          <div style={{display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)'}}>
+            {noteContent.map(({note, json}, i) => (
+              <div key={i} style={{gridArea: '1 / 1', minWidth: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
                 opacity: replacingNote ? (i === 0 ? 1 - noteProgress(f) : noteProgress(f)) : 1}}>
-                {note.text}
-                {note.detail ? <div style={{fontFamily: PAPER.font, fontSize: 23 * u, fontWeight: 600,
+                {json ? <div style={{fontFamily: PAPER.font, fontSize: 24 * u, lineHeight: 1.28}}>
+                  {json.header ? <div style={{fontWeight: 800, marginBottom: 8 * u}}>
+                    {json.header.replace(/^.*$/m, line => httpResponseStatus(line)?.label ?? line)}
+                  </div> : null}
+                  <JsonExampleCode example={json} />
+                </div> : note.text}
+                {note.detail ? <div style={{fontSize: 23 * u, fontWeight: 600,
                   marginTop: 16 * u, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere'}}>{note.detail}</div> : null}
               </div>
             ))}
@@ -1102,18 +1209,40 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
         </div>
       ) : null}
 
-      {example ? (
+      {exampleRows ? (
         <div style={{position: 'absolute', left: 80 * u, top: stacked ? headingBottom : top,
           width: stacked ? W - 160 * u : left - 110 * u,
-          height: stacked ? 310 * u : bottom - top, display: 'flex', flexDirection: 'column',
+          height: stacked ? stackedExampleHeight : bottom - top, display: 'flex', flexDirection: 'column',
           justifyContent: 'center', gap: (stacked ? 8 : 20) * u, color: PAPER.ink}}>
-          {example.map((line, i) => (
+          {exampleRows.map((line, i) => {
+            const availableWidth = (stacked ? W - 160 * u : left - 110 * u) - 48 * u;
+            const size = (stacked ? 20 : 25) * u;
+            const availableHeight = (stacked ? stackedExampleHeight : bottom - top) -
+              (exampleRows.length - 1) * (stacked ? 38 : 60) * u;
+            const rows = Math.max(7, Math.floor((availableHeight - 60 * u) / (size * 1.3)));
+            const json = line.json ? previewJsonExample(line.json, -1, 0,
+              Math.max(18, Math.floor(availableWidth / (size * 0.64))), rows) : null;
+            const status = httpResponseStatus(line.json?.header);
+            return json ? (
+              <div key={i} style={{visibility: f >= Math.round(line.at * len) ? 'visible' : 'hidden',
+                background: PAPER.card, border: `1px solid ${PAPER.inkSoft}`, borderRadius: 16 * u,
+                padding: `${14 * u}px ${22 * u}px`, fontSize: size, lineHeight: 1.3, fontFamily: PAPER.font,
+                minWidth: 0, overflowWrap: 'anywhere'}}>
+                {json.header ? <div style={{fontWeight: 800, marginBottom: 8 * u, whiteSpace: 'pre-wrap'}}>
+                  {status ? json.header.replace(status.line, status.label) : json.header}
+                </div> : null}
+                <JsonExampleCode example={json} />
+              </div>
+            ) : (
             <div key={i} style={{visibility: f >= Math.round(line.at * len) ? 'visible' : 'hidden',
               borderLeft: `${4 * u}px solid ${ISO_COLORS.lavender}`, padding: `0 ${20 * u}px`,
-              fontSize: (stacked ? 29 : 40) * u, lineHeight: 1.2, fontWeight: 600, overflowWrap: 'anywhere'}}>
+              fontFamily: /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s/.test(line.text) ? PAPER.font : undefined,
+              fontSize: (stacked ? 27 : 35) * u, lineHeight: 1.2, fontWeight: 600, overflowWrap: 'anywhere',
+              display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 3, overflow: 'hidden'}}>
               {line.text}
             </div>
-          ))}
+            );
+          })}
         </div>
       ) : null}
       {onlyCard ? (

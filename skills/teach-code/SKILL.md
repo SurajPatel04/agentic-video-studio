@@ -48,8 +48,6 @@ metadata:
     scenes: [EventLoopScene]
   - when: [heap, garbage collection, memory leak]
     scenes: [EventLoopScene]
-  - when: [rest, rest api, restful, endpoint, endpoints, http method, status code, json response, api design, pagination, curl]
-    scenes: [TerminalScene, EditorScene]
   long_video: false
 ---
 
@@ -58,7 +56,7 @@ Hard rules for programming topics (they override softer advice below; EditorScen
 - EditorScene when code is written, changes, or breaks: "code" is the file before, then actions: type (adds lines; "line" = insert after), suggest (autocomplete: items + pick), error (line + message: red underline), fix (line + new text), highlight (line), run (text = output, variant success/error; the mouse clicks Run and the output panel opens). Line numbers mean the file at that moment. To walk through finished code, use EditorScene with no typing: the full "code" plus highlight actions on the lines being explained (it matches the paper style; avoid the dark CodeScene).
 - EditorScene and TerminalScene take "device": "window" (default), "laptop", "monitor" or "browser" (online editor / web shell, with "url").
 - TerminalScene for commands and their output (git, npm, pip, docker, deploys, tests): actions run (one command), output (lines, variant muted/success/error/warn/info), progress (label + seconds), done (text + variant success/error), clear. Show output in the scene right after the code that produces it.
-- APIs: show each endpoint as a real call: TerminalScene with the curl command, the status line and the JSON body; EditorScene for a response shape, an error body or the handler. Put a good and a bad response side by side.
+- APIs: show the actual request and relevant response. Use AnnotatedTextScene in editor layout to explain endpoint design or the parts of an HTTP exchange. Use TerminalScene when teaching how to run a command such as curl, or EditorScene when teaching the handler implementation. Compare successful and unsuccessful responses when the lesson covers errors.
 - For every HTTP IsoScene, write the method and path, status code, or other HTTP detail being explained as on-screen text. Keep diagrams focused on who sends, receives, or stores data. Show the request on the client-to-server arrow and the response on the server-to-client arrow. Put longer headers and bodies in AnnotatedTextScene with editor layout.
 - AnnotatedTextScene can show the HTTP text beside an IsoScene diagram through its diagram field. Keep the same actors and positions through a request, reply and recap. Cue each new arrow to the spoken send action, draw it once with flow "none", and carry completed arrows with enter "none". Cue the method, path, status and data highlights in spoken order.
 - For implementation walkthroughs, keep the input, relevant expression and output readable together. Highlight the value as the narration follows it. Use a runtime diagram when the learner needs to see a transfer or relationship.

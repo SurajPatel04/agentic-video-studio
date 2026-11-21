@@ -2,8 +2,6 @@
 
 import asyncio
 import json
-
-import httpx
 import shutil
 import subprocess
 import unittest
@@ -47,6 +45,9 @@ def make_video(path: Path, seconds: float) -> Path:
 
 class LongVideoTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        runner = patch.object(settings, "VIDEO_JOB_RUNNER", "local")  # .env may say celery; these run in-process
+        runner.start()
+        self.addCleanup(runner.stop)
         llm = AsyncMock()
         llm.ainvoke.return_value = AIMessage(json.dumps(OUTLINE), usage_metadata={"input_tokens": 100, "output_tokens": 50, "total_tokens": 150})
         with patch("app.agent.videoGenerator.jobs.long_video.get_llm", return_value=llm):
@@ -55,10 +56,15 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         self.contexts: list[str] = []
         self.rendered: list[str] = []
 
+    def chapter_number(self, topic):
+        return next(i for i, chapter in enumerate(self.state.outline.chapters, 1)
+                    if topic == f"{self.state.outline.title} — {chapter.title}")
+
     async def fake_plan(self, topic, *, scenes, mode, model, context, skills=None, layout="desktop", code_demo=None,
-                        narration_budget=None, objective=""):
+                        narration_budget=None, objective="", scene_shortlist=None, lookup_cache=None, lookup_focus=""):
         self.contexts.append(context)
-        n = int(topic.split("chapter ")[1].split(",")[0])
+        self.assertEqual(scene_shortlist, self.state.scene_shortlist)
+        n = self.chapter_number(topic)
         budget = self.state.outline.chapters[n - 1].words
         self.assertEqual(narration_budget, budget)
         self.assertEqual(code_demo, OUTLINE["chapters"][n - 1].get("code_demo", ""))
@@ -94,7 +100,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         # chapter 3 knew what chapters 1 and 2 covered, and everything shared
         self.assertIn("Ch 1 What is Node.js", self.contexts[2])
         self.assertIn("Ch 2 Event loop", self.contexts[2])
-        self.assertIn("event loop = runs callbacks", self.contexts[2])
+        self.assertIn("event loop: runs callbacks", self.contexts[2])
         self.assertIn("THIS CHAPTER", self.contexts[1])
         self.assertIn("learning check if helpful", self.contexts[2])
         self.assertEqual(state.input_tokens, 100 + 3 * 1000)
@@ -176,21 +182,26 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
             state = await lv.run_long_video(self.state.id, render=False)
         self.assertEqual(state.status, "planned")
 
-    async def test_resume_endpoint_starts_on_event_loop(self):
-        from app.main import app
+    async def test_background_run_plans_saved_job(self):
         with patch.object(lv, "plan_video", side_effect=self.fake_plan):
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-                response = await client.post(f"/long/{self.state.id}/run?render=false")
-                self.assertEqual(response.status_code, 200, response.text)
-                self.assertTrue(response.json()["started"])
-                task = lv._tasks.get(self.state.id)  # may already be done (fake plan is instant)
-                if task:
-                    await task
-                await asyncio.sleep(0)
+            self.assertTrue(lv.start(self.state.id, render=False))
+            await lv._tasks[self.state.id]
         self.assertEqual(lv.load(self.state.id).status, "planned")
 
+    async def test_saved_job_can_be_queued_on_celery(self):
+        from app.agent.videoGenerator.jobs import job_store, video_jobs
+        with patch.object(settings, "VIDEO_JOB_RUNNER", "celery"), patch.object(job_store, "enabled", return_value=False), \
+                patch("app.agent.videoGenerator.jobs.tasks.generate_video.apply_async") as publish:
+            self.assertTrue(video_jobs.queue_long_run(self.state.id, render=False))
+            self.assertFalse(video_jobs.queue_long_run(self.state.id))  # already waiting for a worker
+            status = video_jobs.view(self.state.id)
+        self.assertEqual(publish.call_count, 1)
+        job_id, req, length = publish.call_args.kwargs["args"]
+        self.assertEqual((job_id, length, req["render"]), (self.state.id, "long", False))
+        self.assertEqual(status["status"], "queued")
+        self.assertNotIn(self.state.id, lv._tasks)  # nothing ran in the API process
+
     async def test_edit_holds_lock_during_validation(self):
-        from app.main import app
         entered, release = asyncio.Event(), asyncio.Event()
 
         async def validate_later(path):
@@ -201,9 +212,8 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
             edit = asyncio.create_task(lv.set_chapter_plan(self.state.id, 1, spec_with(376)))
             try:
                 await entered.wait()
-                async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-                    response = await client.post(f"/long/{self.state.id}/run?render=false")
-                    self.assertEqual(response.status_code, 409)
+                with self.assertRaises(lv.JobBusyError):
+                    lv.start(self.state.id, render=False)
                 with self.assertRaises(lv.JobBusyError):
                     lv.replace_outline(self.state.id, self.state.outline)
                 with self.assertRaises(lv.JobBusyError):
@@ -255,7 +265,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         events, active, peak = [], 0, 0
 
         async def slow_plan(topic, **kw):
-            n = int(topic.split("chapter ")[1].split(",")[0])
+            n = self.chapter_number(topic)
             events.append(f"plan{n}")
             await asyncio.sleep(0.05)
             return await self.fake_plan(topic, **kw)
@@ -279,7 +289,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_failed_plan_stops_later_plans_but_finishes_started_renders(self):
         async def plan(topic, **kw):
-            if "chapter 2" in topic:
+            if self.chapter_number(topic) == 2:
                 raise RuntimeError("bad plan")
             return await self.fake_plan(topic, **kw)
 
@@ -309,8 +319,12 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
 
     def test_render_threads_split_between_workers(self):
         with patch.object(settings, "LONG_RENDER_WORKERS", 2), patch.object(settings, "LONG_RENDER_CONCURRENCY", 0), \
-                patch("os.cpu_count", return_value=16):
+                patch.object(settings, "VIDEO_JOB_RUNNER", "local"), patch("os.cpu_count", return_value=16):
             self.assertEqual(lv.render_concurrency(), 8)
+        with patch.object(settings, "LONG_RENDER_WORKERS", 2), patch.object(settings, "LONG_RENDER_CONCURRENCY", 0), \
+                patch.object(settings, "VIDEO_JOB_RUNNER", "celery"), patch.object(settings, "CELERY_WORKERS", 4), \
+                patch("os.cpu_count", return_value=16):
+            self.assertEqual(lv.render_concurrency(), 2)  # 16 cores / (2 chapters x 4 jobs)
         with patch.object(settings, "LONG_RENDER_CONCURRENCY", 5):
             self.assertEqual(lv.render_concurrency(), 5)
 

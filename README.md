@@ -36,13 +36,13 @@ The demos provide visuals; narration and audio assembly belong to the backend pi
 
 The backend discovers project playbooks in `skills/<name>/SKILL.md`. Every automatically planned video receives `video-foundation`, which handles audience, purpose, language, narration, visual choices, factual grounding, and an appropriate ending across subjects. Optional format guides cover lectures (`teach-lecture`), explainers (`make-explainer`), and ads (`make-ad`). Programming, networking, algorithms, and mathematics guides remain optional subject supplements, alongside long-video pacing and component design. They guide teaching choices; scene contracts remain authoritative. Terminal overlays show supplied expected output, not executed code.
 
-`POST /plan`, `/video`, `/long`, and `/components` accept:
+`POST /videos` and `POST /components` accept:
 
 - Omitted `skills` (or `null`): include the universal foundation plus at most one matching format guide and two subject guides (planner); component guides remain role-specific.
 - `"skills": ["video-foundation", "teach-lecture"]`: use only the named guides. Explicit lists do not automatically add the foundation.
 - `"skills": []`: disable guides.
 
-`GET /skills` lists planner guides; `GET /skills?role=component` lists component guides. `/plan` reports the guides used. Long-video jobs save their selected names and reuse them for every chapter and resume. Automatic long-video selection includes pacing; explicit overrides include it only if named. Guide files are reloaded, so editing a guide also affects future planning of existing jobs.
+`GET /skills` lists planner guides. `GET /skills?role=component` lists component guides. Long-video jobs save their selected names and reuse them for every chapter and resume. Automatic long-video selection includes pacing; explicit overrides include it only if named. Guide files are reloaded, so editing a guide also affects future planning of existing jobs.
 
 Catalog planning includes selected guides and their relevant scene/overlay contracts without an additional model call. Tool planning and the component agent see descriptions first and use `list_skills` / `load_skill` to read bodies. Selected guides must be loaded before a plan is accepted or a component is written. Automatic tool mode may load other relevant guides; explicit lists restrict access.
 

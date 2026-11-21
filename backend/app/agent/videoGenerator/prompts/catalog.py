@@ -23,9 +23,6 @@ CATALOG_OUTPUT = _prompts("planner")["catalog_output"]
 TOOLS_INTRO = _prompts("planner")["tools_intro"]
 LAYOUT_HINT = {layout: _prompts("planner")[f"layout_{layout}"] for layout in ("mobile", "square")}
 
-WRITER = _prompts("lecture")["writer"]
-SCENE_DIRECTION = _prompts("lecture")["scene_direction"]
-REVIEWER = _prompts("lecture")["reviewer"]
 OUTLINE_RULES = _prompts("outline")["outline_rules"]
 PROMPT = _prompts("skill_router")["prompt"]
 REPAIR_SYSTEM = _prompts("repair")["repair_system"]

@@ -2,7 +2,7 @@
 import json
 import logging
 import re
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
@@ -10,26 +10,21 @@ from app.agent.videoGenerator import skills as teaching_skills
 from app.config import settings
 from app.utils.llm import get_llm, get_tool_llm, text_of, usage_of
 
-from ..prompts.catalog import BRIEF_GUIDANCE, CATALOG_OUTPUT, RULES, SCENE_DIRECTION, TOOLS_INTRO
-from ..schemas.lecture import Script
+from ..jobs.scene_stream import planner_response
+from ..prompts.catalog import BRIEF_GUIDANCE, CATALOG_OUTPUT, RULES, TOOLS_INTRO
 from ..schemas.plan import Plan
 from ..state.video import VideoState
 from ..tools import catalog, iso_design
 from ..tools.plan_repair import Repair, scoped_repair, update_plan_fields
-from ..tools.scene_lookup import LOOKUP_TOOLS
+from ..tools.scene_lookup import (
+    LOOKUP_TOOLS, LookupCache, chapter_lookup_reference, iso_inventory_version, scene_details, search_scene_summaries,
+)
 from ..validation import PANEL_OVERLAYS, _check, _extract_json, _lint, _normalize, _visual_hint
+from ..validation import apply_layout as apply_layout
 
 log = logging.getLogger(__name__)
 
 Mode = Literal["auto", "catalog", "tools"]
-Layout = Literal["desktop", "mobile", "square"]
-LAYOUTS: dict[str, tuple[int, int]] = {"desktop": (1920, 1080), "mobile": (1080, 1920), "square": (1080, 1080)}
-
-
-def apply_layout(spec: dict[str, Any], layout: str) -> dict[str, Any]:
-    """Force the frame size of a layout (the LLM may copy 1920x1080 from the examples)."""
-    spec["width"], spec["height"] = LAYOUTS.get(layout, LAYOUTS["desktop"])
-    return spec
 
 
 class PlanError(RuntimeError):
@@ -39,8 +34,7 @@ class PlanError(RuntimeError):
 
 
 def _rules() -> str:
-    return (BRIEF_GUIDANCE + "\n" + RULES.replace("OVERLAYS", catalog.overlay_list()).replace("PANELS", ", ".join(sorted(PANEL_OVERLAYS)))
-            .replace("TEXTSHARE", f"{settings.PLANNER_MAX_TEXT_SHARE:.0%}").replace("TEXTRUN", str(settings.PLANNER_MAX_TEXT_RUN)))
+    return BRIEF_GUIDANCE + "\n" + RULES.replace("OVERLAYS", catalog.overlay_list()).replace("PANELS", ", ".join(sorted(PANEL_OVERLAYS)))
 
 
 class _Best:
@@ -63,8 +57,7 @@ class _Best:
 # --------------------------------------------------------------------------- modes
 
 
-def _repair_for(reply: str, spec: dict | None, problem: str, previous: Repair | None = None,
-                *, script: Script | None = None) -> Repair | None:
+def _repair_for(reply: str, spec: dict | None, problem: str, previous: Repair | None = None) -> Repair | None:
     """A scoped repair for the flagged fields. A scene that is still broken after a scoped repair is
     repaired whole (full props + its field list), so the model can add a missing object or reshape
     a table instead of guessing the same field again."""
@@ -72,8 +65,6 @@ def _repair_for(reply: str, spec: dict | None, problem: str, previous: Repair | 
         if not problem.startswith("The JSON has these errors:"):
             return None
         spec = _extract_json(reply)
-        if script:
-            script.bind(spec)
         _normalize(spec)
     repair = scoped_repair(spec, problem, contract=catalog.scene_text)
     again = repair.scenes() & previous.scenes() if repair and previous else set()
@@ -86,7 +77,8 @@ def _repair_for(reply: str, spec: dict | None, problem: str, previous: Repair | 
 FALLBACK_SHARE = 0.25  # at most this share of scenes (and at least 1) may be replaced by a card
 
 
-async def _salvage(reply: str | None, problem: str, code_demo: str | None, *, lecture: bool = False, explainer: bool = False) -> dict | None:
+async def _salvage(reply: str | None, problem: str, code_demo: str | None, *, explainer: bool = False,
+                   layout: str = "desktop") -> dict | None:
     """Last resort when attempts run out: replace the few scenes that are still invalid with a plain
     title card that keeps their narration, so one stubborn scene does not fail the whole video."""
     if not reply or not problem.startswith("The JSON has these errors:"):
@@ -109,7 +101,7 @@ async def _salvage(reply: str | None, problem: str, code_demo: str | None, *, le
                      else {"title": title, "titleAt": "top"})
             scenes[i] = {k: v for k, v in old.items() if k in ("id", "durationInFrames", "narration", "transition")}
             scenes[i].update(component=card, props=props)
-        fixed, _ = await _check(json.dumps(spec), code_demo, lecture=lecture, explainer=explainer)
+        fixed, _ = await _check(json.dumps(spec), code_demo, explainer=explainer, layout=layout)
         if fixed:
             log.warning("planner.salvage replaced %d invalid scene(s) with a %s card: %s", len(bad), card,
                         ", ".join(str(scenes[i].get("id")) for i in sorted(bad)))
@@ -140,10 +132,18 @@ async def _edit(repair: Repair, llm, *, use_tool: bool = False):
 
 
 async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[str] | tuple[str, ...] = (),
-                        *, code_demo: str | None = None, script: Script | None = None) -> Plan:
-    known = teaching_skills.guidance(list(skills)) if skills else ""  # iso objects the guides already describe are not repeated
-    system = _rules() + hint + CATALOG_OUTPUT + catalog.catalog_text(topic, known=known)
-    messages: list[Any] = [SystemMessage(system), HumanMessage(f"Topic: {topic}")]
+                        *, code_demo: str | None = None, allowed: list[str] | None = None,
+                        layout: str = "desktop", scene_shortlist: Sequence[str] = ()) -> Plan:
+    lecture = "teach-lecture" in skills
+    explainer = "make-explainer" in skills
+    guides = teaching_skills.guidance(list(skills))
+    available = teaching_skills.discover()
+    preferred = [*scene_shortlist, *(scene for name in skills for scene in available[name].metadata.scenes)]
+    overlays = dict.fromkeys(overlay for name in skills for overlay in available[name].metadata.overlays)
+    index = "\nAvailable teaching guides:\n" + teaching_skills.index(allowed=allowed) if allowed != [] else ""
+    system = (_rules() + index + guides + CATALOG_OUTPUT + catalog.catalog_text(topic, known=guides, preferred=preferred)
+              + "\n" + "\n".join(catalog.overlay_text(name) for name in overlays))
+    messages: list[Any] = [SystemMessage(system), HumanMessage(f"Topic: {topic}\n\n{hint.strip()}")]
     llm = get_llm(model or settings.PLANNER_MODEL or None)
     tin = tout = calls = 0
     problem = ""
@@ -154,14 +154,14 @@ async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[s
         if repair:
             reply, (i, o) = await _edit(repair, llm)
         else:
-            msg = await llm.ainvoke(messages)
+            msg = await planner_response(llm, messages, lecture=lecture, explainer=explainer)
             reply, (i, o) = text_of(msg), usage_of(msg)
         calls += 1
         tin, tout = tin + i, tout + o
         if reply is None:
             repair = None
             continue
-        spec, problem = await _check(reply, code_demo, lecture="teach-lecture" in skills, explainer="make-explainer" in skills, script=script)
+        spec, problem = await _check(reply, code_demo, lecture=lecture, explainer=explainer, layout=layout)
         if spec:
             style = _lint(spec, skills, topic, code_demo=code_demo)
             if not style:
@@ -171,26 +171,52 @@ async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[s
             problem = style
         log.warning("planner.retry mode=catalog attempt=%d problem=%s", attempt, problem[:300])
         last = reply
-        repair = _repair_for(reply, spec, problem, repair, script=script)
+        repair = _repair_for(reply, spec, problem, repair)
         messages = [*messages[:2], AIMessage(reply), HumanMessage(problem)]
     if best.spec:
         return Plan(best.spec, best.attempt, "catalog", calls, tin, tout)
-    salvaged = None if script else await _salvage(last, problem, code_demo, lecture="teach-lecture" in skills, explainer="make-explainer" in skills)
+    salvaged = None if lecture else await _salvage(last, problem, code_demo, explainer=explainer, layout=layout)
     if salvaged:
         return Plan(salvaged, settings.PLANNER_MAX_ATTEMPTS, "catalog", calls, tin, tout)
     raise PlanError(f"planner gave invalid JSON {settings.PLANNER_MAX_ATTEMPTS} times", problem)
 
 
-async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[str], allowed: list[str] | None,
-                      *, code_demo: str | None = None, script: Script | None = None) -> Plan:
-    skills = selected
-    system = _rules() + hint + TOOLS_INTRO.format(core_scenes=", ".join(catalog.CORE_SCENES))
-    messages: list[Any] = [SystemMessage(system), HumanMessage(f"Topic: {topic}")]
-    loaded: set[str] = set()
-    lookup = dict(LOOKUP_TOOLS)
-    if allowed != []:
-        lookup.update({t.name: t for t in teaching_skills.tools(allowed=allowed, loaded=loaded)})
-    llm = get_tool_llm(model or settings.PLANNER_MODEL or None).bind_tools(list(lookup.values()))
+def _preloaded_scenes(code_demo: str | None, selected: list[str], scene_shortlist: Sequence[str] = ()) -> list[str]:
+    names = list(catalog.TOOLS_PRELOADED_SCENES)
+    if code_demo:
+        names.append("EditorScene")
+    if "iso-diagrams" in selected:
+        names.append("IsoScene")
+    available = set(catalog.scene_names())
+    return [name for name in dict.fromkeys([*names, *scene_shortlist]) if name in available]
+
+
+async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[str],
+                      *, code_demo: str | None = None, layout: str = "desktop",
+                      scene_shortlist: Sequence[str] = (), lookup_cache: LookupCache | None = None,
+                      lookup_focus: str = "") -> Plan:
+    lecture = "teach-lecture" in selected
+    explainer = "make-explainer" in selected
+    preloaded = _preloaded_scenes(code_demo, selected, scene_shortlist)
+    guides = teaching_skills.guidance(selected, asset_lookup=True)
+    contracts = "\n\n".join(catalog.scene_text(name, compact=True, link_diagram=True) for name in preloaded)
+    system = _rules() + guides + TOOLS_INTRO + "\n\nPreloaded scene fields:\n" + contracts
+    initial: list[SystemMessage | HumanMessage | AIMessage] = [SystemMessage(system)]
+    tool_history: list[AIMessage | ToolMessage] = []
+    retry_context: list[AIMessage | HumanMessage] = []
+    lookup = LOOKUP_TOOLS
+    cache = lookup_cache if lookup_cache is not None else {}
+    known_scenes = set(preloaded)
+    reference, reused_scenes = chapter_lookup_reference(cache, lookup_focus or topic, known_scenes)
+    if reference:
+        initial.append(AIMessage("Reference lookups from earlier planning. Use the fields or assets below if they fit "
+                                 "the current chapter. Look up any missing detail.\n\n" + reference))
+        known_scenes.update(reused_scenes)
+    initial.append(HumanMessage(f"Topic: {topic}\n\n{hint.strip()}"))
+    examples_sent: set[str] = set()
+    model = model or settings.PLANNER_MODEL or None
+    repair_llm = get_tool_llm(model)
+    llm = repair_llm.bind_tools(list(lookup.values()))
     tin = tout = calls = attempts = 0
     problem = ""
     best = _Best()
@@ -198,7 +224,7 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
     last: str | None = None
     for _ in range(settings.PLANNER_MAX_STEPS):
         if repair:
-            reply, (i, o) = await _edit(repair, get_tool_llm(model or settings.PLANNER_MODEL or None), use_tool=True)
+            reply, (i, o) = await _edit(repair, repair_llm, use_tool=True)
             calls += 1
             tin, tout = tin + i, tout + o
             if reply is None:
@@ -207,80 +233,94 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
                 if attempts >= settings.PLANNER_MAX_ATTEMPTS:
                     break
                 continue
-            msg = AIMessage(reply)
         else:
-            msg = await llm.ainvoke(messages)
+            msg = await planner_response(llm, [*initial, *tool_history, *retry_context], tools=True,
+                                         lecture=lecture, explainer=explainer)
             calls += 1
             i, o = usage_of(msg)
             tin, tout = tin + i, tout + o
-        messages.append(msg)
-        if msg.tool_calls:
-            for call in msg.tool_calls:
-                fn = lookup.get(call["name"])
-                result = fn.invoke(call["args"]) if fn else f"Unknown tool {call['name']}"
-                log.info("tool %s(%s) -> %d chars", call["name"], json.dumps(call["args"])[:120], len(str(result)))
-                messages.append(ToolMessage(str(result)[:8000], tool_call_id=call["id"]))
-            continue
-        missing = set(selected) - loaded
-        if missing:
-            messages.append(HumanMessage("Before planning, call load_skill for: " + ", ".join(sorted(missing))))
-            continue
+            if msg.tool_calls:
+                tool_history.append(msg)
+                for call in msg.tool_calls:
+                    name, args = call["name"], call["args"]
+                    fn = lookup.get(name)
+                    cached = False
+                    if name == "search_scenes" and isinstance(args.get("query"), str):
+                        result = search_scene_summaries(args["query"], exclude=known_scenes)
+                    elif name == "get_scene" and isinstance(scene_name := args.get("name"), str):
+                        if scene_name in examples_sent:
+                            result = f"{scene_name} details are already in this conversation."
+                        else:
+                            include_fields = scene_name not in known_scenes
+                            args_key = json.dumps([scene_name, include_fields])
+                            key = (name, args_key)
+                            cached = key in cache
+                            if not cached:
+                                cache[key] = scene_details(scene_name, include_fields=include_fields, link_diagram=True)
+                            result = cache[key]
+                            known_scenes.add(scene_name)
+                            examples_sent.add(scene_name)
+                    elif fn:
+                        # New drawings become searchable as soon as another chapter creates one.
+                        version = iso_inventory_version() if name == "find_iso_objects" else None
+                        key = (name, json.dumps([args, version], sort_keys=True))
+                        cached = key in cache
+                        if not cached:
+                            cache[key] = str(fn.invoke(args))
+                        result = cache[key]
+                    else:
+                        result = f"Unknown tool {name}"
+                    log.info("tool %s(%s) -> %d chars%s", name, json.dumps(args)[:120], len(str(result)),
+                             " (cached lookup)" if cached else "")
+                    content = str(result) if name == "get_scene" else str(result)[:8000]
+                    tool_history.append(ToolMessage(content, tool_call_id=call["id"]))
+                continue
+            reply = text_of(msg)
         attempts += 1
-        last = text_of(msg)
-        spec, problem = await _check(last, code_demo, lecture="teach-lecture" in skills, explainer="make-explainer" in skills, script=script)
+        last = reply
+        spec, problem = await _check(last, code_demo, lecture=lecture, explainer=explainer, layout=layout)
         if spec:
-            style = _lint(spec, skills, topic, code_demo=code_demo)
+            style = _lint(spec, selected, topic, code_demo=code_demo)
             if not style:
-                return Plan(spec, attempts, "tools", calls, tin, tout, sorted(loaded))
+                return Plan(spec, attempts, "tools", calls, tin, tout, selected)
             if best.add(spec, attempts, style):
-                return Plan(best.spec, best.attempt, "tools", calls, tin, tout, sorted(loaded))
+                return Plan(best.spec, best.attempt, "tools", calls, tin, tout, selected)
             problem = style
         log.warning("planner.retry mode=tools attempt=%d problem=%s", attempts, problem[:300])
         if attempts >= settings.PLANNER_MAX_ATTEMPTS:
             break
-        repair = _repair_for(last, spec, problem, repair, script=script)
-        messages.append(HumanMessage(problem + " Use get_scene to check fields if unsure."))
+        repair = _repair_for(last, spec, problem, repair)
+        retry_context = [AIMessage(last), HumanMessage(problem)]
     if best.spec:
-        return Plan(best.spec, best.attempt, "tools", calls, tin, tout, sorted(loaded))
-    salvaged = None if script else await _salvage(last, problem, code_demo, lecture="teach-lecture" in skills, explainer="make-explainer" in skills)
+        return Plan(best.spec, best.attempt, "tools", calls, tin, tout, selected)
+    salvaged = None if lecture else await _salvage(last, problem, code_demo, explainer=explainer, layout=layout)
     if salvaged:
-        return Plan(salvaged, attempts, "tools", calls, tin, tout, sorted(loaded))
+        return Plan(salvaged, attempts, "tools", calls, tin, tout, selected)
     raise PlanError(f"planner did not produce valid JSON (mode=tools, {attempts} attempts, {calls} calls)", problem)
 
 
 async def plan_scenes(state: VideoState) -> dict:
-    """Build and validate scenes using the chosen tools or catalog and optional lecture script."""
+    """Write and validate the visual content and narration together in each scene."""
     topic, hint, model = state["topic"], state["hint"], state["model"]
     selected, allowed = state["selected"], state["allowed"]
-    code_demo, mode, script = state["code_demo"], state["mode"], state.get("script")
+    code_demo, mode = state["code_demo"], state["mode"]
+    layout = state.get("layout", "desktop")
+    scene_shortlist = state.get("scene_shortlist", [])
     if code_demo is None and state.get("objective"):
         code_demo = ""  # A selected subject guide alone does not require source code.
-    if script:
-        beats = {sid: beat.model_dump() for sid, beat in script.by_id().items()}
-        hint += f"\n{SCENE_DIRECTION}\n{json.dumps(beats, ensure_ascii=False)}\n"
-    if "iso-diagrams" in selected:
+    if "iso-diagrams" in selected and mode != "tools":
         hint += iso_design.planner_hint()
     hint += _visual_hint(topic, selected)
-    if allowed != []:
-        hint += "\nAvailable teaching guides:\n" + teaching_skills.index(allowed=allowed)
     if mode == "tools":
-        if selected:
-            hint += "\nLoad these guides before planning: " + ", ".join(selected) + ". Use load_skill(name).\n"
-        plan = await _plan_tools(topic, hint, model, selected, allowed, code_demo=code_demo, script=script)
+        plan = await _plan_tools(topic, hint, model, selected, code_demo=code_demo, layout=layout,
+                                 scene_shortlist=scene_shortlist, lookup_cache=state.get("lookup_cache"),
+                                 lookup_focus=state.get("lookup_focus", ""))
     else:
-        hint += teaching_skills.guidance(selected)
-        available = teaching_skills.discover()
-        scene_names = set(catalog.scene_names())
-        extra_scenes = dict.fromkeys(n for name in selected for n in available[name].metadata.scenes)
-        extra_overlays = dict.fromkeys(n for name in selected for n in available[name].metadata.overlays)
-        extra = [catalog.scene_text(n) for n in extra_scenes if n in scene_names]
-        hint += "\n" + catalog.kind_legend(*extra, known=teaching_skills.guidance(selected)) + "\n".join(extra)
-        hint += "\n" + "\n".join(catalog.overlay_text(n) for n in extra_overlays)
-        plan = await _plan_catalog(topic, hint, model, selected, code_demo=code_demo, script=script)
+        plan = await _plan_catalog(topic, hint, model, selected, code_demo=code_demo, allowed=allowed, layout=layout,
+                                   scene_shortlist=scene_shortlist)
         plan.skills = selected
     calls, tin, tout = state["route_usage"]
-    script_calls, script_in, script_out = state.get("script_usage", (0, 0, 0))
-    plan.llm_calls += calls + script_calls
-    plan.input_tokens += tin + script_in
-    plan.output_tokens += tout + script_out
+    plan.llm_calls += calls
+    plan.input_tokens += tin
+    plan.output_tokens += tout
     return {"plan": plan}

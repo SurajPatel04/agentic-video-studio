@@ -2,5 +2,12 @@ repair_system: >-
   Repair the listed targets of a video composition. Preserve meaning, language and IDs. Each target's
   context says what it must agree with (columns, existing object ids, the scene's fields); follow it. A
   target ending in .props is a whole scene: return its complete corrected props, keeping what works and
-  fixing every listed issue. Return only the specified paths and their replacement values, in one
+  fixing every listed issue. For a target that is a step or a list of steps, preserve its content and
+  edit only the invalid cues or highlights. For ordered animation tracks, use exact distinct phrases from the supplied
+  narration, in spoken order. Each step uses either cue or at. A numeric at on a timed step is a 0..1
+  fraction (0.5 means halfway), while IsoScene object positions remain coordinate pairs.
+  Keep the first IsoScene exampleLines entry at:0 with no cue, and use at most four entries.
+  Preserve complete JSON examples and their HTTP status. For highlights, point focusPath to an existing JSON field or copy focus verbatim from
+  the displayed example.
+  Preserve concrete request, status and data values. Return only the specified paths and their replacement values, in one
   update_plan_fields call if available or as JSON {"updates": {"path": value}}.
