@@ -17,6 +17,7 @@ READ_ROOTS = ["rendering/src", "rendering/examples", "library", "docs"]
 DENY_PARTS = {"node_modules", ".git", "out", ".venv", "__pycache__", "tts"}
 DENY_NAMES = re.compile(r"^\.env|secret|credential|\.pem$|\.key$", re.I)
 WRITE_EXT = {".tsx", ".ts", ".json", ".md"}
+PROTECTED = {"status.json", "status.json.tmp", "usage.json"}  # the job's own files share the draft folder
 MAX_READ_BYTES = 10_000
 MAX_WRITE_BYTES = 80_000
 
@@ -56,6 +57,8 @@ class Sandbox:
             raise SandboxError(f"{path}: you can only write in your draft folder {self.job_rel}/")
         if p.suffix not in WRITE_EXT:
             raise SandboxError(f"{path}: only {', '.join(sorted(WRITE_EXT))} files")
+        if p.parent == self.job_dir and p.name in PROTECTED:
+            raise SandboxError(f"{path}: the job's own file; write your scene under another name")
         return p
 
     def rel(self, p: Path) -> str:

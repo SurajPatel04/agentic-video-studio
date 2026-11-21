@@ -10,7 +10,7 @@
     python -m app.cli component "A bubble sort scene that swaps bars step by step" [--name BubbleSortScene]
     python -m app.cli staged | promote BubbleSortScene | unstage BubbleSortScene
 
-  Long videos (outline -> chapters -> render -> join; saved in workspace/long/<id>/, resumable):
+  Long videos (outline -> chapters -> render -> join; saved in workspace/jobs/<id>/, resumable):
     python -m app.cli long "How Node.js works" --minutes 30 [--chapters 6] [--outline-only] [--plan-only]
     python -m app.cli long-run <id> [--plan-only]          start / resume (skips finished chapters)
     python -m app.cli long-status <id>                     outline, chapter status, tokens, timestamps
@@ -33,13 +33,26 @@ from pathlib import Path
 from app.agent.videoGenerator.components.component_agent import build_component
 from app.agent.videoGenerator.components.staging import manifest, promote, unstage
 from app.agent.videoGenerator.jobs.scene_stream import streaming_video
+from app.agent.videoGenerator.jobs.storage import job_dir, migrate_job_storage
 from app.agent.videoGenerator.jobs import job_store, long_video, video_jobs
+from app.agent.videoGenerator.ads import ad_minutes
 from app.agent.videoGenerator.generator import plan_video
+from app.agent.videoGenerator.source import clean_source
 from app.agent.videoGenerator.nodes.plan_scenes import PlanError
 from app.config import settings
 from app.utils.console import setup_logging
 from app.utils.render import RenderError, add_narration, render_video
 from app.utils.tts import synthesize
+
+
+def read_source(path: Path | None) -> str:
+    """--source FILE: its text, checked against SOURCE_MAX_CHARS ("" without the option)."""
+    if path is None:
+        return ""
+    try:
+        return clean_source(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"--source: {exc}") from exc
 
 
 async def main() -> None:
@@ -102,7 +115,7 @@ async def main() -> None:
     q.add_argument("prompt")
     q.add_argument("--length", choices=["short", "long"], default="short")
     q.add_argument("--scenes", type=int, help="short: rough number of scenes")
-    q.add_argument("--minutes", type=float, default=30, help="long: the most it may take")
+    q.add_argument("--minutes", type=float, help="long: the most it may take (default 30); --ad: its length")
     q.add_argument("--fixed-length", action="store_true", help="long: make it exactly --minutes long")
     q.add_argument("--chapters", type=int)
     q.add_argument("--no-captions", action="store_true")
@@ -114,16 +127,31 @@ async def main() -> None:
     st = sub.add_parser("status", help="status, step and progress of a /videos job (short or long)")
     st.add_argument("id")
     st.add_argument("--follow", action="store_true", help="keep printing until it ends")
-    sub.add_parser("cancel", help="cancel a queued or Celery-running video job (jobs run inside the API: POST /cancel/{id})").add_argument("id")
+    sub.add_parser("cancel", help="cancel a queued or running video or component agent job (same as POST /cancel/{id})").add_argument("id")
     lgl = sub.add_parser("log", help="a Celery job's log from Redis (status changes + worker log lines)")
     lgl.add_argument("id")
     lgl.add_argument("--limit", type=int, default=200)
     lgl.add_argument("--follow", action="store_true", help="keep printing new lines until it ends")
+    sub.add_parser("migrate-jobs", help="move legacy jobs into the shared jobs folder with the API and workers stopped")
     for command in (p, vd, c, lg, q):
         command.add_argument("--skills", nargs="*", default=None, help="Guide names; omit for automatic selection, use --skills alone to disable")
     for command in (p, vd, lg, q):
         command.add_argument("--layout", choices=["desktop", "mobile", "square"], default="desktop")
+    for command in (p, vd):
+        command.add_argument("--ad", action="store_true", help="an advertisement (make-ad guide), at most AD_MAX_MINUTES")
+        command.add_argument("--minutes", type=float, help="--ad: its length (default AD_DEFAULT_MINUTES, 0.5 = 30 s)")
+    for command in (p, vd, lg, q):
+        command.add_argument("--source", type=Path, help="text file with your own content; the video uses only its facts")
+    q.add_argument("--ad", action="store_true", help="an advertisement: short, --minutes long (default AD_DEFAULT_MINUTES, max AD_MAX_MINUTES)")
     args = parser.parse_args()
+
+    if args.cmd == "migrate-jobs":
+        try:
+            count = migrate_job_storage()
+        except (OSError, ValueError) as exc:
+            raise SystemExit(str(exc)) from exc
+        print(f"Moved {count} job directories into {settings.WORKSPACE_DIR / 'jobs'}")
+        return
 
     if args.cmd in ("videos", "status", "log", "cancel"):
         await jobs_cmd(args)
@@ -156,7 +184,8 @@ async def main() -> None:
                                   narrate=not args.no_narrate, captions_mode=args.captions_mode) if args.cmd == "video" else nullcontext()
         async with session as work:
             try:
-                plan = await plan_video(args.prompt, scenes=args.scenes, mode=args.mode, skills=args.skills, layout=args.layout)
+                plan = await plan_video(args.prompt, scenes=args.scenes, mode=args.mode, skills=args.skills, layout=args.layout,
+                                        ad=args.ad, minutes=args.minutes, source=read_source(args.source))
             except PlanError as exc:
                 raise SystemExit(f"{exc}\n{exc.details}")
             spec = plan.spec
@@ -229,7 +258,13 @@ async def jobs_cmd(args) -> None:
         req = {"prompt": args.prompt, "length": args.length, "layout": args.layout, "scenes": args.scenes,
                "minutes": args.minutes, "fixed_length": args.fixed_length, "chapters": args.chapters,
                "narrate": not args.no_narrate, "captions": not args.no_captions, "captions_mode": args.captions_mode,
-               "scale": args.scale, "skills": args.skills, "model": None, "planner": args.mode}
+               "scale": args.scale, "skills": args.skills, "model": None, "planner": args.mode, "ad": args.ad,
+               "source": read_source(args.source) or None}
+        if args.ad:  # same rules as POST /videos: short, at most AD_MAX_MINUTES
+            args.length = req["length"] = "short"
+            req["minutes"] = ad_minutes(args.minutes)
+        elif req["minutes"] is None:
+            req["minutes"] = 30
         start = video_jobs.start_long if args.length == "long" else video_jobs.start_short
         try:
             job_id = start(req)
@@ -245,8 +280,14 @@ async def jobs_cmd(args) -> None:
     if video_jobs.view(args.id) is None:
         raise SystemExit(f"unknown video id {args.id}")
     if args.cmd == "cancel":
+        from app.agent.videoGenerator.jobs import component_jobs
+
         try:
-            print_status(video_jobs.cancel(args.id))
+            if component_jobs.exists(args.id):
+                job = component_jobs.cancel(args.id)
+                print(f"{job['id']}  {job['status']}  (component agent job)")
+            else:
+                print_status(video_jobs.cancel(args.id))
         except video_jobs.JobNotActive as exc:
             raise SystemExit(str(exc))
         print("a Celery worker stops it within", settings.JOB_HEARTBEAT_SECONDS, "s")
@@ -296,12 +337,13 @@ async def long_cmd(args) -> None:
         try:
             state = await long_video.create_long_video(args.prompt, args.minutes, chapters=args.chapters,
                                                        captions=not args.no_captions, scale=args.scale, mode=args.mode, skills=args.skills,
-                                                       fixed_length=args.fixed_length, layout=args.layout)
+                                                       fixed_length=args.fixed_length, layout=args.layout,
+                                                       source=read_source(args.source))
         except PlanError as exc:
             raise SystemExit(f"{exc}\n{exc.details}")
         print_long(state)
         if args.outline_only:
-            print(f"\nreview workspace/long/{state.id}/state.json, then: python -m app.cli long-run {state.id}")
+            print(f"\nreview {job_dir(state.id) / 'state.json'}, then: python -m app.cli long-run {state.id}")
             return
         state = await long_video.run_long_video(state.id, render=not args.plan_only)
     elif args.cmd == "long-run":

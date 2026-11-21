@@ -1,12 +1,13 @@
+import asyncio
 import re
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
-from app.agent.videoGenerator.components.component_agent import build_component
 from app.agent.videoGenerator.components.staging import manifest, promote, unstage
+from app.agent.videoGenerator.jobs import component_jobs
+from app.agent.videoGenerator.jobs.video_jobs import QueueUnavailable
 from app.api.job_files import job_file
 from app.api.schemas.components import ComponentRequest
 from app.api.skill_validation import check_skills
@@ -15,17 +16,27 @@ from app.api.skill_validation import check_skills
 router = APIRouter()
 
 
-@router.post("/components")
+@router.post("/components", status_code=202)
 async def create_component(req: ComponentRequest) -> dict[str, Any]:
-    """Agent writes a new scene, checks it (rules, typecheck, contract, 3 rendered frames) and stages it.
-    A staged scene works in videos and the planner sees it; promote it to keep it for good."""
+    """Queue the agent: it writes a new scene, checks it (rules, typecheck, contract, 3 rendered frames) and
+    stages it, on a Celery worker. Returns at once; poll status_url (GET /components/jobs/{id}). When done it
+    has ok, name, summary, report, stills ... A staged scene works in videos and the planner sees it; promote
+    it to keep it for good. Cancel with POST /cancel/{id}."""
     check_skills(req.skills, "component")
-    r = await build_component(req.request, name=req.name, model=req.model, skills=req.skills)
-    return {
-        "ok": r.ok, "name": r.name, "job_id": r.job_id, "summary": r.summary, "report": r.report,
-        "steps": r.steps, "input_tokens": r.input_tokens, "output_tokens": r.output_tokens,
-        "files": r.files, "stills": [f"/components/jobs/{r.job_id}/{Path(p).name}" for p in r.stills],
-    }
+    try:
+        job_id = await asyncio.to_thread(component_jobs.start, req.model_dump())
+    except QueueUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return await asyncio.to_thread(component_jobs.view, job_id) or {"id": job_id}
+
+
+@router.get("/components/jobs/{job_id}")
+async def component_job(job_id: str) -> dict[str, Any]:
+    """Status of a component agent job: queued | running | done | failed | cancelled (+ result when ended)."""
+    job = await asyncio.to_thread(component_jobs.view, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="unknown component job")
+    return job
 
 
 @router.get("/components")

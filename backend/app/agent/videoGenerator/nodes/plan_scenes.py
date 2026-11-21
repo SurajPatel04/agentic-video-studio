@@ -17,7 +17,8 @@ from ..state.video import VideoState
 from ..tools import catalog, iso_design
 from ..tools.plan_repair import Repair, scoped_repair, update_plan_fields
 from ..tools.scene_lookup import (
-    LOOKUP_TOOLS, LookupCache, chapter_lookup_reference, iso_inventory_version, scene_details, search_scene_summaries,
+    LOOKUP_TOOLS, LookupCache, chapter_lookup_reference, device_legend, iso_inventory_version, scene_details,
+    search_scene_summaries,
 )
 from ..validation import PANEL_OVERLAYS, _check, _extract_json, _lint, _normalize, _visual_hint
 from ..validation import apply_layout as apply_layout
@@ -181,26 +182,64 @@ async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[s
     raise PlanError(f"planner gave invalid JSON {settings.PLANNER_MAX_ATTEMPTS} times", problem)
 
 
-def _preloaded_scenes(code_demo: str | None, selected: list[str], scene_shortlist: Sequence[str] = ()) -> list[str]:
+def _preloaded_scenes(code_demo: str | None, selected: list[str], scene_shortlist: Sequence[str] = (),
+                      *, diagram: bool = True) -> list[str]:
+    """Scenes whose fields go in the prompt: the fixed set first (same for every topic), then the topic's.
+    ``diagram=False`` (TypeSafe: the brief needs no diagram) leaves out IsoScene's ~4k characters."""
     names = list(catalog.TOOLS_PRELOADED_SCENES)
     if code_demo:
         names.append("EditorScene")
-    if "iso-diagrams" in selected:
+    if "iso-diagrams" in selected and diagram:
         names.append("IsoScene")
     available = set(catalog.scene_names())
     return [name for name in dict.fromkeys([*names, *scene_shortlist]) if name in available]
 
 
+def _tools_system(selected: list[str], guides: str, preloaded: list[str], prepicked: dict) -> str:
+    """Tools-mode system prompt, ordered for provider prompt caching: the part that is the same for every
+    topic (rules, tool intro, the fixed scene fields) comes first and is byte-identical between calls; the
+    guides and the topic's own picks follow."""
+    fixed = [n for n in preloaded if n in catalog.TOOLS_PRELOADED_SCENES]
+    extra = [n for n in preloaded if n not in fixed]
+    contract = lambda names: "\n\n".join(catalog.scene_text(n, compact=True, link_diagram=True) for n in names)
+    system = _rules() + TOOLS_INTRO + "\n\nPreloaded scene fields:\n" + contract(fixed) + "\n" + guides
+    if extra:
+        system += "\n\nScene fields for this topic:\n" + contract(extra)
+        # only for the topic's scenes: ExplainScene's rarely used "device" alone is not worth it on every call
+        system += device_legend(contract(extra))
+    available = teaching_skills.discover()
+    overlays = dict.fromkeys([*(o for name in selected if name in available for o in available[name].metadata.overlays),
+                              *prepicked.get("overlays", [])])
+    if overlays:
+        system += "\n\nOverlay fields for this topic:\n" + "\n".join(catalog.overlay_text(o) for o in overlays)
+    if prepicked.get("iso") and "IsoScene" in preloaded:
+        system += ("\n\nIso objects for this topic (use these before calling find_iso_objects):\n"
+                   + "\n".join(prepicked["iso"]))
+    return system
+
+
+def _compact_old_lookups(tool_history: list[AIMessage | ToolMessage], scenes: dict[str, str]) -> None:
+    """Earlier get_scene results shrink to their field list once the model has read them (description and
+    example props are dropped), so each later planner turn re-sends less."""
+    for i, message in enumerate(tool_history):
+        name = scenes.get(getattr(message, "tool_call_id", ""))
+        if name and isinstance(message, ToolMessage):
+            compact = catalog.scene_text(name, compact=True, link_diagram=True)
+            if len(compact) < len(str(message.content)):
+                tool_history[i] = ToolMessage(compact + "\n(details shown earlier)", tool_call_id=message.tool_call_id)
+            scenes.pop(message.tool_call_id)
+
+
 async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[str],
                       *, code_demo: str | None = None, layout: str = "desktop",
                       scene_shortlist: Sequence[str] = (), lookup_cache: LookupCache | None = None,
-                      lookup_focus: str = "") -> Plan:
+                      lookup_focus: str = "", prepicked: dict | None = None) -> Plan:
     lecture = "teach-lecture" in selected
     explainer = "make-explainer" in selected
-    preloaded = _preloaded_scenes(code_demo, selected, scene_shortlist)
+    prepicked = prepicked or {}
+    preloaded = _preloaded_scenes(code_demo, selected, scene_shortlist, diagram=prepicked.get("diagram", True))
     guides = teaching_skills.guidance(selected, asset_lookup=True)
-    contracts = "\n\n".join(catalog.scene_text(name, compact=True, link_diagram=True) for name in preloaded)
-    system = _rules() + guides + TOOLS_INTRO + "\n\nPreloaded scene fields:\n" + contracts
+    system = _tools_system(selected, guides, preloaded, prepicked)
     initial: list[SystemMessage | HumanMessage | AIMessage] = [SystemMessage(system)]
     tool_history: list[AIMessage | ToolMessage] = []
     retry_context: list[AIMessage | HumanMessage] = []
@@ -214,6 +253,7 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
         known_scenes.update(reused_scenes)
     initial.append(HumanMessage(f"Topic: {topic}\n\n{hint.strip()}"))
     examples_sent: set[str] = set()
+    scene_results: dict[str, str] = {}  # tool call id -> scene, for get_scene results not yet compacted
     model = model or settings.PLANNER_MODEL or None
     repair_llm = get_tool_llm(model)
     llm = repair_llm.bind_tools(list(lookup.values()))
@@ -240,6 +280,7 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
             i, o = usage_of(msg)
             tin, tout = tin + i, tout + o
             if msg.tool_calls:
+                _compact_old_lookups(tool_history, scene_results)
                 tool_history.append(msg)
                 for call in msg.tool_calls:
                     name, args = call["name"], call["args"]
@@ -260,6 +301,7 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
                             result = cache[key]
                             known_scenes.add(scene_name)
                             examples_sent.add(scene_name)
+                            scene_results[call["id"]] = scene_name
                     elif fn:
                         # New drawings become searchable as soon as another chapter creates one.
                         version = iso_inventory_version() if name == "find_iso_objects" else None
@@ -314,7 +356,7 @@ async def plan_scenes(state: VideoState) -> dict:
     if mode == "tools":
         plan = await _plan_tools(topic, hint, model, selected, code_demo=code_demo, layout=layout,
                                  scene_shortlist=scene_shortlist, lookup_cache=state.get("lookup_cache"),
-                                 lookup_focus=state.get("lookup_focus", ""))
+                                 lookup_focus=state.get("lookup_focus", ""), prepicked=state.get("prepicked"))
     else:
         plan = await _plan_catalog(topic, hint, model, selected, code_demo=code_demo, allowed=allowed, layout=layout,
                                    scene_shortlist=scene_shortlist)

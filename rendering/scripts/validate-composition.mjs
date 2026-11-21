@@ -19,7 +19,7 @@ const bundled = path.join(bundleDir, 'catalog.mjs');
 const loadCatalog = async () => {
   try {
     await build({
-      stdin: {contents: `export {sceneCatalog, overlaysSchema} from './src/registry'; export {brandSchema} from './src/brand'; export {audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} from './src/audio';`, resolveDir: root, loader: 'ts'},
+      stdin: {contents: `export {sceneCatalog, overlaysSchema} from './src/registry'; export {fitProps} from './src/fitProps'; export {brandSchema} from './src/brand'; export {audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} from './src/audio';`, resolveDir: root, loader: 'ts'},
       outfile: bundled,
       bundle: true,
       platform: 'node',
@@ -39,7 +39,7 @@ const loadCatalog = async () => {
     await rm(bundleDir, {recursive: true, force: true});
   }
 };
-const {sceneCatalog, overlaysSchema, brandSchema, audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} = await loadCatalog();
+const {sceneCatalog, overlaysSchema, fitProps, brandSchema, audioSettingsSchema, narrationSchema, voiceSchema, sfxCuesSchema, captionsSettingsSchema} = await loadCatalog();
 
 const fmtPath = (parts) => parts.map((p) => (typeof p === 'number' ? `[${p}]` : `.${p}`)).join('');
 
@@ -77,8 +77,9 @@ const explain = (issue, data) => {
   return issue.message;
 };
 
-/** Returns a list of human-readable errors for one composition object. */
-export const validateComposition = (spec) => {
+/** Returns a list of human-readable errors for one composition object. Over-limit data that fitProps
+ *  cuts to size (the renderer does the same) is not an error; it is listed in ``fitted``. */
+export const validateComposition = (spec, fitted = []) => {
   const errors = [];
   for (const key of ['fps', 'width', 'height']) {
     if (!Number.isInteger(spec[key]) || spec[key] <= 0) errors.push(`${key}: must be a positive integer`);
@@ -114,7 +115,8 @@ export const validateComposition = (spec) => {
       if (!r.success) for (const issue of r.error.issues) errors.push(`${where}.${field}${fmtPath(issue.path)}: ${issue.message}`);
     }
     if (scene?.overlays !== undefined) {
-      const o = overlaysSchema.safeParse(scene.overlays);
+      const fit = fitProps(overlaysSchema, scene.overlays), o = fit.result;
+      if (o.success) for (const n of fit.notes) fitted.push(`${where}.overlays${n}`);
       if (!o.success) {
         for (const issue of o.error.issues) errors.push(`${where}.overlays${fmtPath(issue.path)}: ${explain(issue, scene.overlays)}`);
       }
@@ -125,7 +127,8 @@ export const validateComposition = (spec) => {
       errors.push(`${where}.component: unknown "${scene?.component}"` + (near.length ? `; did you mean ${near.join(', ')}?` : `. Known: ${Object.keys(sceneCatalog).join(', ')}`));
       return;
     }
-    const result = entry.schema.safeParse(scene.props ?? {});
+    const fit = fitProps(entry.schema, scene.props ?? {}), result = fit.result;
+    if (result.success) for (const n of fit.notes) fitted.push(`${where}.props${n}`);
     if (!result.success) {
       for (const issue of result.error.issues) {
         const keys = issue.keys ? ` (${issue.keys.join(', ')})` : '';
@@ -139,13 +142,15 @@ export const validateComposition = (spec) => {
 let failed = 0;
 for (const file of files) {
   const spec = JSON.parse(await readFile(file, 'utf8'));
-  const errors = validateComposition(spec);
+  const fitted = [];
+  const errors = validateComposition(spec, fitted);
   if (errors.length) {
     failed++;
     console.log(`✗ ${file}`);
     for (const e of errors) console.log(`  ${e}`);
   } else {
-    console.log(`✓ ${file} (${spec.scenes.length} scenes)`);
+    console.log(`✓ ${file} (${spec.scenes.length} scenes${fitted.length ? `, ${fitted.length} values fitted to their limits` : ''})`);
+    for (const n of fitted) console.log(`  fitted ${n}`);
   }
 }
 process.exit(failed ? 1 : 0);

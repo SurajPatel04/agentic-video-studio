@@ -4,6 +4,7 @@ import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
 import {entrance, entranceSchema, type Entrance} from '../animation';
 import {AnimatedText, textAnimationSchema, type TextAnimation} from '../motion';
 import {useTheme, useUnit} from '../theme';
+import {densityScale, titleScale} from '../textFit';
 
 export type BulletListSceneProps = {
   title?: string;
@@ -34,15 +35,18 @@ export const BulletListScene: React.FC<BulletListSceneProps> = ({
   const {fps} = useVideoConfig();
   const theme = useTheme();
   const u = useUnit();
+  // More items / text = smaller title and items, so a long list still fits the frame.
+  const k = densityScale(items.length, [title, ...items], {roomyItems: 4, roomyChars: 220, min: 0.62});
+  const tk = k * titleScale(title);
 
   return (
-    <AbsoluteFill style={{padding: 120 * u, justifyContent: 'center', gap: 28 * u}}>
+    <AbsoluteFill style={{padding: `${(k < 1 ? 80 : 120) * u}px ${120 * u}px`, justifyContent: 'center', gap: 28 * u * k}}>
       {title ? (
         <AnimatedText
           as="h2"
           text={title}
           stagger={4}
-          style={{marginBottom: 24 * u, fontSize: 84 * u, fontWeight: 700, color: theme.text, ...titleStyle}}
+          style={{marginBottom: 24 * u * k, fontSize: 84 * u * tk, fontWeight: 700, color: theme.text, ...titleStyle}}
         />
       ) : null}
       {items.map((item, i) => {
@@ -52,8 +56,8 @@ export const BulletListScene: React.FC<BulletListSceneProps> = ({
             key={i}
             style={{
               display: 'flex',
-              gap: 24 * u,
-              fontSize: 60 * u,
+              gap: 24 * u * k,
+              fontSize: 60 * u * k,
               color: theme.text,
               ...entrance(animation, frame - at, fps, u),
               ...itemStyle,
@@ -68,6 +72,6 @@ export const BulletListScene: React.FC<BulletListSceneProps> = ({
   );
 };
 
-export const bulletListSceneSchema = z.object({title:z.string().optional(),items:z.array(z.string()).default(['First point','Second point']),startAt:z.number().int().nonnegative().optional(),stagger:z.number().int().nonnegative().optional(),itemFrames:z.array(z.number().int().nonnegative()).optional(),bullet:z.string().optional(),animation:entranceSchema.optional(),textAnimation:textAnimationSchema.optional(),titleStyle:z.record(z.string(),z.unknown()).optional(),itemStyle:z.record(z.string(),z.unknown()).optional()});
+export const bulletListSceneSchema = z.object({title:z.string().optional(),items:z.array(z.string()).max(10).default(['First point','Second point']),startAt:z.number().int().nonnegative().optional(),stagger:z.number().int().nonnegative().optional(),itemFrames:z.array(z.number().int().nonnegative()).optional(),bullet:z.string().optional(),animation:entranceSchema.optional(),textAnimation:textAnimationSchema.optional(),titleStyle:z.record(z.string(),z.unknown()).optional(),itemStyle:z.record(z.string(),z.unknown()).optional()});
 export const description = 'A bullet list with frame-timed item reveals.';
 export const tags = ['text', 'list', 'bullets'];

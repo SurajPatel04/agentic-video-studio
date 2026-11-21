@@ -59,6 +59,7 @@ import * as Connection from './scenes/ConnectionScene';
 import * as DeviceDemo from './scenes/DeviceDemoScene';
 import * as Blank from './scenes/BlankScene';
 import * as Iso from './scenes/IsoScene';
+import * as Draw from './scenes/DrawScene';
 import * as Screen from './scenes/ScreenScene';
 import * as Phone from './scenes/PhoneScene';
 import * as Terminal from './scenes/TerminalScene';
@@ -155,6 +156,7 @@ const baseCatalog: Record<string, SceneEntry> = {
   BlankScene: {...Blank, component: Blank.BlankScene, schema: Blank.blankSceneSchema},
   DeviceDemoScene: {...DeviceDemo, component: DeviceDemo.DeviceDemoScene, schema: DeviceDemo.deviceDemoSceneSchema},
   IsoScene: {...Iso, component: Iso.IsoScene, schema: Iso.isoSceneSchema},
+  DrawScene: {...Draw, component: Draw.DrawScene, schema: Draw.drawSceneSchema},
   ScreenScene: {...Screen, component: Screen.ScreenScene, schema: Screen.screenSceneSchema},
   PhoneScene: {...Phone, component: Phone.PhoneScene, schema: Phone.phoneSceneSchema},
   TerminalScene: {...Terminal, component: Terminal.TerminalScene, schema: Terminal.terminalSceneSchema},

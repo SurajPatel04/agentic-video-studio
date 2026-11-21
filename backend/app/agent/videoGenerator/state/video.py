@@ -9,8 +9,10 @@ class VideoInput(TypedDict):
     objective: NotRequired[str]
     layout: NotRequired[str]
     scene_shortlist: NotRequired[list[str]]
+    prepicked: NotRequired[dict]  # TypeSafe pre-picks: {"iso": [rows], "overlays": [names], "diagram": bool}
     lookup_cache: NotRequired[LookupCache]
     lookup_focus: NotRequired[str]
+    force_format: NotRequired[str]  # format guide used whatever the router picks ("make-ad" for ads)
     topic: str
     hint: str
     model: str | None

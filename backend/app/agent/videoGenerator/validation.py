@@ -216,6 +216,8 @@ def _lint(spec: dict[str, Any], skills: list[str] | tuple[str, ...] = (), topic:
                         "into its own BlankScene (short title, panel at \"center\", the narration about it) right after.")
     problems += _lint_variety(scenes, skills)
     problems += _lint_narration(scenes)
+    problems += _lint_spoken_code(scenes)
+    problems += _lint_unsaid_text(scenes)
     problems += _lint_cues(spec)
     problems += _lint_iso(scenes, lecture="teach-lecture" in skills)
     if not problems:
@@ -295,6 +297,73 @@ def _lint_narration(scenes: list[dict[str, Any]]) -> list[str]:
         problems.append(f"the narration repeats \"{repeated[0]}\" in {len(shingles[repeated[0]])} scenes. Say each point once, "
                         "then move forward: a new example, a question to the viewer, or what goes wrong without it.")
     return problems
+
+
+# Code a voice would spell out symbol by symbol: /paths, URLs, ?query=strings, a.b.c field paths,
+# ids_with_underscores, calls(). "e.g.", "Node.js" and "and/or" are not matched.
+SPOKEN_CODE = re.compile(r"(?<!\S)/[\w{]\S*|https?://\S+|\S*\?\w+=\S*|\b[a-z][a-zA-Z0-9]*(?:\.[a-z][a-zA-Z0-9]+)+\b"
+                         r"|\b\w+_\w+\b|\b\w+\(\)")
+
+
+def _lint_spoken_code(scenes: list[dict[str, Any]]) -> list[str]:
+    """Code in narration: the voice spells it out ("slash api slash watches question mark ...", ten
+    seconds for one URL) while the caption shows the raw code. The screen should carry the code."""
+    if not settings.PLANNER_LINT_SPOKEN_CODE:
+        return []
+    found = []
+    for s in scenes:
+        text = str((s.get("narration") or {}).get("text", ""))
+        hits = list(dict.fromkeys(m.group().rstrip(".,;:!?") for m in SPOKEN_CODE.finditer(text)))
+        if hits:
+            found.append(f"'{s.get('id')}': {', '.join(hits[:4])}")
+    if not found:
+        return []
+    return [f"narration is spoken aloud, but it contains code the voice would spell out symbol by symbol: {'; '.join(found[:8])}. "
+            "Keep the exact code on screen and say it in words: \"the watches path\", \"watch W T one-oh-one\", "
+            "\"the next link\", \"the price field inside data\". Do not write URLs, paths, a.b.c fields or ids with underscores in narration."]
+
+
+TEXT_CARD_FIELDS = {"ExplainScene": ("heading", "points"), "BulletListScene": ("title", "items"),
+                    "SummaryScene": ("title", "points"), "DefinitionScene": ("term", "meaning")}
+STOP = {"this", "that", "with", "from", "into", "your", "they", "them", "their", "there", "what", "when", "which",
+        "have", "will", "each", "than", "then", "also", "only", "just", "more", "most", "some", "such", "does",
+        "were", "been", "being", "about", "over", "make", "makes", "uses", "using"}
+
+
+def _key_words(text: str) -> list[str]:
+    words = (re.sub(r"[^a-z0-9]", "", w.lower()) for w in text.split())
+    return [w for w in words if (len(w) >= 4 or w.isdigit()) and w not in STOP]
+
+
+def _said(word: str, spoken: set[str]) -> bool:
+    """The word, or the same stem ("resources" ~ "resource", "validate" ~ "validation")."""
+    return word in spoken or any(len(s) >= 4 and (s[:5] == word[:5] if len(word) >= 5 else s == word) for s in spoken)
+
+
+def _lint_unsaid_text(scenes: list[dict[str, Any]]) -> list[str]:
+    """Text cards whose heading / points the voice never says: the viewer reads one thing and hears
+    another. A line passes when the narration says at least PLANNER_SAID_TEXT_MIN of its key words."""
+    need = settings.PLANNER_SAID_TEXT_MIN
+    if not need:
+        return []
+    unsaid = []
+    for s in scenes:
+        fields = TEXT_CARD_FIELDS.get(s.get("component", ""))
+        if not fields:
+            continue
+        props = s.get("props") or {}
+        spoken = set(_key_words(str((s.get("narration") or {}).get("text", ""))))
+        lines = [v for f in fields for v in ([props.get(f)] if isinstance(props.get(f), str) else props.get(f) or [])]
+        for line in lines:
+            if not isinstance(line, str):
+                continue
+            words = _key_words(line)
+            if len(words) >= 2 and sum(_said(w, spoken) for w in words) / len(words) < need:
+                unsaid.append(f"'{s.get('id')}': \"{re.sub(r'\*\*|==|__|\(\(|\)\)', '', line)[:70]}\"")
+    if not unsaid:
+        return []
+    return [f"the screen shows text the narration never says, so the viewer reads one thing and hears another: {'; '.join(unsaid[:8])}. "
+            "Say each heading and point with the same key words (in a natural sentence), or change the card to what is said."]
 
 
 HUBS = {"loadbalancer", "router", "api"}  # these send to each target directly

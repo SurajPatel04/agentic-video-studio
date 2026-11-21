@@ -5,7 +5,7 @@ Prompt → LLM plans the video → React/Remotion scenes → MP4.
 
 Legend: `[x]` done · `[~]` partly done · `[ ]` not started
 
-_Updated November 19, 2026. The catalog contains 118 scene contracts._
+_Updated November 22, 2026. The catalog contains 119 scene contracts._
 
 ---
 
@@ -126,6 +126,9 @@ The course graphics showcase covers 14 examples in `rendering/examples/course-gr
 - [x] Lecture scenes: `WorkedExampleScene` (cued stages beside a live table), `OutcomeComparisonScene`, `AnnotatedTextScene` (request / sentence / excerpt with notes)
 - [x] Common: `ConceptMapScene`, `LayersScene` (pyramid/funnel), `CharacterScene` (avatars + speech bubbles), `WhiteboardScene` (hand-drawn)
 - [x] `LayersScene` is registered.
+- [x] `DrawScene` — flat 2D diagrams on a 100×56 grid for subjects with no dedicated scene (science, body, machines, weather): basic shapes + 24 ready parts (gear, piston, cell, atom, heart…), arrows by id, motions (spin / pulse / flow / orbit…), timed steps. Forgiving input so small models (gpt-6-luna) can draw: aliases fixed, unknown kinds / colours replaced, arrows and steps to missing ids dropped, light text darkened to stay readable
+  - [x] `teach-science` skill points science / body / machine topics at DrawScene (live test: 4 of 6 scenes in heart and engine plans; water job 6 of 10)
+- [x] `OutcomeComparisonScene`: a `part` past the row's end shows no highlight instead of failing validation
 
 ### Audio
 - [x] Deepgram TTS in the backend: `app/utils/tts.py` (cached WAV clips in `rendering/public/audio/tts/`), `app/utils/render.py` (narration → voice + scene lengths, validate, Remotion render to `workspace/jobs/<id>/video.mp4`)
@@ -143,7 +146,7 @@ The course graphics showcase covers 14 examples in `rendering/examples/course-gr
 ### Long videos (20-40 min) — `app/agent/videoGenerator/jobs/long_video.py`
 - [x] Outline (1 LLM call): chapters, goals, key points, minutes → word budgets (150 wpm), glossary, running examples, visual style
 - [x] Each chapter planned by the normal planner + context (whole outline, glossary, examples, what earlier chapters covered, budget); re-planned once if >35% off its word budget; fails with a retryable chapter error if both attempts miss the budget
-- [x] Saved, resumable state (`workspace/long/<id>/state.json`, `chNN.plan.json`): pending → planned → rendered / failed; a rerun skips finished chapters
+- [x] Saved, resumable state (`workspace/jobs/<id>/state.json`, `chNN.plan.json`): pending → planned → rendered / failed; a rerun skips finished chapters
 - [x] Edit: replace the outline, replace a chapter's plan (validated), redo one chapter (plan or render, optional cascade)
 - [x] Render each chapter (sequential), join with ffmpeg (stream copy, re-encode fallback) + chapter markers + YouTube timestamps
 - [x] Create long videos with `POST /videos` and `"length": "long"`. CLI commands include `long`, `long-run`, `long-status`, and `long-redo`.
@@ -151,6 +154,8 @@ The course graphics showcase covers 14 examples in `rendering/examples/course-gr
 - [x] Per-job file locks prevent overlapping runs and edits, including during plan validation.
 - [x] With `VIDEO_JOB_RUNNER=celery`, new long jobs submitted to `/videos` run in the Redis-backed worker and can reuse saved chapter state on redelivery.
 - [x] Parallel chapter rendering (bounded): `LONG_RENDER_WORKERS`, planning overlaps rendering
+- [x] `jobs/<id>/chapters/` deleted after the final join (`chNN.plan.json` kept; a redo re-renders from the plans). `LONG_KEEP_CHAPTERS=true` keeps them
+- [ ] Speed: planning is ~70% of a long job (water job: 398 s total, ~280 s planning, ~140 s render at ~77 fps). Try `LONG_PARALLEL_PLANNING=true`; optional render options (720p scale, `x264Preset`, `hardwareAcceleration`); Remotion Lambda for cloud rendering. Staying on Remotion (switching to Revideo / Motion Canvas means rewriting all scenes)
 - [x] Planner variety: `teach-code` hard rules (CodeScene per chapter + terminal output), style check `PLANNER_MAX_TEXT_RUN=3` (one retry, valid plan never lost), catalog shows number limits (`width: num 300..1800`)
 - [x] More CodeScenes per chapter: planner check asks for one per concept (`PLANNER_CODE_EVERY`)
 - [x] Length: `minutes` is a ceiling (default 30), content decides; `fixed_length` makes it exact
@@ -158,11 +163,14 @@ The course graphics showcase covers 14 examples in `rendering/examples/course-gr
 
 ### One video API
 - [x] Video and long-job status and list responses expose `progress_percent` for display and `progress` as a numeric fraction. Postman logs the percentage.
+- [x] Ads: `"ad": true` (CLI `--ad`) forces the `make-ad` guide over the router's format pick (the rest is still routed), always short, `minutes` long (default `AD_DEFAULT_MINUTES`=1, max `AD_MAX_MINUTES`=3) → word budget + scene count for the planner
+- [x] `source` on `/videos` (CLI `--source FILE`, up to `SOURCE_MAX_CHARS`=50k): the user's own content is the video's only facts (a clear error is corrected, not repeated); short plan, long outline and every chapter get it. `make-ad` is on request only (`on_request` skill flag): never picked from prompt words
+- [ ] `images` (upload + captions) for ImageScene / PhoneScene
 - [x] `POST /videos` (`length`: short | long, `layout`: desktop | mobile | square), `GET /videos/{id}`, transcript + captions; old jobs readable (`video_jobs.py`); Postman collection in `docs/postman/`
 
 ## 5. Library contract & registry
 
-- [x] Zod props schema + description + tags for every scene (118 entries) in `src/registry.ts` → `sceneCatalog`
+- [x] Zod props schema + description + tags for every scene (119 entries) in `src/registry.ts` → `sceneCatalog`
 - [x] `check:scenes` also exports `library/lucide-icons.json` (2,091 icon names for the backend)
 - [x] Validator "did you mean": wrong kind / icon / component names get the closest matches instead of the full list
 - [x] Schemas are strict: unknown props (typos like `"titel"`) are errors, not silently dropped
@@ -198,6 +206,7 @@ The course graphics showcase covers 14 examples in `rendering/examples/course-gr
 - [x] Object selection supports built-in kinds, Lucide and React Icons, saved designs, and custom 3D designs.
 - [x] Designer returns 3D shapes (box, cylinder, sphere, flat detail); code projects at 30°, shades like built-ins, fits the frame; may answer with an icon for abstract ideas
 - [x] Unique aliases; designer sees only the concept + label; failures fall back to a plain tile; saved-design hint capped at 20
+- [ ] IsoScene: auto-fix flows / steps that point at a missing object id (closest match, else drop), like DrawScene
 - [ ] 7 old flat-style designs left (`api-request`, `http-method`, `watch-*`…); delete to redraw in 3D
 - [ ] Job-local new scenes (opt-in `allow_new_scenes`) or a "missing scenes" report for the component agent
 

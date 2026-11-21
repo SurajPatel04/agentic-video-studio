@@ -85,20 +85,33 @@ def scene_details(name: str, *, include_fields: bool = True, link_diagram: bool 
     return text
 
 
-@tool
-def find_iso_objects(query: str) -> str:
-    """Find IsoScene objects, Lucide icons, and React Icons by concept or brand name."""
-    # Built-in kinds, then Lucide and React Icons, then saved designs.
+def iso_rows(query: str) -> list[str]:
+    """Rows for ``query``: built-in kinds, then Lucide and React Icons, then saved designs.
+    Icons are fallbacks: when a built-in kind matched, fewer of them are listed (each row is input tokens
+    on every later planner turn)."""
     hits = catalog.find_iso_objects(query)
+    lucide = iso_design.find_icons(query)[: 3 if hits else 5]
+    react = iso_design.find_react_icons(query)[: 2 if hits or lucide else 5]
     rows = [f"- {k}" + (f": {d}" if d else "") for k, d in hits]
-    rows += [f'- kind="tile", icon="{name}"' for name in iso_design.find_icons(query)]
-    rows += [f'- kind="tile", icon="{name}"' for name in iso_design.find_react_icons(query)]
+    rows += [f'- kind="tile", icon="{name}"' for name in [*lucide, *react]]
     words = set(re.findall(r"[a-z0-9]+", query.lower()))
     for key, art in iso_design.inventory().items():
         if not art.icon and words.intersection(re.findall(r"[a-z0-9]+", " ".join([key, *art.aliases]).lower())):
             rows.append(f'- kind="tile", design="{key}" ({", ".join(art.aliases)})')
-    return "\n".join(rows) or ('No match: try a synonym to search both icon libraries, or use design="<thing>" '
-                               'for a concrete object no icon shows.')
+    return rows
+
+
+@tool
+def find_iso_objects(query: str) -> str:
+    """Find IsoScene objects, Lucide icons, and React Icons by concept or brand name."""
+    return "\n".join(iso_rows(query)) or ('No match: try a synonym to search both icon libraries, or use design="<thing>" '
+                                          'for a concrete object no icon shows.')
+
+
+def device_legend(contracts: str) -> str:
+    """The device kind names, when a preloaded scene uses <device kind> (cheaper than a list_device_kinds round,
+    which re-sends the whole conversation)."""
+    return f"\n<device kind> = one of: {', '.join(catalog.device_kinds())}" if "<device kind>" in contracts else ""
 
 
 @tool

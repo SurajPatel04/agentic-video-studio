@@ -53,17 +53,12 @@ export const outcomeComparisonSceneSchema = z.object({
     if (i > 0 && step.at <= p.steps[i - 1].at) {
       ctx.addIssue({code: 'custom', path: ['steps', i, 'at'], message: 'Order steps by their narration cues.'});
     }
-    if (step.part !== undefined && step.part >= p.rows[step.row].parts.length) {
-      ctx.addIssue({code: 'custom', path: ['steps', i, 'part'], message: 'Select a part that exists in the chosen row.'});
-    }
+    // A part past the row's end is not an error: the scene shows no part highlight for that step.
     if (step.resultFocus && !p.rows[step.row].result.includes(step.resultFocus)) {
       ctx.addIssue({code: 'custom', path: ['steps', i, 'resultFocus'], message: 'Use exact text from the outcome.'});
     }
   });
   const active = p.start?.active;
-  if (active?.part !== undefined && active.part >= p.rows[active.row].parts.length) {
-    ctx.addIssue({code: 'custom', path: ['start', 'active', 'part'], message: 'Select a part that exists in the chosen row.'});
-  }
   if (active?.resultFocus && !p.rows[active.row].result.includes(active.resultFocus)) {
     ctx.addIssue({code: 'custom', path: ['start', 'active', 'resultFocus'], message: 'Use exact text from the outcome.'});
   }

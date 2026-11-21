@@ -28,6 +28,7 @@ from app.agent.videoGenerator.components.sandbox import Sandbox, SandboxError
 from app.agent.videoGenerator.components.staging import check_draft, existing_scene_names, publish, staged_names
 from app.config import settings
 from app.agent.videoGenerator import skills as teaching_skills
+from app.utils import job_paths
 from app.utils.console import step
 from app.utils.llm import get_tool_llm, text_of, usage_of
 
@@ -99,10 +100,12 @@ Existing scene names (don't reuse): {existing}
 """
 
 
-async def build_component(request: str, *, name: str | None = None, model: str | None = None, skills: list[str] | None = None) -> ComponentResult:
+async def build_component(request: str, *, name: str | None = None, model: str | None = None, skills: list[str] | None = None,
+                          job_id: str | None = None) -> ComponentResult:
+    """``job_id``: the queued component job's id, so its drafts, stills and status share one folder."""
     selected = teaching_skills.select(request, skills, role="component")
-    job_id = str(uuid.uuid4())
-    job_dir = settings.WORKSPACE_DIR / "jobs" / job_id
+    job_id = job_id or str(uuid.uuid4())
+    job_dir = job_paths.job_dir(job_id)
     box = Sandbox(job_dir)
     state: dict[str, Any] = {"passed": {}, "checks": 0, "finished": None, "stills": [], "reviewed": set()}
 

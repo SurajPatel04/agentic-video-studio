@@ -27,6 +27,12 @@ rules: |
     unique kebab-case IDs and 90–300 initial frames per scene, adjusted later to the narration.
   - Narration: 1–3 short spoken sentences (~40 words) per scene, or up to 6 (~80 words) for a
     board that builds in narrated steps. Use plain speech without markup or emojis.
+    A voice reads it aloud and captions show it: write code the way a person says it. Keep URLs,
+    paths, query strings, a.b.c field paths and ids_with_underscores on screen only, and say them
+    in words ("the watches path", "watch W T one-oh-one", "the next link", "the price field").
+  - Say what the screen shows: on text cards (ExplainScene, BulletListScene, SummaryScene,
+    DefinitionScene) the narration uses each heading's and point's key words, in the order shown,
+    inside natural sentences. Do not show one wording and say a different one.
   - For lectures and explainers, start with an ExplainScene, optionally after the video title.
     Introduce the idea before its example. Write a direct answer or definition, use
     textAnimation:"none" and startAt:0, and add 2–4 short points when useful. For an animated

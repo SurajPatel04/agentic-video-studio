@@ -49,7 +49,9 @@ for (const icon of ['react-icons/fa6/FaReact', 'react-icons/vsc/VscVscode', 'rea
 }
 assert(!iso.safeParse(reactTile('react-icons/fa6/FaInventedIcon')).success);
 assert.equal(iso.parse({objects: [], links: [], steps: [], title: 'Card'}).objects.length, 0);
-assert(!sceneCatalog.ComparisonTableScene.schema.safeParse({columns:['A','B'],rows:[['one']]}).success);
+// Tables fit instead of failing: short rows are padded, extra cells / columns / rows dropped.
+assert.deepEqual(sceneCatalog.ComparisonTableScene.schema.parse({columns:['A','B'],rows:[['one'],['x','y','z']]}).rows, [['one',''],['x','y']]);
+assert.equal(sceneCatalog.ComparisonTableScene.schema.parse({columns:['A','B','C','D','E','F','G'],rows:[['1','2','3','4','5','6','7']]}).columns.length, 6);
 assert(!sceneCatalog.QuizScene.schema.safeParse({correctIndex:4}).success);
 assert(!sceneCatalog.NetworkScene.schema.safeParse({packetFrames:0}).success);
 assert(!sceneCatalog.ZoomOutScene.schema.safeParse({cityAt:120,globeAt:100}).success);
@@ -178,10 +180,25 @@ assert(outcome.safeParse({...comparison, layout: 'editor', rows: [
   {...comparison.rows[0], parts: [{text: 'GET /watches\n→ {"data":[]}' }]},
   {...comparison.rows[1], parts: [{text: 'GET /watches/w-104\n'}, {text: '→ ' + 'long example '.repeat(20)}]},
 ]}).success);
-assert(!outcome.safeParse({...comparison, steps: [{at: 0.5, row: 0, part: 1}]}).success);
+assert(outcome.safeParse({...comparison, steps: [{at: 0.5, row: 0, part: 1}]}).success); // missing part: no highlight, not an error
 assert(!outcome.safeParse({...comparison, steps: [...comparison.steps].reverse()}).success);
 assert(outcome.safeParse({...comparison, steps: [{at: 0.5, row: 1, reveal: true, resultFocus: 'w-104'}]}).success);
 assert(!outcome.safeParse({...comparison, steps: [{at: 0.5, row: 1, reveal: true, resultFocus: 'w-105'}]}).success);
+// DrawScene forgives what a small model gets wrong instead of failing the plan
+const draw = sceneCatalog.DrawScene.schema;
+const drawn = draw.parse({shapes: [
+  {id: 'a', type: 'rectangle', position: [10, 10], fill: 'grey', text: 'Box'},
+  {id: 'b', kind: 'rocket', at: [30, 10]},
+  {id: 'c', kind: 'teleporter', at: [50, 10], color: 'chartreuse'},
+  {id: 'd', kind: 'arrow', from: 'a', to: 'b'},
+  {id: 'e', kind: 'arrow', from: 'a', to: 'hydrogen-right'},
+], steps: [{shape: 'a', action: 'highlight'}, {target: 'ghost', do: 'move', to: [1, 1]}]});
+assert.deepEqual(drawn.shapes.map((s) => s.kind), ['box', 'icon', 'box', 'arrow']);
+assert.equal(drawn.shapes[0].color, 'gray');
+assert.equal(drawn.shapes[0].label, 'Box');
+assert.equal(drawn.shapes[2].color, 'blue');
+assert.equal(drawn.shapes[3].at, 'a');
+assert.deepEqual(drawn.steps.map((s) => [s.target, s.do]), [['a', 'focus']]);
 const layers = sceneCatalog.LayersScene.schema;
 assert(!sceneCatalog.DatasetScene.schema.safeParse({features:['Area','Rooms']}).success);
 assert(!sceneCatalog.ModelTrainingScene.schema.safeParse({rate:0.5}).success);
@@ -248,6 +265,12 @@ assert(worked.safeParse({columns:['ID','Value'], stages:[initial]}).success);
 assert(!worked.safeParse({columns:['ID'], stages:[initial]}).success);
 assert(!worked.safeParse({columns:['ID','Value'], stages:[{...initial,focusRow:1}]}).success);
 assert(!worked.safeParse({columns:['ID','Value'], stages:[initial,initial]}).success);
+// 5 columns (once over the limit of 4) now fit; rows follow the columns; 7 columns keep the first 6.
+const wide = worked.parse({columns:['id','name','maker','price','available'], stages:[{...initial, rows:[['1','A','B','9','yes'],['2','C']]}]});
+assert.deepEqual(wide.stages[0].rows, [['1','A','B','9','yes'],['2','C','','','']]);
+const seven = worked.parse({columns:['a','b','c','d','e','f','g'], stages:[{...initial, rows:[['1','2','3','4','5','6','7']], focusColumn:5}]});
+assert.equal(seven.columns.length, 6);
+assert.equal(seven.stages[0].rows[0].length, 6);
 const transaction = sceneCatalog.TransactionScene.schema;
 for (const outcome of ['commit', 'rollback']) {
   const change = {
@@ -264,6 +287,10 @@ assert.deepEqual([qs.mode, qs.table.columns.join()], ['scan', 'name,age']);
 assert(!sceneCatalog.QueryScene.schema.safeParse({query: 'SELECT * FROM t WHERE nope = 1', table: {columns: ['a'], rows: [[1]]}}).success); // unknown WHERE column
 const pl = sceneCatalog.PipelineScene.schema.parse({data: [{id: 1, x: 2}, {id: 2, x: 0}], steps: [{name: 'Keep big', type: 'where', condition: 'x > 1', output: [{id: 1, x: 2}]}]});
 assert.deepEqual([pl.stages[0].op, pl.stages[0].detail, pl.stages[0].rows.length], ['filter', 'x > 1', 1]);
+// Stage rows without columns keep the source columns; a short row is padded.
+const pf = sceneCatalog.PipelineScene.schema.parse({source: {columns: ['id', 'x'], rows: [[1, 2], [2]]}, stages: [{label: 'Keep', op: 'filter', rows: [[1]]}]});
+assert.deepEqual([pf.source.rows[1], pf.stages[0].columns, pf.stages[0].rows[0]], [[2, ''], ['id', 'x'], [1, '']]);
+assert.deepEqual(sceneCatalog.QueryScene.schema.parse({query: 'SELECT * FROM t', table: {columns: ['a', 'b'], rows: [[1, 2, 3], [4]]}}).table.rows, [[1, 2], [4, '']]);
 const pk = sceneCatalog.PacketScene.schema.parse({devices: ['Laptop', 'Router', 'Server'], headers: {'Dst IP': '1.2.3.4', TTL: 64},
   actions: [{action: 'travel', target: 'Router'}, {action: 'inspect', key: 'Dst IP'}, {action: 'decrement', key: 'TTL', new: 63}, {action: 'forward', target: 'server'}]});
 assert.deepEqual(pk.steps.map((x) => x.do + ':' + (x.to ?? x.field ?? '')), ['send:router', 'read:Dst IP', 'change:TTL', 'send:server']);

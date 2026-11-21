@@ -42,9 +42,19 @@ def tts_dir() -> Path:
 
 # Expand path separators only on standalone route tokens. Leave URLs, dates and ratios alone.
 _ROUTE = re.compile(r"(?<![^\s(`\"'])/(?:[\w{}~-]+(?:/[\w{}~-]+)*/?)?(?=$|[\s.,;:!?)`\"'])")
+# Code that slips into narration anyway is spoken briefly instead of symbol by symbol (one URL with a
+# query string took 10 s): "/a?limit=2&after=x" -> "/a with limit 2 and after x", "page.next" ->
+# "page dot next", "wt_101" -> "wt 101", "129.00" -> "129". Captions still show the written token.
+_QUERY = re.compile(r"(/[\w{}~/-]*)\?([\w%.-]+=[\w%.-]*(?:&[\w%.-]+=[\w%.-]*)*)")
+_DOTTED = re.compile(r"\b[a-z][a-zA-Z0-9]*(?:\.[a-z][a-zA-Z0-9]+)+\b")
+_UNDERSCORE = re.compile(r"(?<=[A-Za-z0-9])_+(?=[A-Za-z0-9])")
+_ZERO_CENTS = re.compile(r"\b(\d+)\.00\b")
 
 
 def spoken_text(text: str) -> str:
+    text = _QUERY.sub(lambda m: f"{m.group(1)} with {m.group(2).replace('&', ' and ').replace('=', ' ')}", text)
+    text = _DOTTED.sub(lambda m: m.group().replace(".", " dot "), text)
+    text = _UNDERSCORE.sub(" ", _ZERO_CENTS.sub(r"\1", text))
     return _ROUTE.sub(lambda match: match.group().replace("/", " slash ").strip(), text)
 
 
@@ -128,6 +138,7 @@ async def synthesize(text: str, voice: str | None = None) -> SpeechClip:
     path = tts_dir() / name
     src = f"{TTS_DIR_IN_PUBLIC}/{name}"
     if path.exists():
+        path.touch()  # marks the reuse: a finished job's audio cleanup keeps clips another job just used
         return SpeechClip(path, src, wav_seconds(path.read_bytes()), cached=True)
 
     started = time.perf_counter()

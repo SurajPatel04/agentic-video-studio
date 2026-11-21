@@ -11,8 +11,9 @@ from unittest.mock import AsyncMock, patch
 from langchain_core.messages import AIMessage
 
 from app.config import settings
-from app.agent.videoGenerator.jobs import long_video as lv
+from app.agent.videoGenerator.jobs import job_store, long_video as lv
 from app.agent.videoGenerator.schemas.plan import Plan
+from app.utils.job_paths import job_dir
 from app.utils.render import RenderResult
 
 settings.SKILL_ROUTER = "keyword"  # offline tests: no skill-router LLM call (tested with a mock in test_skills)
@@ -52,7 +53,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         llm.ainvoke.return_value = AIMessage(json.dumps(OUTLINE), usage_metadata={"input_tokens": 100, "output_tokens": 50, "total_tokens": 150})
         with patch("app.agent.videoGenerator.jobs.long_video.get_llm", return_value=llm):
             self.state = await lv.create_long_video("Node.js", minutes=10)
-        self.addCleanup(shutil.rmtree, settings.WORKSPACE_DIR / "long" / self.state.id, True)
+        self.addCleanup(shutil.rmtree, settings.WORKSPACE_DIR / "jobs" / self.state.id, True)
         self.contexts: list[str] = []
         self.rendered: list[str] = []
 
@@ -61,7 +62,8 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
                     if topic == f"{self.state.outline.title} — {chapter.title}")
 
     async def fake_plan(self, topic, *, scenes, mode, model, context, skills=None, layout="desktop", code_demo=None,
-                        narration_budget=None, objective="", scene_shortlist=None, lookup_cache=None, lookup_focus=""):
+                        narration_budget=None, objective="", scene_shortlist=None, lookup_cache=None, lookup_focus="",
+                        prepicked=None):
         self.contexts.append(context)
         self.assertEqual(scene_shortlist, self.state.scene_shortlist)
         n = self.chapter_number(topic)
@@ -72,7 +74,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
 
     async def fake_render(self, spec, *, captions, job_id, scale, concurrency=None):
         self.rendered.append(job_id)
-        video = make_video(settings.WORKSPACE_DIR / "jobs" / job_id / "video.mp4", 1.0)
+        video = make_video(job_dir(job_id) / "video.mp4", 1.0)  # chapters render inside the job folder
         self.addCleanup(shutil.rmtree, video.parent, True)
         return RenderResult(job_id, video.parent, video.parent / "composition.json", video, 1.0)
 
@@ -82,7 +84,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((self.state.minutes, self.state.max_minutes), (8, 10))
         self.assertEqual(chapters[1].words, round(chapters[1].minutes * settings.LONG_WORDS_PER_MINUTE))
         self.assertEqual(self.state.input_tokens, 100)
-        self.assertTrue((settings.WORKSPACE_DIR / "long" / self.state.id / "state.json").exists())
+        self.assertTrue((settings.WORKSPACE_DIR / "jobs" / self.state.id / "state.json").exists())
 
     def test_next_chapter_receives_exact_example_values(self):
         response = '{"id":42,"title":"Dune","author":"Frank Herbert"}'
@@ -97,6 +99,7 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
                 patch("app.agent.videoGenerator.jobs.long_video.render_video", side_effect=self.fake_render):
             state = await lv.run_long_video(self.state.id)
         self.assertEqual(state.status, "done", state.error)
+        self.assertEqual(Path(state.video), settings.WORKSPACE_DIR / "jobs" / state.id / "video.mp4")
         # chapter 3 knew what chapters 1 and 2 covered, and everything shared
         self.assertIn("Ch 1 What is Node.js", self.contexts[2])
         self.assertIn("Ch 2 Event loop", self.contexts[2])
@@ -117,16 +120,32 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(starts["audio"], 0, delta=0.001)
         join_log = Path(state.video).with_name("join.log").read_text()
         self.assertNotIn("Non-monotonic DTS", join_log)
+        # after the join only the final video and the plans are kept (LONG_KEEP_CHAPTERS=false)
+        folder = Path(state.video).parent
+        self.assertFalse((folder / "chapters").exists())
+        self.assertTrue((folder / "ch01.plan.json").exists())
 
-        # redo only chapter 2's render: nothing is planned again, only ch02 is rendered, video re-joined
+        # redo chapter 2's render: nothing is planned again; the other chapters' files are gone, so every
+        # chapter renders again from its plan and the video is re-joined
         lv.redo_chapter(state.id, 2, "render")
         self.contexts.clear()
         self.rendered.clear()
         with patch("app.agent.videoGenerator.jobs.long_video.plan_video", side_effect=self.fake_plan), \
-                patch("app.agent.videoGenerator.jobs.long_video.render_video", side_effect=self.fake_render):
+                patch("app.agent.videoGenerator.jobs.long_video.render_video", side_effect=self.fake_render), \
+                patch.object(settings, "LONG_KEEP_CHAPTERS", True):
             state = await lv.run_long_video(state.id)
         self.assertEqual(state.status, "done")
         self.assertEqual(self.contexts, [])
+        self.assertEqual(sorted(self.rendered), [f"long-{state.id}-ch{n:02d}" for n in (1, 2, 3)])
+
+        # with the chapter files kept, a redo renders only that chapter
+        lv.redo_chapter(state.id, 2, "render")
+        self.rendered.clear()
+        with patch("app.agent.videoGenerator.jobs.long_video.plan_video", side_effect=self.fake_plan), \
+                patch("app.agent.videoGenerator.jobs.long_video.render_video", side_effect=self.fake_render), \
+                patch.object(settings, "LONG_KEEP_CHAPTERS", True):
+            state = await lv.run_long_video(state.id)
+        self.assertEqual(state.status, "done")
         self.assertEqual(self.rendered, [f"long-{state.id}-ch02"])
 
     async def test_failure_is_saved_and_resume_skips_finished(self):
@@ -323,8 +342,10 @@ class LongVideoTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(lv.render_concurrency(), 8)
         with patch.object(settings, "LONG_RENDER_WORKERS", 2), patch.object(settings, "LONG_RENDER_CONCURRENCY", 0), \
                 patch.object(settings, "VIDEO_JOB_RUNNER", "celery"), patch.object(settings, "CELERY_WORKERS", 4), \
-                patch("os.cpu_count", return_value=16):
-            self.assertEqual(lv.render_concurrency(), 2)  # 16 cores / (2 chapters x 4 jobs)
+                patch("os.cpu_count", return_value=16), patch.object(job_store, "active_here", return_value=None):
+            self.assertEqual(lv.render_concurrency(), 2)  # no Redis: 16 cores / (2 chapters x 4 workers)
+            with patch.object(job_store, "active_here", return_value=1):
+                self.assertEqual(lv.render_concurrency(), 8)  # the only job running: 16 cores / 2 chapters
         with patch.object(settings, "LONG_RENDER_CONCURRENCY", 5):
             self.assertEqual(lv.render_concurrency(), 5)
 

@@ -14,6 +14,7 @@ import {Sfx} from '../audio';
 import {PAPER} from '../iso/iso';
 import {useSceneLength, useUnit} from '../theme';
 import {DARK, MONO, PaperStage, clamp01, ease, flexValue, type Cue} from './paperStage';
+import {fitColumns, fitRows} from './tableFit';
 
 const cell = z.union([z.string().max(40), z.number(), z.boolean(), z.null()]);
 const tableSchema = z.object({
@@ -53,6 +54,9 @@ const flexQuery = (raw: unknown) => {
       t.rows = (t.rows as Record<string, unknown>[]).map((o) => cols.map((c) => (o[c] ?? null) as unknown));
     }
     if (t.name === undefined) delete t.name;
+    // Fit: extra columns / rows dropped, rows padded or cut to one value per column, long text clipped.
+    if (t.columns !== undefined) t.columns = fitColumns(t.columns, 6, 24);
+    if (t.rows !== undefined) t.rows = fitRows(t.rows, {width: Array.isArray(t.columns) ? t.columns.length : undefined, max: 12, maxChars: 40});
     r.table = t;
   }
   r.mode = flexValue(r.mode, {'full scan': 'scan', 'table scan': 'scan', 'seq scan': 'scan', 'sequential scan': 'scan', full: 'scan', 'no index': 'scan',

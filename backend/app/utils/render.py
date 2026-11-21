@@ -27,7 +27,7 @@ from typing import Any
 
 from app.config import settings
 from app.utils.console import step
-from app.utils import cues, subtitles
+from app.utils import cues, job_paths, subtitles
 from app.utils.iso import expand_continuations, paper_code_scenes
 from app.utils.tts import synthesize, word_timings
 
@@ -323,7 +323,7 @@ async def render_video(
     ``captions_mode``: burn (in the picture) | track (player can switch it) | both; None = JSON, else CAPTIONS_PLAYER_TRACK (burn / both).
     """
     job_id = job_id or str(uuid.uuid4())
-    job_dir = settings.WORKSPACE_DIR / "jobs" / job_id
+    job_dir = job_paths.job_dir(job_id)  # a long video's chapter renders inside its job folder
     job_dir.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
 

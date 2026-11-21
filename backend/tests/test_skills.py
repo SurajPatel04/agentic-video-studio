@@ -45,9 +45,7 @@ class SelectionTests(unittest.TestCase):
             'A study lecture about photosynthesis for grade 8': 'teach-lecture',
             'A history lesson about the Roman Empire': 'teach-lecture',
             'Explain how watercolor washes work': 'make-explainer',
-            'An ad for a local bakery': 'make-ad',
-            'A promotional video for a nursing course': 'make-ad',
-        }
+        }  # make-ad is on request only ("ad": true), see test_make_ad_only_on_request
         for brief, expected in cases.items():
             with self.subTest(brief=brief):
                 chosen = skills.select(brief)
@@ -127,10 +125,22 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
             await plan_video('How Node.js works', mode='catalog', skills=[])
             self.assertNotIn('Teaching guide:', model.ainvoke.call_args.args[0][0].content)
 
+    async def test_ad_plans_with_make_ad_and_its_length(self):
+        model = AsyncMock()
+        model.ainvoke.return_value = AIMessage('{}')
+        with patch.object(settings, 'SKILL_ROUTER', 'keyword'), patch.object(planner, 'get_llm', return_value=model), \
+                patch.object(planner, '_check', AsyncMock(return_value=({'scenes': []}, ''))):
+            plan = await plan_video('TaskFlow, a to-do app for students', mode='catalog', ad=True, minutes=0.5)
+        prompt = '\n'.join(m.content for m in model.ainvoke.call_args.args[0])
+        self.assertIn('make-ad', plan.skills)
+        self.assertIn('Teaching guide: make-ad', prompt)
+        self.assertIn('advertisement (promo), about 30 seconds long', prompt)
+        self.assertIn('about 75 spoken words', prompt)
+
     async def test_nontech_catalog_and_original_long_brief(self):
         model = AsyncMock(); model.ainvoke.return_value = AIMessage('{}')
         with patch.object(planner, 'get_llm', return_value=model), patch.object(planner, '_check', AsyncMock(return_value=({'scenes': []}, ''))):
-            plan = await plan_video('An ad for a local bakery', mode='catalog')
+            plan = await plan_video('An ad for a local bakery', mode='catalog', ad=True)
             self.assertEqual(plan.skills, ['video-foundation', 'make-ad', 'iso-diagrams'])
             prompt = model.ainvoke.call_args.args[0][0].content
             self.assertIn('Teaching guide: make-ad', prompt)
@@ -141,6 +151,29 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         state = long_video._new_state('A bakery ad in Hindi for local customers', 3, outline)
         self.assertIn(state.topic, long_video.chapter_context(state, 1))
         self.assertNotIn('ends with a short quiz', long_video.OUTLINE_RULES)
+
+    async def test_source_is_the_only_content_for_short_and_long(self):
+        source = 'Our bakery opened in 1998 in Pune. Sourdough takes 36 hours.'
+        model = AsyncMock(); model.ainvoke.return_value = AIMessage('{}')
+        with patch.object(planner, 'get_llm', return_value=model), patch.object(planner, '_check', AsyncMock(return_value=({'scenes': []}, ''))):
+            await plan_video('A short video about our bakery', mode='catalog', source=source)
+            prompt = '\n'.join(m.content for m in model.ainvoke.call_args.args[0])
+            self.assertIn('SOURCE MATERIAL', prompt)
+            self.assertIn(source, prompt)
+            self.assertIn('clear factual error', prompt)
+            await plan_video('A short video about our bakery', mode='catalog')
+            self.assertNotIn('SOURCE MATERIAL', '\n'.join(m.content for m in model.ainvoke.call_args.args[0]))
+        outline = long_video.Outline(title='Bakery', chapters=[long_video.ChapterOutline(
+            title='History', goal='Tell the story', key_points=['1998'], minutes=3)])
+        state = long_video._new_state('Our bakery', 3, outline, source=source)
+        self.assertIn(source, long_video.chapter_context(state, 1))  # every chapter gets it
+        model.ainvoke.reset_mock()
+        model.ainvoke.return_value = AIMessage(outline.model_dump_json())
+        with patch.object(long_video, 'get_llm', return_value=model):
+            await long_video.make_outline('Our bakery', 3, source=source)
+        self.assertIn(source, model.ainvoke.call_args.args[0][1].content)  # and the outline
+        with patch.object(settings, 'SOURCE_MAX_CHARS', 10), self.assertRaises(ValueError):
+            await plan_video('x', source=source)
 
     async def test_tools_preload_guides_and_common_scene_contracts(self):
         model = AsyncMock()
@@ -260,6 +293,29 @@ class RouterTests(unittest.IsolatedAsyncioTestCase):
         r = await self.route("Learn SQL joins", '{"subjects": ["teach-math", "teach-code", "teach-media"]}')
         self.assertEqual([s for s in r.skills if s.startswith("teach-")], ["teach-math", "teach-code"])
 
+    async def test_ad_forces_make_ad_over_the_routers_format(self):
+        from app.agent.videoGenerator.nodes import select_skills as skill_router
+        llm = AsyncMock()
+        llm.ainvoke.side_effect = [AIMessage('{"format": "make-explainer", "subjects": ["teach-code"]}')]
+        with patch.object(settings, "SKILL_ROUTER", "llm"), patch("app.agent.videoGenerator.nodes.select_skills.get_llm", return_value=llm):
+            r = await skill_router.route("TaskFlow, a to-do app for students", fmt="make-ad")
+        self.assertEqual(r.skills[:4], ["video-foundation", "make-ad", "iso-diagrams", "teach-code"])
+        self.assertNotIn("make-explainer", r.skills)
+        r = await skill_router.route("anything", ["teach-code"], fmt="make-ad")  # requested guides + the ad guide
+        self.assertEqual(r.skills, ["make-ad", "teach-code"])
+
+    async def test_make_ad_only_on_request(self):
+        from app.agent.videoGenerator.nodes import select_skills as skill_router
+        for topic in ("Make a promo ad commercial for TaskFlow", "Teach how advertising campaigns work"):
+            self.assertNotIn("make-ad", skills.select(topic))
+            r = await self.route(topic, '{"format": "make-ad"}')  # the router cannot pick it either
+            self.assertNotIn("make-ad", r.skills)
+        self.assertNotIn("make-ad", skills.index())
+        load = {t.name: t for t in skills.tools()}["load_skill"]
+        self.assertIn("not enabled", load.invoke({"name": "make-ad"}))
+        self.assertEqual(skills.select("anything", ["make-ad"]), ["make-ad"])  # naming it still works
+        self.assertIn("make-ad", (await skill_router.route("TaskFlow", fmt="make-ad")).skills)
+
     async def test_failure_or_requested_skips_the_llm(self):
         r = await self.route("How HTTPS keeps data private", RuntimeError("gateway down"))
         self.assertEqual((r.source, r.skills), ("keyword (llm failed)", skills.select("How HTTPS keeps data private")))
@@ -282,6 +338,10 @@ class RouterTests(unittest.IsolatedAsyncioTestCase):
                 "scene_TransactionScene": NoulAnswer(type="noul", noul=0.8),
                 "scene_RAGScene": NoulAnswer(type="noul", noul=0.7),
                 "scene_UnregisteredScene": NoulAnswer(type="noul", noul=1),
+                "iso_0": NoulAnswer(type="noul", noul=0.9),  # - database
+                "iso_2": NoulAnswer(type="noul", noul=0.2),  # an icon it rejects
+                "overlay": ChoiceAnswer(type="choice", choice="lock", confidence=1, probabilities={"lock": 1}),
+                "diagram": NoulAnswer(type="noul", noul=0.9),
             },
             usage={"input_tokens": 100, "output_tokens": 8, "total_tokens": 108},
         )
@@ -303,8 +363,30 @@ class RouterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(routed.objective, "trace")
         self.assertIn("teach-data", routed.skills)
         self.assertIn("long-video-pacing", routed.skills)
-        self.assertEqual(routed.scene_shortlist, ["QueryScene", "TransactionScene"])
+        self.assertEqual(routed.scene_shortlist, ["QueryScene", "TransactionScene", "RAGScene"])  # best 3 above 0.5
+        self.assertEqual(routed.prepicked, {"overlays": ["lock"], "iso": ["- database: tech"], "diagram": True})
+        self.assertTrue({"iso_0", "overlay", "diagram"} <= questions.keys())
+        self.assertNotIn("overlay", routed.llm_pick)
         self.assertEqual(usage.details.usage_details_calls, 1)
+
+    async def test_no_diagram_leaves_out_iso_scene_and_picks_go_in_the_prompt(self):
+        model = AsyncMock()
+        model.ainvoke.return_value = AIMessage('{}')
+        with patch.object(planner, 'get_tool_llm') as get, \
+                patch.object(planner, '_check', AsyncMock(return_value=({'scenes': []}, ''))):
+            get.return_value.bind_tools.return_value = model
+            await plan_video('Bubble sort', mode='tools', skills=['iso-diagrams'], prepicked={"diagram": False})
+            without = model.ainvoke.call_args.args[0][0].content
+            await plan_video('Load balancing', mode='tools', skills=['iso-diagrams'],
+                             prepicked={"diagram": True, "iso": ["- loadbalancer: tech"], "overlays": ["lock"]})
+            with_picks = model.ainvoke.call_args.args[0][0].content
+        self.assertNotIn('### IsoScene', without)
+        self.assertIn('### IsoScene', with_picks)
+        self.assertIn('Iso objects for this topic (use these before calling find_iso_objects):\n- loadbalancer: tech', with_picks)
+        self.assertIn('overlay "lock"', with_picks)
+        # the start of the prompt is the same for every topic (provider prompt caching)
+        fixed_end = with_picks.index('Teaching guides')
+        self.assertEqual(without[:fixed_end], with_picks[:fixed_end])
 
     async def test_typesafe_missing_key_or_error_uses_keyword_router(self):
         from app.agent.videoGenerator.nodes import select_skills as skill_router

@@ -281,6 +281,24 @@ class LecturePlanningTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(requests[4][-1].content, "lookup result")
         self.assertEqual(requests[4][-1].tool_call_id, "third")
 
+    async def test_earlier_scene_lookups_shrink_to_their_fields(self):
+        model = AsyncMock()
+        model.ainvoke.side_effect = [
+            AIMessage("", tool_calls=[{"name": "get_scene", "args": {"name": "GitGraphScene"}, "id": "git"}]),
+            AIMessage("", tool_calls=[{"name": "search_scenes", "args": {"query": "branch"}, "id": "more"}]),
+            AIMessage(json.dumps(GOOD)),
+        ]
+        with patch.object(planner, "get_tool_llm") as tool_llm, \
+                patch("app.agent.videoGenerator.validation.validate", AsyncMock()):
+            tool_llm.return_value.bind_tools.return_value = model
+            await plan_video("Git branches", mode="tools", skills=[])
+        second, third = (call.args[0] for call in model.ainvoke.call_args_list[1:])
+        full = next(m for m in second if getattr(m, "tool_call_id", "") == "git").content
+        short = next(m for m in third if getattr(m, "tool_call_id", "") == "git").content
+        self.assertIn("example props:", full)  # the model reads the whole lookup once
+        self.assertTrue(short.startswith("### GitGraphScene\nfields:") and short.endswith("(details shown earlier)"))
+        self.assertNotIn("example props:", short)
+
     async def test_relevant_previous_lookups_are_available_on_the_first_turn(self):
         model = AsyncMock()
         model.ainvoke.side_effect = [
@@ -340,7 +358,7 @@ class LecturePlanningTests(unittest.IsolatedAsyncioTestCase):
         scenes = [
             {"id": "inventory", "component": "ExplainScene", "durationInFrames": 180,
              "props": {"heading": "Read the inventory", "body": "The app sends a request to ask for the watch list."},
-             "narration": {"text": "The app sends a request to ask for the watch list."}},
+             "narration": {"text": "To read the inventory, the app sends a request to ask for the watch list."}},
             {"id": "request", "component": "AnnotatedTextScene", "durationInFrames": 210,
              "props": {"layout": "editor", "text": "GET /watches", "steps": [
                  {"cue": "method keyword", "focus": "GET", "explanation": "Read"},
@@ -542,11 +560,10 @@ def _card(i):
 
 
 def _broken_plan():
-    """The two errors that failed a real REST chapter three times: a 2-column table with 3-cell rows,
-    and a link from an object the scene never drew."""
+    """Two scene errors: a table with no rows (row/column count mismatches are now fitted by the
+    renderer, not errors), and a link from an object the scene never drew."""
     table = {"id": "paths-vs-ad-hoc", "component": "ComparisonTableScene", "durationInFrames": 150,
-             "props": {"title": "Paths", "columns": ["Resource-oriented", "Ad hoc"],
-                       "rows": [["One watch", "GET /watches/w-104", "GET /getWatch?id=w-104"]]},
+             "props": {"title": "Paths", "columns": ["Resource-oriented", "Ad hoc"], "rows": []},
              "narration": {"text": "Compare a resource path with an ad hoc route."}}
     flow = {"id": "collection-flow", "component": "IsoScene", "durationInFrames": 150,
             "props": {"title": "Next page", "objects": [{"id": "page", "kind": "file", "label": "Page", "at": [0, 0]}],

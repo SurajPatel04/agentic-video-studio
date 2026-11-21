@@ -52,6 +52,12 @@ class FakeRedis:
     def zremrangebyscore(self, k, low, high):
         self.data[k] = {m: s for m, s in self.data.get(k, {}).items() if not (high is None or s <= high)}
 
+    def zcard(self, k):
+        return len(self.data.get(k, {}))
+
+    def zrem(self, k, member):
+        self.data.get(k, {}).pop(member, None)
+
     def zrevrange(self, k, start, end):
         ranked = sorted(self.data.get(k, {}), key=self.data.get(k, {}).get, reverse=True)
         return ranked[start:end + 1]
@@ -189,13 +195,32 @@ class JobStoreTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(status["status"], "queued")
             self.assertIsNone(job_store.alive("0123456789ab"))
 
-    def test_render_threads_split_across_workers(self):
+    def test_render_threads_follow_the_jobs_running_now(self):
         with patch.object(settings, "CELERY_WORKERS", 50), patch("os.cpu_count", return_value=16):
-            self.assertEqual(video_jobs.render_threads(), 1)
-        with patch.object(settings, "CELERY_WORKERS", 4), patch("os.cpu_count", return_value=16):
+            job_store.heartbeat("aaaaaaaaaaaa")
+            self.assertEqual(video_jobs.render_threads(), 16)  # the only job running gets every core
+            self.assertEqual(video_jobs.render_threads(2), 8)  # long video: 2 chapters at once
+            for job_id in ("bbbbbbbbbbbb", "cccccccccccc", "dddddddddddd"):
+                job_store.heartbeat(job_id)
+            self.assertEqual(video_jobs.render_threads(), 4)
+            for i in range(20):
+                job_store.heartbeat(f"{i:012d}")
+            self.assertEqual(video_jobs.render_threads(), settings.RENDER_MIN_THREADS)  # never below the minimum
+            with patch.object(time, "time", return_value=time.time() + 60):  # every heartbeat is stale
+                self.assertEqual(video_jobs.render_threads(), 16)
+
+    def test_render_threads_without_redis_assume_every_worker_is_busy(self):
+        with patch.object(settings, "CELERY_WORKERS", 4), patch("os.cpu_count", return_value=16), \
+                patch.object(job_store, "active_here", return_value=None):
             self.assertEqual(video_jobs.render_threads(), 4)
         with patch.object(settings, "VIDEO_JOB_RUNNER", "local"):
             self.assertIsNone(video_jobs.render_threads())
+
+    async def test_a_finished_job_stops_counting(self):
+        async with job_store.tracking("0123456789ab", lambda: None):
+            await asyncio.sleep(0.03)
+            self.assertEqual(job_store.active_here(), 1)
+        self.assertEqual(job_store.active_here(), 0)
 
 
 if __name__ == "__main__":

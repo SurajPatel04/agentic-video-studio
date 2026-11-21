@@ -24,7 +24,7 @@ async def create_video(req: VideosRequest) -> dict[str, Any]:
     data = req.model_dump()
     start = video_jobs.start_long if req.length == "long" else video_jobs.start_short
     try:
-        job_id = await asyncio.to_thread(start, data) if settings.VIDEO_JOB_RUNNER == "celery" else start(data)
+        job_id = await asyncio.to_thread(start, data)  # only queues it; a Celery worker makes the video
     except video_jobs.QueueUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     return await asyncio.to_thread(video_jobs.view, job_id) or {"id": job_id}  # reads files + Redis

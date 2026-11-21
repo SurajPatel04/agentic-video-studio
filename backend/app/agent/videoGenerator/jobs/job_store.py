@@ -7,6 +7,8 @@ Keys (JOB_REDIS_URL, every key expires JOB_TTL_SECONDS after its last write):
 - ``video:job:<id>:alive``  the worker's hostname while it runs the job (expires 3 heartbeats after the last)
 - ``video:jobs``            sorted set of job ids by creation time, for listing; entries older than the TTL
                             are dropped
+- ``video:active:<host>``   sorted set of jobs running on that machine by last heartbeat; renders split the
+                            machine's cores between them
 
 The snapshot also has request_id, queued_at / started_at / finished_at, wait_seconds, run_seconds,
 attempts and cost_usd. LLM prompts and replies are not sent to Redis (JOB_LOG_PROMPTS=true to send them).
@@ -102,9 +104,28 @@ def publish(job_id: str, snapshot: dict[str, Any]) -> None:
     _call(write)
 
 
+def _active_key() -> str:
+    return f"video:active:{socket.gethostname()}"  # jobs running on this machine (cores are per machine)
+
+
 def heartbeat(job_id: str) -> None:
     ttl = max(1, int(settings.JOB_HEARTBEAT_SECONDS * 3))
-    _call(lambda r: r.set(key(job_id, "alive"), socket.gethostname(), ex=ttl))
+
+    def write(r):
+        p = r.pipeline(transaction=False)
+        p.set(key(job_id, "alive"), socket.gethostname(), ex=ttl)
+        p.zadd(_active_key(), {job_id: time.time()})
+        p.expire(_active_key(), ttl)
+        p.execute()
+    _call(write)
+
+
+def active_here() -> int | None:
+    """Jobs running on this machine now (heartbeat in the last 3 beats); None when Redis is not used or reachable."""
+    def count(r):
+        r.zremrangebyscore(_active_key(), "-inf", time.time() - settings.JOB_HEARTBEAT_SECONDS * 3)
+        return r.zcard(_active_key())
+    return _call(count)
 
 
 def alive(job_id: str) -> bool | None:
@@ -191,4 +212,4 @@ async def tracking(job_id: str, snapshot: Callable[[], dict[str, Any] | None],
             root.removeHandler(handler)
             if (s := snapshot()) is not None:
                 publish(job_id, {**s, "worker": worker})
-            _call(lambda r: r.delete(key(job_id, "alive")))
+            _call(lambda r: (r.delete(key(job_id, "alive")), r.zrem(_active_key(), job_id)))

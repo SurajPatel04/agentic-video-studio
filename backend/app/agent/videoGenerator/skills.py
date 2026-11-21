@@ -30,6 +30,9 @@ class Metadata(BaseModel):
     overlays: list[str] = Field(default_factory=list)
     visuals: list[VisualRule] = Field(default_factory=list)
     long_video: bool = False
+    # Never picked from the topic's words; used only when the request asks for it (make-ad: "ad": true,
+    # or the guide named in "skills").
+    on_request: bool = False
 
 
 class Skill(BaseModel):
@@ -114,7 +117,7 @@ def select(topic: str, requested: list[str] | None = None, *, role: Role = "plan
     ranked = []
     chosen = [name for name, skill in available.items() if skill.metadata.category == "foundation"]
     for name, skill in available.items():
-        if skill.metadata.long_video or skill.metadata.category == "foundation":
+        if skill.metadata.long_video or skill.metadata.on_request or skill.metadata.category == "foundation":
             continue
         score = sum(_mentions(words, tag) for tag in skill.metadata.tags)
         if score:
@@ -139,8 +142,9 @@ def select(topic: str, requested: list[str] | None = None, *, role: Role = "plan
 
 
 def index(role: Role = "planner", allowed: list[str] | None = None) -> str:
+    """Guides the model may load: ``allowed``, else every guide except the on-request ones."""
     return "\n".join(f"- {name}: {s.description}" for name, s in discover(role).items()
-                     if allowed is None or name in allowed)
+                     if (name in allowed if allowed is not None else not s.metadata.on_request))
 
 
 def guidance(names: list[str], role: Role = "planner", *, asset_lookup: bool = False) -> str:
@@ -168,7 +172,8 @@ def tools(role: Role = "planner", allowed: list[str] | None = None, loaded: set[
 
     def load_skill(name: str) -> str:
         """Load a teaching guide by its exact name before applying it."""
-        if allowed is not None and name not in allowed:
+        guide = discover(role).get(name)
+        if (name not in allowed) if allowed is not None else (guide is not None and guide.metadata.on_request):
             return f"Skill {name!r} is not enabled for this request."
         try:
             body = load(name, role)

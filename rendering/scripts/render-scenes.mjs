@@ -1,17 +1,18 @@
 // Capture video and lossless audio together for each range on the original timeline.
 // Overlap frames belong to the incoming scene.
-import {bundle} from '@remotion/bundler';
 import {openBrowser, renderMedia, selectComposition} from '@remotion/renderer';
-import {readFile, rm, writeFile} from 'node:fs/promises';
+import {readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
+import {cachedBundle} from './bundle-cache.mjs';
 
 const [compositionPath, outputDir, startsJson, scaleArg, threadsArg, firstArg, stopArg] = process.argv.slice(2);
 const inputProps = JSON.parse(await readFile(compositionPath, 'utf8'));
 const starts = JSON.parse(startsJson);
 const root = path.resolve(import.meta.dirname, '..');
 console.log('PROGRESS Preparing Remotion bundle');
-const serveUrl = await bundle({entryPoint: path.join(root, 'src/index.ts'), publicDir: path.join(root, 'public'),
-  rootDir: root, outDir: path.join(outputDir, 'bundle')});
+const bundleStarted = performance.now();
+const {serveUrl, built} = await cachedBundle(root);  // shared by renders; not deleted afterwards
+console.log(`PROGRESS Remotion bundle ${built ? 'built' : 'reused'} in ${((performance.now() - bundleStarted) / 1000).toFixed(1)}s`);
 let browser;
 
 try {
@@ -56,9 +57,5 @@ try {
       outputLocation: path.join(outputDir, 'soundtrack.wav')});
   }
 } finally {
-  try {
-    await browser?.close({silent: true});
-  } finally {
-    await rm(serveUrl, {recursive: true, force: true});
-  }
+  await browser?.close({silent: true});
 }

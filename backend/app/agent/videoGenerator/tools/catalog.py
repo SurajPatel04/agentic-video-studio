@@ -181,6 +181,7 @@ def find_iso_objects(query: str, limit: int = 8) -> list[tuple[str, str]]:
     guide_path = PROJECT_ROOT / "skills" / "iso-diagrams" / "SKILL.md"
     guide = guide_path.read_text().lower() if guide_path.exists() else ""
     words = [w for w in re.findall(r"[a-z0-9]+", query.lower()) if len(w) > 1]
+    words += [w[:-1] for w in list(words) if len(w) > 3 and w.endswith("s") and not w.endswith("ss")]  # elections
     words += [x for w in list(words) for x in ISO_SYNONYMS.get(w, "").split()]
     out = []
     for kind in iso_kinds():

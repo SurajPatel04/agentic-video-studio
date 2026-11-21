@@ -29,6 +29,7 @@ node_modules/
 npm-debug.log*
 yarn-error.log*
 .remotion/
+rendering/.bundle-cache/
 
 # Rendered output (videos, stills)
 rendering/out/

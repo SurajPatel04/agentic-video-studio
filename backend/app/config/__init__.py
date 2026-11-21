@@ -17,10 +17,14 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://127.0.0.1:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://127.0.0.1:6379/1"
     CELERY_VIDEO_QUEUE: str = "video"
-    VIDEO_JOB_RUNNER: Literal["local", "celery"] = "local"
+    # The API always queues video and component jobs on Celery; it never makes them itself. "celery" also turns
+    # on job tracking in Redis and the render thread split in workers. "local" only for the CLI without Redis.
+    VIDEO_JOB_RUNNER: Literal["local", "celery"] = "celery"
     CELERY_VISIBILITY_TIMEOUT: int = Field(default=86400, gt=0)
     CELERY_WORKERS: int = Field(default=50, ge=1)  # jobs at once per worker machine (one job per worker process)
     CELERY_JOBS_PER_PROCESS: int = Field(default=1, ge=0)  # fresh process after this many jobs (0 = never)
+    # Each render gets this machine's cores / jobs running now (a lone job gets them all), but at least this many.
+    RENDER_MIN_THREADS: int = Field(default=2, ge=1)
     # Job status / progress / logs mirrored to Redis (celery runner only). Every key expires after the TTL.
     JOB_REDIS_URL: str = "redis://127.0.0.1:6379/2"  # "" = off
     JOB_TTL_SECONDS: int = Field(default=7 * 86400, gt=0)  # 7 days after the last update
@@ -72,9 +76,32 @@ class Settings(BaseSettings):
     SKILL_ROUTER_MODEL: str = ""  # Only used by SKILL_ROUTER=llm. Empty uses the planner's model.
     TYPESAFE_API_KEY: SecretStr = SecretStr("")
     TYPESAFE_BASE_URL: str = "https://api.typesafe.ai"
+    # TypeSafe also pre-picks what the planner would otherwise look up with tools (same single request).
+    TYPESAFE_SCENE_CANDIDATES: int = Field(default=8, ge=0)  # scenes it is asked about (keyword + guide matches)
+    TYPESAFE_SCENE_PICKS: int = Field(default=3, ge=0)  # scene fields preloaded into the planner prompt
+    TYPESAFE_ISO_CANDIDATES: int = Field(default=10, ge=0)  # iso objects / icons it is asked about
+    TYPESAFE_ISO_PICKS: int = Field(default=6, ge=0)  # iso objects / icons listed in the planner prompt
+    TYPESAFE_OVERLAYS: bool = True  # ask which overlay fits and preload its fields
+    TYPESAFE_DIAGRAM_CHECK: bool = True  # skip IsoScene's fields (~4k chars) when the brief needs no diagram
+    TYPESAFE_THRESHOLD: float = Field(default=0.5, ge=0, le=1)  # yes/no score needed to pre-pick
     PLANNER_DEFAULT_STYLE: str = "iso-diagrams"  # visual style skill used when no style matches the topic ("" = none)
     PLANNER_MAX_SAME_RUN: int = 5  # any one scene component at most 5 times in a row (0 = off)
     PLANNER_MAX_SAME_SHARE: float = 0.7  # plans of 8+ scenes: one component in at most 70% of them (0 = off)
+    # Narration is spoken and shown as captions: flag code in it (URLs, a.b.c paths, ids_with_underscores)
+    PLANNER_LINT_SPOKEN_CODE: bool = True
+    # Delete a job's narration clips (rendering/public/audio/tts) once its final video is made; clips another
+    # queued / running job uses are kept. false = keep the cache (re-rendering the same text costs no Deepgram call)
+    AUDIO_CLEANUP: bool = True
+    # Text cards (ExplainScene, BulletListScene, SummaryScene, DefinitionScene): flag a heading / point
+    # whose key words the narration says less than this share of (0 = off)
+    PLANNER_SAID_TEXT_MIN: float = 0.5
+    # Ads ("ad": true on /videos, --ad in the CLI): always a short video planned with the make-ad guide.
+    # Length = the request's minutes (default AD_DEFAULT_MINUTES), never more than AD_MAX_MINUTES.
+    AD_DEFAULT_MINUTES: float = Field(default=1.0, gt=0)
+    AD_MAX_MINUTES: float = Field(default=3.0, gt=0)
+    # "source" on /videos (--source FILE in the CLI): the user's own content, the video's only facts.
+    # Sent with the planner call (long videos: the outline and every chapter), so a long source costs tokens.
+    SOURCE_MAX_CHARS: int = Field(default=50_000, ge=1)
 
     # Component agent (writes new scenes when nothing in the library fits).
     AGENT_MODEL: str = ""  # MLflow gateway route; empty = DEFAULT_MODEL
@@ -95,6 +122,7 @@ class Settings(BaseSettings):
     LONG_RENDER_CONCURRENCY: int = 0  # Remotion threads per render; 0 = CPU cores / LONG_RENDER_WORKERS
     LONG_PARALLEL_PLANNING: bool = False  # plan all chapters at once (faster; chapters see the outline, not each other)
     LONG_PLAN_WORKERS: int = 4  # LLM calls at once when planning in parallel
+    LONG_KEEP_CHAPTERS: bool = False  # keep jobs/<id>/chapters/ (each chapter's MP4, captions, logs) after the join
     LONG_BUDGET_TOLERANCE: float = 0.35  # chapter narration may be +-35% of its word budget, else re-plan once
 
     # Console output (app/utils/console.py).

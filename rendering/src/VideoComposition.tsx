@@ -5,6 +5,7 @@ import {AbsoluteFill, Sequence} from 'remotion';
 import {BrandIntro, BrandWatermark, brandTiming, resolveBrand} from './brand';
 import {audioSettingsSchema, Captions, resolveCaptions, type CaptionsSettings, Music, SfxContext, SfxCues, sfxCuesSchema, Sfx, Voice, voiceSchema, type AudioSettings} from './audio';
 import {Overlays, overlaysSchema} from './effects/overlays';
+import {fitProps} from './fitProps';
 import {PAPER} from './iso/iso';
 import {PaperStage} from './scenes/paperStage';
 import {registry, sceneCatalog} from './registry';
@@ -25,9 +26,10 @@ const textCards = new Set(['TitleScene', 'ExplainScene', 'BulletListScene', 'Quo
 const SceneFrame: React.FC<{scene: SceneSpec; audio: AudioSettings; captions: CaptionsSettings; captionFrames: number; fps: number}> =
   ({scene, audio, captions, captionFrames, fps}) => {
   const Scene = registry[scene.component];
-  const parsed = useMemo(() => Scene ? sceneCatalog[scene.component].schema.safeParse(scene.props ?? {}) : null, [Scene, scene.component, scene.props]);
+  // Over-limit lists / text / numbers are fitted the same way the validator fits them (fitProps).
+  const parsed = useMemo(() => Scene ? fitProps(sceneCatalog[scene.component].schema, scene.props ?? {}).result : null, [Scene, scene.component, scene.props]);
   if (parsed && !parsed.success) throw new Error(`Scene ${scene.id} (${scene.component}): ${parsed.error.message}`);
-  const overlays = useMemo(() => (scene.overlays ? overlaysSchema.safeParse(scene.overlays) : null), [scene.overlays]);
+  const overlays = useMemo(() => (scene.overlays ? fitProps(overlaysSchema, scene.overlays).result : null), [scene.overlays]);
   if (overlays && !overlays.success) throw new Error(`Scene ${scene.id} overlays: ${overlays.error.message}`);
 
   // A terminal on an otherwise blank canvas is the main visual, not a small accessory.

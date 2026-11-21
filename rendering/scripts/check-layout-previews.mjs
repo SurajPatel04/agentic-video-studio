@@ -4,13 +4,13 @@ import {openBrowser, selectComposition, renderStill} from '@remotion/renderer';
 import {mkdir, readFile, rm} from 'node:fs/promises';
 import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
-const source = path.resolve(process.argv[2] ?? path.join(root, '../workspace/long/1048084103'));
+const source = path.resolve(process.argv[2] ?? path.join(root, '../workspace/jobs/1048084103'));
 const output = path.join(root, '../workspace/layout-previews');
 await mkdir(output, {recursive: true});
 const checks = [];
 for (const chapter of ['ch01.plan.json', 'ch02.plan.json']) {
  let spec = JSON.parse(await readFile(path.join(source, chapter), 'utf8'));
- try {spec = JSON.parse(await readFile(path.join(source, '../../jobs', `long-${path.basename(source)}-${chapter.slice(0,4)}`, 'composition.json'), 'utf8'));} catch { /* Plans without audio still produce previews. */ }
+ try {spec = JSON.parse(await readFile(path.join(path.dirname(source), `long-${path.basename(source)}-${chapter.slice(0,4)}`, 'composition.json'), 'utf8'));} catch { /* Plans without audio still produce previews. */ }
  for (const scene of spec.scenes) {
   if (['DefinitionScene', 'FlowchartScene', 'BlankScene'].includes(scene.component)) checks.push([chapter.slice(0, 4), scene]);
  }

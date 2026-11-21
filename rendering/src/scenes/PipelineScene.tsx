@@ -17,6 +17,7 @@ import {PAPER} from '../iso/iso';
 import {useSceneLength, useUnit} from '../theme';
 import {MONO, PaperStage, clamp01, ease, flexValue, fraction, type Cue} from './paperStage';
 import {IsoIcon, isoKindFor} from '../iso/IsoIcon';
+import {fitColumns, fitRows} from './tableFit';
 
 const cell = z.union([z.string().max(30), z.number(), z.boolean(), z.null()]);
 const tableSchema = z.object({
@@ -82,6 +83,28 @@ const flexPipeline = (raw: unknown) => {
     if (typeof o.op === 'string' && !(OPS as readonly string[]).includes(o.op)) o.op = 'custom';
     if (o.label === undefined && typeof o.op === 'string') o.label = o.op[0].toUpperCase() + o.op.slice(1);
     if (typeof o.at === 'number' && o.at > 1 && o.at <= 100) o.at = o.at / 100;
+    return o;
+  });
+  // Fit every table: rows without columns keep the previous table's columns; extra columns / rows are
+  // dropped, rows padded or cut to one value per column, long text clipped.
+  let cols: unknown;
+  const fit = (t: Record<string, unknown>) => {
+    if (t.columns === undefined && Array.isArray(t.rows) && Array.isArray(cols)) t.columns = cols;
+    if (t.columns !== undefined) t.columns = fitColumns(t.columns, 6, 20);
+    if (Array.isArray(t.columns)) cols = t.columns;
+    if (t.rows !== undefined) t.rows = fitRows(t.rows, {width: Array.isArray(cols) ? cols.length : undefined, max: 8, maxChars: 30});
+    return t;
+  };
+  if (r.source && typeof r.source === 'object' && !Array.isArray(r.source)) r.source = fit({...(r.source as Record<string, unknown>)});
+  if (Array.isArray(r.stages)) r.stages = (r.stages as unknown[]).map((s) => {
+    if (!s || typeof s !== 'object') return s;
+    const o = fit({...(s as Record<string, unknown>)});
+    if (o.with && typeof o.with === 'object' && !Array.isArray(o.with)) {
+      const main = cols;
+      cols = undefined;
+      o.with = fit({...(o.with as Record<string, unknown>)});
+      cols = main;
+    }
     return o;
   });
   return r;

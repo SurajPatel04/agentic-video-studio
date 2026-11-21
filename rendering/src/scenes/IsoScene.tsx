@@ -5,6 +5,7 @@ import {Sfx, sfxNames} from '../audio';
 import {formatJsonExample, httpResponseStatus, JsonExampleCode, previewJsonExample} from '../components/JsonExample';
 import {useSceneLength, useUnit} from '../theme';
 import {ISO_COLORS, isoColorNames, mix, PAPER, project, shade, type IsoColor, type Pt, C30, S30} from '../iso/iso';
+import {paperTextEmWidth} from '../iso/textFit';
 import {IsoBox, IsoPerson, IsoShadow, Note, noteSize, StatusPill, Tag, tagLayout} from '../iso/shapes';
 import {cueFields, newsCycleRemaining, ObjectCues} from '../iso/ObjectCues';
 import {TableCard, tableSchema, users} from '../database/table';
@@ -457,10 +458,17 @@ export const isoSceneSchema = z.object({
   }
 });
 
+// The first sentence is the one-line summary search_scenes shows. Object kinds are listed in the
+// iso-diagrams guide and found with find_iso_objects, so they are not repeated here.
 export const description =
-  'For a group of items or records use kind "tile", design "collection". In a collection-to-item diagram, link it to one representative item. Use kind "tile", design "watch" for an individual watch. ' +
-  'Use mug for a concrete mug product. Use a solid arrow for a database lookup. Use a separate return arrow for the response data. Add sideNote with text, optional detail, side, at and optional until to make room for written evidence, then restore the diagram. ' +
-  'Use http-get, http-post, http-put, http-patch, http-delete, http-head or http-options for request method tiles. Use exampleLines or sideNote for complete HTTP bodies, with the known status before the JSON. Use Response on the return arrow when the status is shown beside the body. ' +
+  'Isometric "paper" diagram of real 3D objects (servers, databases, people, media, health, school, finance, retail, ' +
+  'transport, politics and 180+ more kinds, or any Lucide / React icon on a tile) joined by animated links, with steps ' +
+  'timed to the narration. Objects drop in on a paper grid; steps change loads (⚙ 59% pills), highlight, add notes and ' +
+  'move the camera. Use for systems, architecture, flows, networking, scaling, how-things-work, healthcare, education, ' +
+  'finance, retail, logistics, journalism, AI, synthetic media and media literacy. With no objects it is a paper title ' +
+  'card (title, subtitle, points). ' +
+  'Use a solid arrow for a database lookup and a separate return arrow for the response data. Add sideNote with text, optional detail, side, at and optional until to make room for written evidence, then restore the diagram. ' +
+  'Use exampleLines or sideNote for complete HTTP bodies, with the known status before the JSON. ' +
   'Place kind table with table:{name,columns,rows,indexed?,locked?,duplicateKey?} next to a database to show the actual records. ' +
   'Timed steps support timer, count, meter, progress, ttl, retry, queue, think, react, say and mood. A reply step such as cache→app returns on an existing request link. Links can clean or drop packets and carry keys or coins. ' +
   'Use badge on objects or timed steps for animated lookup, worker, access or health states. Use none to clear, or {icon,text,tone} for a custom Lucide badge. ' +
@@ -469,28 +477,7 @@ export const description =
   'Media links support flow:"wave", via:"leader", noise:true and dashed feedback. Timed spread uses outgoing links up to depth; gate uses a link into and out of the editor. ' +
   'Use frame:[before,after], agenda ordered by coverage priority, bubble, race with rumour and correction speeds, attention, opinion:{from,to}, split:[a,b], or headline updates. Target people for crowd changes. ' +
   'Show both sides of race and compare together, distinguish attention or sharing from belief, and identify illustrative statistics as example numbers in narration. ' +
-  'Use links[].bidirectional=true for two-way traffic. Label the outbound arrow with label and the reverse arrow with returnLabel. Set replyAfter (e.g. 0.5) to play them in sequence. ' +
-  'Isometric "paper" diagram: 3D-looking servers, databases, caches, clouds, people, medical objects (hospital, ' +
-  'doctor, patient bed, ambulance, pill bottle, syringe, heart monitor, microscope, test tubes, DNA), school objects ' +
-  '(school, teacher with whiteboard, student desk, bookshelf, graduation cap, backpack, globe on a stand, certificate, ' +
-  'pencil and notebook), finance objects (bank, coin stack, wallet, credit card, ATM, safe, piggy bank, cash bundle, ' +
-  'stock chart board, calculator, receipt), retail and business objects (shop, shopping cart, delivery parcel on a ' +
-  'conveyor, cash register, warehouse, price tag, shopping bag, factory, office desk, handshake, meeting table) and ' +
-  'transport objects (car, truck, road, bus, train, airplane, ship, bicycle, traffic light, fuel pump, map pin), all ' +
-  'plus everyday objects (house, tree, clock, animated bar and pie charts, chat bubble, sun, weather, trophy, flag, ' +
-  'lightbulb, gear, magnifier, warning, checkmark, cross) and role figures (chef, worker, police). AI and emerging ' +
-  'media objects include an AI-generated-content label, synthetic voice, altered-image comparison, recommendation ' +
-  'Politics and public affairs: parliament, ballotbox, campaignrally, publicmeeting, protestplacard, governmentoffice. ' +
-  'Public relations: pressrelease, podium, pressconference, spokesperson, mediakit, crisiscentre. ' +
-  'TV and film: studiocamera, teleprompter, studiolights, controlmonitors, obvan, clapperboard, cinemaprojector, cinemascreen, filmreel, storyboard, editingtimeline, theatrestage. Digital: socialpost, scrollingfeed, videoplayer, livestream, comments, repost, notification, hashtag. Advertising: productdisplay, campaignboard, sponsoredpost, adplacement, paywall, adpayment. ' +
-  'system and verified-content panel. Radio, audio and podcast objects include headphones, a mixing console, a boom ' +
-  'microphone, a studio speaker, a field recorder and a podcast booth. Clocks and gears turn, charts grow, ECG traces pulse, ambulance lights ' +
-  'flash, and links support car flow. All objects are dropping in and animating on a paper grid. Communication ' +
-  'fundamentals include envelope, sender, receiver, encoder, decoder, feedback loop and noise interference. Steps ' +
-  '(timed as a fraction of the narration) change loads (⚙ 59% pills), highlight, add notes and move the camera. Use for ' +
-  'systems, architecture, flows, networking, scaling, how-things-work, healthcare, education, finance, retail, logistics, ' +
-  'journalism, newsrooms, AI, synthetic media, misinformation and media literacy. With no objects it is a paper title ' +
-  'card (title, subtitle, points).';
+  'Use links[].bidirectional=true for two-way traffic. Label the outbound arrow with label and the reverse arrow with returnLabel. Set replyAfter (e.g. 0.5) to play them in sequence.';
 export const tags = ['isometric', 'iso', 'diagram', 'architecture', 'system design', 'server', 'database', 'cache',
   'load balancer', 'scaling', 'cloud', 'users', 'flow', 'paper', '3d', 'infographic',
   'medical', 'healthcare', 'hospital', 'doctor', 'patient', 'ambulance', 'medicine', 'dna', 'science',
@@ -656,16 +643,27 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   const closing = sideNote?.until === undefined ? 1 : 1 - noteProgress(f - Math.round(sideNote.until * len));
   const noteAmount = sideNote ? Math.min(opening, closing) : 0;
   const sideNotes = sideNote ? (replacingNote ? [previousNote, sideNote] : [sideNote]) : [];
-  const noteViews = sideNotes.map(note => ({note, json: formatJsonExample(note.text)}));
-  const noteWidth = portraitNote ? W - 180 * u : W * (noteViews.some(view => view.json) ? 0.37 : 0.32);
-  const noteColumns = Math.max(16, Math.floor((noteWidth - 54 * u) / (24 * u * 0.64)));
-  const noteContent = noteViews.map(({note, json}) => ({
-    note, json: json ? previewJsonExample(json, -1, 0, noteColumns, 14) : null,
+  const noteViews = sideNotes.map(note => ({
+    note,
+    json: formatJsonExample(note.text),
+    detailJson: note.detail ? formatJsonExample(note.detail) : null,
   }));
-  const noteHeight = Math.max(340 * u, ...noteContent.map(({note, json}) => {
-    const rows = json ? json.lines.length + (json.header ? json.header.split(/\r?\n/).length : 0)
-      : note.text.split(/\r?\n/).reduce((total, line) => total + Math.max(1, Math.ceil(line.length / noteColumns)), 0);
-    const detailRows = note.detail ? Math.ceil(note.detail.length / noteColumns) : 0;
+  const noteWidth = portraitNote ? W - 180 * u : W * (noteViews.some(view => view.json || view.detailJson) ? 0.37 : 0.32);
+  const noteColumns = Math.max(16, Math.floor((noteWidth - 54 * u) / (24 * u * 0.64)));
+  const noteContent = noteViews.map(({note, json, detailJson}) => {
+    const maxLines = json && detailJson ? 8 : 14;
+    return {
+      note,
+      json: json ? previewJsonExample(json, -1, 0, noteColumns, maxLines) : null,
+      detailJson: detailJson ? previewJsonExample(detailJson, -1, 0, noteColumns, maxLines) : null,
+    };
+  });
+  const noteRows = (text: string, json: ReturnType<typeof formatJsonExample>) => json
+    ? json.lines.length + (json.header ? json.header.split(/\r?\n/).length : 0)
+    : text.split(/\r?\n/).reduce((total, line) => total + Math.max(1, Math.ceil(line.length / noteColumns)), 0);
+  const noteHeight = Math.max(340 * u, ...noteContent.map(({note, json, detailJson}) => {
+    const rows = noteRows(note.text, json);
+    const detailRows = note.detail ? noteRows(note.detail, detailJson) : 0;
     return (96 + (rows + detailRows) * 32) * u;
   }));
   const noteSpace = (noteWidth + 40 * u) * noteAmount;
@@ -695,7 +693,23 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
   // ---------- layout: fit every object (+ room for pills/notes) into the free area
   const tall = p.objects.map(() => true); // pill room for every object, so the layout depends only on positions (continued scenes match)
   const geos = separate(p.objects.map(geometry), tall, p.objects.map((ob) => ob.id));
-  const headingBottom = region ? region.top : hasTitle ? (p.subtitle ? 250 : 205) * u : 80 * u;
+  const headingWidth = W - 180 * u;
+  const wrappedLineCount = (text: string | undefined, size: number, weight: number) => {
+    let rows = 1;
+    let line = '';
+    for (const word of text?.trim().split(/\s+/) ?? []) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && paperTextEmWidth(next, weight) * size > headingWidth) {
+        rows++;
+        line = word;
+      } else line = next;
+    }
+    return rows;
+  };
+  const extraTitleSpace = portraitNote && (sideNote || stacked) ?
+    (wrappedLineCount(p.title, 56 * u, 800) - 1) * 70 * u +
+    (wrappedLineCount(p.subtitle, 28 * u, 400) - 1) * 34 * u : 0;
+  const headingBottom = region ? region.top : hasTitle ? (p.subtitle ? 250 : 205) * u + extraTitleSpace : 80 * u;
   const bottom = H - 200 * u; // captions live below
   const stackedExampleHeight = hasJsonExample ? Math.min(440 * u, (bottom - headingBottom) * 0.63) : 310 * u;
   const top = headingBottom + (stacked ? stackedExampleHeight + 10 * u : portraitNote ? noteHeight * noteAmount : 0);
@@ -1192,7 +1206,7 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
           border: `1px solid ${PAPER.inkSoft}`, borderRadius: 16 * u, background: PAPER.card,
           color: PAPER.ink, fontSize: 31 * u, fontWeight: 650, lineHeight: 1.25}}>
           <div style={{display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)'}}>
-            {noteContent.map(({note, json}, i) => (
+            {noteContent.map(({note, json, detailJson}, i) => (
               <div key={i} style={{gridArea: '1 / 1', minWidth: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
                 opacity: replacingNote ? (i === 0 ? 1 - noteProgress(f) : noteProgress(f)) : 1}}>
                 {json ? <div style={{fontFamily: PAPER.font, fontSize: 24 * u, lineHeight: 1.28}}>
@@ -1201,8 +1215,11 @@ export const IsoScene: React.FC<z.input<typeof isoSceneSchema>> = (input) => {
                   </div> : null}
                   <JsonExampleCode example={json} />
                 </div> : note.text}
-                {note.detail ? <div style={{fontSize: 23 * u, fontWeight: 600,
-                  marginTop: 16 * u, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere'}}>{note.detail}</div> : null}
+                {note.detail ? <div style={{fontSize: 23 * u, fontWeight: 600, marginTop: 16 * u,
+                  fontFamily: detailJson ? PAPER.font : undefined, lineHeight: detailJson ? 1.28 : undefined}}>
+                  {detailJson?.header ? <div style={{fontWeight: 800, marginBottom: 8 * u}}>{detailJson.header}</div> : null}
+                  {detailJson ? <JsonExampleCode example={detailJson} /> : note.detail}
+                </div> : null}
               </div>
             ))}
           </div>

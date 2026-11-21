@@ -26,6 +26,7 @@ class LongState(SavedUsage):
     _lookup_cache: LookupCache = PrivateAttr(default_factory=dict)
     id: str
     topic: str
+    source: str = ""  # the user's own content: the outline and every chapter use only its facts
     minutes: float
     captions: bool = True
     scale: float = 1.0
@@ -34,6 +35,7 @@ class LongState(SavedUsage):
     objective: str = ""
     skills: list[str] | None = None  # None migrates older jobs; [] explicitly disables guides
     scene_shortlist: list[str] = Field(default_factory=list)
+    prepicked: dict = Field(default_factory=dict)  # TypeSafe pre-picks (iso objects, overlays, diagram), reused by chapters
     layout: Literal["desktop", "mobile", "square"] = "desktop"  # frame size of every chapter
     max_minutes: float = 0  # the limit asked for; ``minutes`` is what the outline planned (content decides, up to the limit)
     status: Literal["outlined", "running", "planned", "done", "failed"] = "outlined"

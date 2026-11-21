@@ -6,6 +6,8 @@ metadata:
   roles:
   - planner
   category: format
+  # only for "ad": true (CLI --ad) or when named in "skills"; never picked from the prompt's words
+  on_request: true
   tags:
   - ad
   - advertisement

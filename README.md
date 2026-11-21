@@ -69,10 +69,12 @@ Current limits: guides improve instructions, not factual verification or guarant
 
 ## Local video worker
 
-With Redis running and the backend dependencies installed, set `VIDEO_JOB_RUNNER=celery` in the project-root `.env`. Start the API and the worker from the same checkout so they share the configured workspace and rendering files.
+The API never makes videos or runs the component agent itself: it queues the job on Celery and a worker does all of it. Redis and at least one worker must be running. Start the API and the worker from the same checkout so they share the configured workspace and rendering files.
 
 ```sh
-PYTHONPATH=backend .venv/bin/celery -A app.config.celery:celery_app worker --loglevel=INFO --concurrency=1
+PYTHONPATH=backend .venv/bin/celery -A app.config.celery:celery_app worker --loglevel=INFO --concurrency=4
 ```
 
-Submit a short or long job with `POST /videos` and poll the returned `status_url`. The worker consumes the configured `CELERY_VIDEO_QUEUE`. The API reads progress and artifacts from the shared workspace. `VIDEO_JOB_RUNNER=local` runs new jobs in the API process.
+Submit a short or long job with `POST /videos`, or a new scene with `POST /components`, and poll the returned `status_url` (`GET /videos/{id}` or `GET /components/jobs/{id}`). Cancel either with `POST /cancel/{id}`. The worker consumes the configured `CELERY_VIDEO_QUEUE`. The API reads progress and artifacts from the shared workspace. The CLI (`python -m app.cli video|long|component`) still runs in its own process.
+
+Video and component jobs are stored under `workspace/jobs/<id>/`. To upgrade a workspace that uses the old layout, stop the API, workers, and any CLI jobs using that workspace. Run `PYTHONPATH=backend .venv/bin/python -m app.cli migrate-jobs` from the project root before restarting them.

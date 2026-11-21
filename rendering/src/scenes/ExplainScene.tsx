@@ -5,6 +5,7 @@ import {entrance, entranceSchema} from '../animation';
 import {Device, deviceKindSchema, deviceStateSchema} from '../components/Device';
 import {AnimatedText, CountUp, DrawArrow, Pulse, stripMarkup, textAnimationSchema} from '../motion';
 import {useSceneWords, useTheme, useUnit} from '../theme';
+import {densityScale, titleScale} from '../textFit';
 
 const frame = z.number().int().nonnegative();
 const point = z.object({x: z.number().min(0).max(100), y: z.number().min(0).max(100)}).strict();
@@ -71,6 +72,9 @@ export const ExplainScene: React.FC<z.input<typeof explainSceneSchema>> = (input
   const pointsList = useRef<HTMLDivElement>(null);
   const [pointLayout, setPointLayout] = useState<PointLayout[]>([]);
   const pointCount = p.points.length;
+  // More points / text = smaller heading, body and points (k), so a busy card fits instead of scrolling.
+  const k = densityScale(pointCount, [p.heading, p.body, ...p.points], {roomyItems: 3.5, roomyChars: 280, min: 0.68});
+  const hk = k * titleScale(p.heading);
 
   useLayoutEffect(() => {
     const viewport = pointsViewport.current;
@@ -112,21 +116,21 @@ export const ExplainScene: React.FC<z.input<typeof explainSceneSchema>> = (input
 
   return (
     <AbsoluteFill style={{padding: `${(pointCount ? 60 : 90) * u}px ${120 * u}px`, flexDirection: 'row', alignItems: 'center', gap: 80 * u}}>
-      <div style={{flex: 1, minWidth: 0, maxHeight: '100%', display: 'flex', flexDirection: 'column', gap: 30 * u, alignItems: center ? 'center' : 'flex-start', textAlign: p.align}}>
+      <div style={{flex: 1, minWidth: 0, maxHeight: '100%', display: 'flex', flexDirection: 'column', gap: 30 * u * k, alignItems: center ? 'center' : 'flex-start', textAlign: p.align}}>
         {p.eyebrow ? (
           <div style={{fontSize: 26 * u, letterSpacing: 5 * u, fontWeight: 700, color: theme.accent, ...entrance('fade', f - p.startAt, fps, u)}}>
             {p.eyebrow.toUpperCase()}
           </div>
         ) : null}
         <AnimatedText as="h2" text={p.heading} mode={p.textAnimation} entrance={p.entrance} startAt={headingAt} stagger={p.wordStagger} syncHighlights
-          style={{fontSize: 82 * u, fontWeight: 800, lineHeight: 1.15, color: theme.text}} />
+          style={{fontSize: 82 * u * hk, fontWeight: 800, lineHeight: 1.15, color: theme.text}} />
         {p.body ? (
           <AnimatedText text={p.body} mode={p.textAnimation} entrance={p.entrance} startAt={bodyAt} stagger={Math.max(2, p.wordStagger - 1)} syncHighlights
-            style={{fontSize: 44 * u, lineHeight: 1.45, color: theme.muted, maxWidth: 1250 * u}} />
+            style={{fontSize: 44 * u * k, lineHeight: 1.45, color: theme.muted, maxWidth: 1250 * u}} />
         ) : null}
         {p.points.length ? (
           <div ref={pointsViewport} style={{width: '100%', minHeight: 0, overflow: 'hidden', marginTop: 6 * u}}>
-            <div ref={pointsList} style={{position: 'relative', display: 'flex', flexDirection: 'column', alignItems: center ? 'center' : 'stretch', gap: 18 * u, transform: `translateY(${-scrollOffset}px)`}}>
+            <div ref={pointsList} style={{position: 'relative', display: 'flex', flexDirection: 'column', alignItems: center ? 'center' : 'stretch', gap: 18 * u * k, transform: `translateY(${-scrollOffset}px)`}}>
               {p.points.map((pt, i) => {
                 const move = scrollMoves[i];
                 const at = pointFrames[i] + (move && move.distance > 0 ? scrollFrames * 0.8 : 0);
@@ -136,10 +140,10 @@ export const ExplainScene: React.FC<z.input<typeof explainSceneSchema>> = (input
                   {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}) : 1;
                 const appearance = entrance('fade', f - at, fps, u);
                 return (
-                  <div key={i} style={{display: 'flex', alignItems: 'center', gap: 22 * u, fontSize: 40 * u,
+                  <div key={i} style={{display: 'flex', alignItems: 'center', gap: 22 * u * k, fontSize: 40 * u * k,
                     lineHeight: 1.25, color: theme.text, ...appearance, opacity: appearance.opacity * outgoingOpacity}}>
-                    <span style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 52 * u, height: 52 * u, borderRadius: '50%',
-                      background: `color-mix(in srgb, ${theme.accent} 22%, transparent)`, color: theme.accent, fontSize: 28 * u, fontWeight: 800, flexShrink: 0}}>
+                    <span style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 52 * u * k, height: 52 * u * k, borderRadius: '50%',
+                      background: `color-mix(in srgb, ${theme.accent} 22%, transparent)`, color: theme.accent, fontSize: 28 * u * k, fontWeight: 800, flexShrink: 0}}>
                       {i + 1}
                     </span>
                     <AnimatedText as="span" text={pt} mode="none" startAt={at} style={{minWidth: 0, overflowWrap: 'anywhere'}} />

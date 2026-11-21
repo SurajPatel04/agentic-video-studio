@@ -3,10 +3,11 @@
 Both lengths return at once with an id; ``GET /videos/{id}`` reports status / step / progress, and the files
 are served from ``/videos/{id}/video|transcript|captions``.
 
-- short (one render, about 1-3 min): planned and rendered in the background; its status is saved in
-  ``workspace/jobs/<id>/status.json`` (12-hex id, same folder as the render)
-- long (chapters, 10-120 min): the long-video pipeline (``workspace/long/<id>/``, 10-hex id). The id is
-  made first, so the job can be polled while the outline is still being written.
+The API never makes a video itself: every job is queued on Celery and a worker process does the whole job
+(skills, plan, voice, render). The API only writes the queued status and reads status files.
+
+- short (one render, about 1-3 min): status in ``workspace/jobs/<id>/status.json`` (same folder as the render)
+- long (chapters, 10-120 min): the outline, chapter checkpoints and final render also live in ``workspace/jobs/<id>/``.
 """
 
 import asyncio
@@ -23,6 +24,8 @@ from app.agent.videoGenerator.jobs import job_store, long_video
 from app.agent.videoGenerator.generator import plan_video
 from app.config import settings
 from .scene_stream import streaming_video
+from .audio_cleanup import remove_audio
+from .storage import job_dir
 from app.utils import ids
 from app.utils.console import request_id
 from app.utils.llm_accounting import CollectedUsage, collect_usage
@@ -30,18 +33,12 @@ from app.utils.render import render_video
 
 log = logging.getLogger(__name__)
 
-_tasks: dict[str, asyncio.Task] = {}
 # Run facts kept in status.json (and Redis): who asked, queue wait, run time, tries.
 RUN_FIELDS = ("request_id", "runner", "queued_at", "started_at", "finished_at", "wait_seconds", "run_seconds", "attempts",
               "cancelled")
-_starting: dict[str, dict[str, Any]] = {}  # long jobs whose outline is still being written (no state yet)
 
 
 # --------------------------------------------------------------------------- short
-
-
-def _short_dir(job_id: str) -> Path:
-    return settings.WORKSPACE_DIR / "jobs" / job_id
 
 
 class QueueUnavailable(RuntimeError):
@@ -52,18 +49,10 @@ class JobNotActive(RuntimeError):
     """The job is not queued or running (already done, failed, cancelled or paused)."""
 
 
-def _job_dir(job_id: str, length: str | None = None) -> Path:
-    """workspace/long/<id> or workspace/jobs/<id>. Ids no longer tell the length (both are UUID4), so an
-    existing long folder decides when the length is not given."""
-    if length is None:
-        length = "long" if job_id in _starting or (settings.WORKSPACE_DIR / "long" / job_id).is_dir() else "short"
-    return settings.WORKSPACE_DIR / ("long" if length == "long" else "jobs") / job_id
-
-
 def _save(job_id: str, *, force: bool = False, **changes: Any) -> dict[str, Any]:
     """Merge changes into status.json. Once cancelled, the job's own later updates cannot change the status
     back (only a new queue/resume, or force=True)."""
-    d = _job_dir(job_id, changes.get("length"))
+    d = job_dir(job_id)
     d.mkdir(parents=True, exist_ok=True)
     path = d / "status.json"
     status = json.loads(path.read_text()) if path.exists() else {}
@@ -77,12 +66,16 @@ def _save(job_id: str, *, force: bool = False, **changes: Any) -> dict[str, Any]
     return status
 
 
-def render_threads() -> int | None:
-    """Remotion threads for one short render. Celery: the cores shared by CELERY_WORKERS jobs (at least 1);
-    local: None = Remotion's default."""
+def render_threads(renders_per_job: int = 1) -> int | None:
+    """Remotion threads for one render. Celery: this machine's cores split between the jobs running on it now
+    (Redis heartbeats; a lone job gets all of them), at least RENDER_MIN_THREADS. Without Redis it assumes all
+    CELERY_WORKERS are busy. Local runner: None = Remotion's default."""
     if settings.VIDEO_JOB_RUNNER != "celery":
         return None
-    return max(1, (os.cpu_count() or 2) // settings.CELERY_WORKERS)
+    cores = os.cpu_count() or 2
+    active = job_store.active_here()
+    jobs = max(1, active) if active is not None else settings.CELERY_WORKERS
+    return min(cores, max(settings.RENDER_MIN_THREADS, cores // (jobs * max(1, renders_per_job))))
 
 
 def _enqueue(job_id: str, req: dict[str, Any], length: str) -> None:
@@ -104,7 +97,7 @@ def _enqueue(job_id: str, req: dict[str, Any], length: str) -> None:
 def _created(job_id: str, now: float) -> float:
     """Keep the first creation time when a long video is queued again (resume)."""
     try:
-        return json.loads((_job_dir(job_id) / "status.json").read_text()).get("created") or now
+        return json.loads((job_dir(job_id) / "status.json").read_text()).get("created") or now
     except (OSError, ValueError):
         return now
 
@@ -113,7 +106,7 @@ def _created(job_id: str, now: float) -> float:
 async def _run_clock(job_id: str):
     """Saves started_at, wait_seconds (time in the queue), attempts (1 + redeliveries / resumes), then
     finished_at and run_seconds however the run ends (done, failed, cancelled)."""
-    s = json.loads((_job_dir(job_id) / "status.json").read_text())
+    s = json.loads((job_dir(job_id) / "status.json").read_text())
     started = time.time()
     waited = started - (s.get("queued_at") or s.get("created") or started)
     _save(job_id, started_at=started, wait_seconds=round(waited, 1), attempts=(s.get("attempts") or 0) + 1,
@@ -146,7 +139,7 @@ def _worker_lock(path: Path):
 
 async def run_queued_video(job_id: str, req: dict[str, Any], length: str) -> None:
     """The whole video in this worker process: skills, plan, voice, render (long: every chapter)."""
-    directory = (settings.WORKSPACE_DIR / "long" / job_id) if length == "long" else _short_dir(job_id)
+    directory = job_dir(job_id)
     with _worker_lock(directory / ".worker.lock") as owns_job:
         if not owns_job:
             return
@@ -164,30 +157,23 @@ async def run_queued_video(job_id: str, req: dict[str, Any], length: str) -> Non
 
 def _cancelled(job_id: str) -> bool:
     try:
-        return json.loads((_job_dir(job_id) / "status.json").read_text()).get("status") == "cancelled"
+        return json.loads((job_dir(job_id) / "status.json").read_text()).get("status") == "cancelled"
     except (OSError, ValueError):
         return False
 
 
 def cancel(job_id: str) -> dict[str, Any] | None:
-    """Stop a queued or running video job (short or long, this server or a Celery worker).
+    """Stop a queued or running video job.
 
-    Queued: the worker skips it. Running here: its task is cancelled now. Running on a worker: the worker
-    sees it within JOB_HEARTBEAT_SECONDS and stops (render and ffmpeg processes are killed). Finished
-    chapters of a long video stay saved.
+    Queued: the worker skips it. Running: the worker sees the cancel mark within JOB_HEARTBEAT_SECONDS and
+    stops (render and ffmpeg processes are killed). Finished chapters of a long video stay saved.
     None = unknown id; JobNotActive when it is not queued or running."""
     v = view(job_id)
     if v is None:
         return None
     if v["status"] not in ("queued", "running"):
         raise JobNotActive(f"video {job_id} is {v['status']}, nothing to cancel")
-    if job_id in _starting:
-        _starting[job_id].update(status="cancelled", step="cancelled", error="cancelled by request", updated=time.time())
     _save(job_id, length=v["length"], status="cancelled", step="cancelled", error="cancelled by request", cancelled=time.time())
-    for tasks in (_tasks, long_video._tasks):
-        task = tasks.get(job_id)
-        if task and not task.done():
-            task.cancel()
     return view(job_id)
 
 
@@ -217,17 +203,11 @@ async def _run_queued(job_id: str, req: dict[str, Any], length: str, directory: 
         raise
 
 
-async def _run_short_here(job_id: str, req: dict[str, Any]) -> None:
-    """VIDEO_JOB_RUNNER=local: the job runs as a task of this server."""
-    async with _run_clock(job_id):
-        await _run_short(job_id, req)
-
-
 async def _run_short(job_id: str, req: dict[str, Any], *, propagate: bool = False) -> None:
     with collect_usage() as usage:
         try:
             await _make_short(job_id, req, usage)
-        except Exception as exc:  # the job reports the failure; the server keeps running
+        except Exception as exc:  # the job reports the failure
             log.exception("short video %s failed", job_id)
             _save(job_id, status="failed", error=f"{type(exc).__name__}: {exc}"[:2000],
                   details=str(getattr(exc, "details", ""))[-3000:], cost_usd=_cost(usage))
@@ -242,7 +222,8 @@ async def _make_short(job_id: str, req: dict[str, Any], usage: CollectedUsage) -
                                captions_mode=req.get("captions_mode"), narrate=req.get("narrate", True),
                                concurrency=threads) as stream:
         plan = await plan_video(req["prompt"], scenes=req.get("scenes"), model=req.get("model"), mode=req.get("planner"),
-                                skills=req.get("skills"), layout=req["layout"])
+                                skills=req.get("skills"), layout=req["layout"], ad=bool(req.get("ad")),
+                                minutes=req.get("minutes") if req.get("ad") else None, source=req.get("source"))
         if stream:
             await stream.finish()
         _save(job_id, step="voice, captions and render", progress=0.45, skills=plan.skills, scenes=len(plan.spec.get("scenes", [])),
@@ -252,17 +233,13 @@ async def _make_short(job_id: str, req: dict[str, Any], usage: CollectedUsage) -
                                     concurrency=threads)
     _save(job_id, status="done", step="done", progress=1.0, seconds=round(result.seconds, 1), video=str(result.video),
           cost_usd=_cost(usage))
+    await asyncio.to_thread(remove_audio, job_dir(job_id))  # the MP4 has the audio now
 
 
 def start_short(req: dict[str, Any]) -> str:
+    """Queue a short video on the Celery workers (QueueUnavailable when the queue cannot be reached)."""
     job_id = ids.new_id()
-    if settings.VIDEO_JOB_RUNNER == "celery":
-        _enqueue(job_id, req, "short")
-        return job_id
-    now = time.time()
-    _save(job_id, id=job_id, length="short", layout=req["layout"], prompt=req["prompt"], status="queued", step="queued",
-          progress=0.0, error="", created=now, queued_at=now, request_id=request_id.get() or None)
-    _tasks[job_id] = asyncio.get_running_loop().create_task(_run_short_here(job_id, req))
+    _enqueue(job_id, req, "short")
     return job_id
 
 
@@ -273,17 +250,7 @@ async def _create_outline(job_id: str, req: dict[str, Any]) -> None:
     await long_video.create_long_video(req["prompt"], req["minutes"], chapters=req.get("chapters"), captions=req.get("captions", True),
                                        scale=req.get("scale", 1.0), mode=req.get("planner"), model=req.get("model"),
                                        skills=req.get("skills"), layout=req["layout"], job_id=job_id,
-                                       fixed_length=req.get("fixed_length", False))
-
-
-async def _run_long(job_id: str, req: dict[str, Any]) -> None:
-    try:
-        await _create_outline(job_id, req)
-        _starting.pop(job_id, None)
-        long_video.start(job_id, render=True)
-    except Exception as exc:
-        log.exception("long video %s failed while writing the outline", job_id)
-        _starting[job_id].update(status="failed", error=f"{type(exc).__name__}: {exc}"[:2000], updated=time.time())
+                                       fixed_length=req.get("fixed_length", False), source=req.get("source"))
 
 
 def queue_long_run(job_id: str, *, render: bool = True) -> bool:
@@ -298,14 +265,9 @@ def queue_long_run(job_id: str, *, render: bool = True) -> bool:
 
 
 def start_long(req: dict[str, Any]) -> str:
+    """Queue a long video on the Celery workers; the worker writes the outline, then every chapter."""
     job_id = long_video.new_id()
-    if settings.VIDEO_JOB_RUNNER == "celery":
-        _enqueue(job_id, req, "long")
-        return job_id
-    _starting[job_id] = {"id": job_id, "length": "long", "layout": req["layout"], "prompt": req["prompt"], "status": "running",
-                         "step": "writing the outline", "progress": 0.02, "error": "", "created": time.time(), "updated": time.time(),
-                         "request_id": request_id.get() or None}
-    _tasks[job_id] = asyncio.get_running_loop().create_task(_run_long(job_id, req))
+    _enqueue(job_id, req, "long")
     return job_id
 
 
@@ -319,19 +281,6 @@ def _urls(job_id: str, done: bool) -> dict[str, Any]:
             "captions_url": f"{base}/captions?format=srt" if done else None}
 
 
-def kind(job_id: str) -> str | None:
-    """"long" | "short" | None (unknown id)."""
-    if not ids.is_job_id(job_id):
-        return None
-    long_dir = settings.WORKSPACE_DIR / "long" / job_id
-    if job_id in _starting or any((long_dir / name).exists() for name in ("state.json", "status.json")):
-        return "long"
-    d = _short_dir(job_id)
-    if (d / "status.json").exists() or (d / "video.mp4").exists():
-        return "short"  # includes finished jobs written by earlier APIs or the CLI
-    return None
-
-
 def _worker_gone(job_id: str, updated: float) -> bool:
     """A celery job marked running whose worker stopped heartbeating (killed, out of memory, machine down)."""
     if time.time() - updated < settings.JOB_HEARTBEAT_SECONDS * 6:
@@ -339,7 +288,7 @@ def _worker_gone(job_id: str, updated: float) -> bool:
     beating = job_store.alive(job_id)
     if beating is not None:
         return not beating
-    with _worker_lock(_short_dir(job_id) / ".worker.lock") as free:  # no Redis: ask the file lock
+    with _worker_lock(job_dir(job_id) / ".worker.lock") as free:  # no Redis: ask the file lock
         return free
 
 
@@ -357,31 +306,33 @@ def view(job_id: str) -> dict[str, Any] | None:
 def _job_status(job_id: str) -> dict[str, Any] | None:
     """The same shape for both lengths: status = queued | running | done | failed | cancelled (| paused for
     a long job that stopped)."""
-    k = kind(job_id)
-    if k is None:
+    if not ids.is_job_id(job_id):
         return None
-    if k == "short":
-        d = _short_dir(job_id)
-        if not (d / "status.json").exists():  # older job: finished when its MP4 exists
-            spec = json.loads((d / "composition.json").read_text()) if (d / "composition.json").exists() else {}
+    directory = job_dir(job_id)
+    launch = directory / "status.json"
+    queued = json.loads(launch.read_text()) if launch.exists() else {}
+    if queued.get("kind") == "component":
+        return None
+    has_outline = (directory / "state.json").exists()
+    if not has_outline and queued.get("length") != "long":
+        if not queued.get("status"):
+            video = directory / "video.mp4"
+            if not video.exists():
+                return None
+            composition = directory / "composition.json"
+            spec = json.loads(composition.read_text()) if composition.exists() else {}
             layout = {(1080, 1920): "mobile", (1080, 1080): "square"}.get((spec.get("width"), spec.get("height")), "desktop")
-            created = (d / "video.mp4").stat().st_mtime
+            created = video.stat().st_mtime
             return {"id": job_id, "length": "short", "layout": layout, "prompt": "", "status": "done", "step": "done",
                     "progress": 1.0, "error": "", "created": created, "updated": created, **_urls(job_id, True)}
-        s = json.loads((d / "status.json").read_text())
-        if s.get("runner") != "celery" and s.get("status") in ("queued", "running") and not (job_id in _tasks and not _tasks[job_id].done()):
+        s = queued
+        if s.get("runner") != "celery" and s.get("status") in ("queued", "running"):  # made inside an older API process
             s.update(status="failed", error=s.get("error") or "the server stopped while this video was being made; send it again")
         elif s.get("runner") == "celery" and s.get("status") == "running" and _worker_gone(job_id, s.get("updated", 0)):
             s.update(status="failed", error=s.get("error") or "the worker stopped while this video was being made; send it again")
         s.pop("video", None)
         return {**s, **_urls(job_id, s.get("status") == "done")}
-    if job_id in _starting:
-        s = dict(_starting[job_id])
-        return {**s, **_urls(job_id, False)}
-    directory = settings.WORKSPACE_DIR / "long" / job_id
-    launch = directory / "status.json"
-    queued = json.loads(launch.read_text()) if launch.exists() else {}
-    if not (directory / "state.json").exists():
+    if not has_outline:
         return {**queued, **_urls(job_id, False)}
     st = long_video.load(job_id)
     running = long_video.is_running(job_id)
@@ -418,19 +369,20 @@ def file(job_id: str, name: str) -> Path | None:
     if not v or v["status"] != "done":
         return None
     if v["length"] == "short":
-        path = _short_dir(job_id) / name
+        path = job_dir(job_id) / name
         return path if path.exists() else None
     if name == "video.mp4":
-        return Path(long_video.load(job_id).video)
+        path = Path(long_video.load(job_id).video)
+        return path if path.is_file() else None
     path = long_video.transcript_files(job_id).get(name)
     return path if path and path.exists() else None
 
 
 def list_jobs(limit: int = 50) -> list[dict[str, Any]]:
-    ids = [p.parent.name for p in (settings.WORKSPACE_DIR / "jobs").glob("*/status.json")]
-    ids += [p.parent.name for p in (settings.WORKSPACE_DIR / "long").glob("*/state.json")] + list(_starting)
-    ids += [p.parent.name for p in (settings.WORKSPACE_DIR / "long").glob("*/status.json")]
-    views = [v for v in (view(i) for i in dict.fromkeys(ids)) if v]
+    root = settings.WORKSPACE_DIR / "jobs"
+    job_ids = [p.parent.name for p in root.glob("*/status.json")]
+    job_ids += [p.parent.name for p in root.glob("*/state.json")]
+    views = [v for v in (view(i) for i in dict.fromkeys(job_ids)) if v]
     views.sort(key=lambda v: v.get("created", 0), reverse=True)
     keep = ("id", "length", "layout", "prompt", "status", "step", "progress", "progress_percent", "created")
     return [{k: v.get(k) for k in keep} for v in views[:limit]]
