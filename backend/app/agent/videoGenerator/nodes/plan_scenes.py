@@ -1,10 +1,16 @@
-"""Plan and validate the visual composition using catalog or tool mode."""
+"""Plan and validate the visual composition using catalog or tool mode.
+
+The draft -> validate -> repair loop is a LangGraph subgraph (``add_plan_loop``): each LLM call, lookup,
+check and retry decision is its own node or edge."""
 import json
 import logging
 import re
+from dataclasses import dataclass, field
 from typing import Any, Literal, Sequence
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langgraph.graph import END, START, StateGraph
+from typing_extensions import TypedDict
 
 from app.agent.videoGenerator import skills as teaching_skills
 from app.config import settings
@@ -132,54 +138,72 @@ async def _edit(repair: Repair, llm, *, use_tool: bool = False):
         return None, usage_of(msg)
 
 
-async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[str] | tuple[str, ...] = (),
-                        *, code_demo: str | None = None, allowed: list[str] | None = None,
-                        layout: str = "desktop", scene_shortlist: Sequence[str] = ()) -> Plan:
-    lecture = "teach-lecture" in skills
-    explainer = "make-explainer" in skills
-    guides = teaching_skills.guidance(list(skills))
+@dataclass(eq=False)
+class PlanSession:
+    """One planning run's working memory, shared by the plan loop's graph nodes: the LLM clients, the
+    conversation, lookup caches and the best plan so far. It holds live clients, so it is not checkpointed."""
+    mode: Literal["catalog", "tools"]
+    topic: str
+    selected: list[str]
+    code_demo: str | None
+    layout: str
+    llm: Any  # full plans (tools mode: with the lookup tools bound)
+    repair_llm: Any  # scoped field repairs
+    base: list[Any]  # system prompt, brief (and reused lookups)
+    tool_history: list[Any] = field(default_factory=list)  # tools mode: lookup calls and their results
+    retry: list[Any] = field(default_factory=list)  # the last rejected reply and why it was rejected
+    cache: LookupCache = field(default_factory=dict)
+    known_scenes: set[str] = field(default_factory=set)
+    examples_sent: set[str] = field(default_factory=set)
+    scene_results: dict[str, str] = field(default_factory=dict)  # get_scene call id -> scene, not yet compacted
+    pending: Any = None  # tools mode: the reply whose lookups the lookup node runs
+    best: _Best = field(default_factory=_Best)  # valid plans with style problems: the one with the fewest is kept
+    repair: Repair | None = None  # the next call is this scoped repair instead of a whole new plan
+    last: str | None = None  # the latest full reply, for a last-resort salvage
+    problem: str = ""
+    tin: int = 0
+    tout: int = 0
+
+    @property
+    def lecture(self) -> bool:
+        return "teach-lecture" in self.selected
+
+    @property
+    def explainer(self) -> bool:
+        return "make-explainer" in self.selected
+
+    def conversation(self) -> list[Any]:
+        return [*self.base, *self.tool_history, *self.retry]
+
+    def count(self, usage: tuple[int, int]) -> None:
+        self.tin, self.tout = self.tin + usage[0], self.tout + usage[1]
+
+    def plan(self, spec: dict[str, Any], attempts: int, calls: int) -> Plan:
+        return Plan(spec, attempts, self.mode, calls, self.tin, self.tout, list(self.selected))
+
+
+def _catalog_session(topic: str, hint: str, model: str | None, skills: list[str] | tuple[str, ...] = (),
+                     *, code_demo: str | None = None, allowed: list[str] | None = None,
+                     layout: str = "desktop", scene_shortlist: Sequence[str] = ()) -> PlanSession:
+    skills = list(skills)
+    guides = teaching_skills.guidance(skills)
     available = teaching_skills.discover()
     preferred = [*scene_shortlist, *(scene for name in skills for scene in available[name].metadata.scenes)]
     overlays = dict.fromkeys(overlay for name in skills for overlay in available[name].metadata.overlays)
     index = "\nAvailable teaching guides:\n" + teaching_skills.index(allowed=allowed) if allowed != [] else ""
     system = (_rules() + index + guides + CATALOG_OUTPUT + catalog.catalog_text(topic, known=guides, preferred=preferred)
               + "\n" + "\n".join(catalog.overlay_text(name) for name in overlays))
-    messages: list[Any] = [SystemMessage(system), HumanMessage(f"Topic: {topic}\n\n{hint.strip()}")]
     llm = get_llm(model or settings.PLANNER_MODEL or None)
-    tin = tout = calls = 0
-    problem = ""
-    best = _Best()  # valid plans with style problems: the one with the fewest is kept
-    repair = None
-    last: str | None = None  # the latest full reply, for a last-resort salvage
-    for attempt in range(1, settings.PLANNER_MAX_ATTEMPTS + 1):
-        if repair:
-            reply, (i, o) = await _edit(repair, llm)
-        else:
-            msg = await planner_response(llm, messages, lecture=lecture, explainer=explainer)
-            reply, (i, o) = text_of(msg), usage_of(msg)
-        calls += 1
-        tin, tout = tin + i, tout + o
-        if reply is None:
-            repair = None
-            continue
-        spec, problem = await _check(reply, code_demo, lecture=lecture, explainer=explainer, layout=layout)
-        if spec:
-            style = _lint(spec, skills, topic, code_demo=code_demo)
-            if not style:
-                return Plan(spec, attempt, "catalog", calls, tin, tout)
-            if best.add(spec, attempt, style):
-                return Plan(best.spec, best.attempt, "catalog", calls, tin, tout)
-            problem = style
-        log.warning("planner.retry mode=catalog attempt=%d problem=%s", attempt, problem[:300])
-        last = reply
-        repair = _repair_for(reply, spec, problem, repair)
-        messages = [*messages[:2], AIMessage(reply), HumanMessage(problem)]
-    if best.spec:
-        return Plan(best.spec, best.attempt, "catalog", calls, tin, tout)
-    salvaged = None if lecture else await _salvage(last, problem, code_demo, explainer=explainer, layout=layout)
-    if salvaged:
-        return Plan(salvaged, settings.PLANNER_MAX_ATTEMPTS, "catalog", calls, tin, tout)
-    raise PlanError(f"planner gave invalid JSON {settings.PLANNER_MAX_ATTEMPTS} times", problem)
+    return PlanSession("catalog", topic, skills, code_demo, layout, llm, llm,
+                       [SystemMessage(system), HumanMessage(f"Topic: {topic}\n\n{hint.strip()}")])
+
+
+async def _plan_catalog(topic: str, hint: str, model: str | None, skills: list[str] | tuple[str, ...] = (),
+                        *, code_demo: str | None = None, allowed: list[str] | None = None,
+                        layout: str = "desktop", scene_shortlist: Sequence[str] = ()) -> Plan:
+    """One whole-catalog plan, run through the plan loop graph."""
+    return await run_plan_loop(_catalog_session(topic, hint, model, skills, code_demo=code_demo, allowed=allowed,
+                                                layout=layout, scene_shortlist=scene_shortlist))
 
 
 def _preloaded_scenes(code_demo: str | None, selected: list[str], scene_shortlist: Sequence[str] = (),
@@ -230,20 +254,15 @@ def _compact_old_lookups(tool_history: list[AIMessage | ToolMessage], scenes: di
             scenes.pop(message.tool_call_id)
 
 
-async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[str],
-                      *, code_demo: str | None = None, layout: str = "desktop",
-                      scene_shortlist: Sequence[str] = (), lookup_cache: LookupCache | None = None,
-                      lookup_focus: str = "", prepicked: dict | None = None) -> Plan:
-    lecture = "teach-lecture" in selected
-    explainer = "make-explainer" in selected
+def _tools_session(topic: str, hint: str, model: str | None, selected: list[str],
+                   *, code_demo: str | None = None, layout: str = "desktop",
+                   scene_shortlist: Sequence[str] = (), lookup_cache: LookupCache | None = None,
+                   lookup_focus: str = "", prepicked: dict | None = None) -> PlanSession:
     prepicked = prepicked or {}
     preloaded = _preloaded_scenes(code_demo, selected, scene_shortlist, diagram=prepicked.get("diagram", True))
     guides = teaching_skills.guidance(selected, asset_lookup=True)
     system = _tools_system(selected, guides, preloaded, prepicked)
     initial: list[SystemMessage | HumanMessage | AIMessage] = [SystemMessage(system)]
-    tool_history: list[AIMessage | ToolMessage] = []
-    retry_context: list[AIMessage | HumanMessage] = []
-    lookup = LOOKUP_TOOLS
     cache = lookup_cache if lookup_cache is not None else {}
     known_scenes = set(preloaded)
     reference, reused_scenes = chapter_lookup_reference(cache, lookup_focus or topic, known_scenes)
@@ -252,97 +271,206 @@ async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[s
                                  "the current chapter. Look up any missing detail.\n\n" + reference))
         known_scenes.update(reused_scenes)
     initial.append(HumanMessage(f"Topic: {topic}\n\n{hint.strip()}"))
-    examples_sent: set[str] = set()
-    scene_results: dict[str, str] = {}  # tool call id -> scene, for get_scene results not yet compacted
-    model = model or settings.PLANNER_MODEL or None
-    repair_llm = get_tool_llm(model)
-    llm = repair_llm.bind_tools(list(lookup.values()))
-    tin = tout = calls = attempts = 0
-    problem = ""
-    best = _Best()
-    repair = None
-    last: str | None = None
-    for _ in range(settings.PLANNER_MAX_STEPS):
-        if repair:
-            reply, (i, o) = await _edit(repair, repair_llm, use_tool=True)
-            calls += 1
-            tin, tout = tin + i, tout + o
-            if reply is None:
-                repair = None
-                attempts += 1
-                if attempts >= settings.PLANNER_MAX_ATTEMPTS:
-                    break
-                continue
+    repair_llm = get_tool_llm(model or settings.PLANNER_MODEL or None)
+    llm = repair_llm.bind_tools(list(LOOKUP_TOOLS.values()))
+    return PlanSession("tools", topic, list(selected), code_demo, layout, llm, repair_llm, initial,
+                       cache=cache, known_scenes=known_scenes)
+
+
+async def _plan_tools(topic: str, hint: str, model: str | None, selected: list[str],
+                      *, code_demo: str | None = None, layout: str = "desktop",
+                      scene_shortlist: Sequence[str] = (), lookup_cache: LookupCache | None = None,
+                      lookup_focus: str = "", prepicked: dict | None = None) -> Plan:
+    """One plan with lookup tools, run through the plan loop graph."""
+    return await run_plan_loop(_tools_session(topic, hint, model, selected, code_demo=code_demo, layout=layout,
+                                              scene_shortlist=scene_shortlist, lookup_cache=lookup_cache,
+                                              lookup_focus=lookup_focus, prepicked=prepicked))
+
+
+# --------------------------------------------------------------------------- plan loop (graph nodes)
+#
+#   draft ──(lookups)──> lookup ──> draft | repair | give_up
+#     └──(reply)──> validate ──(valid)──> done
+#                      └──(rejected)──> repair | draft (whole new plan) | give_up (attempts or steps used up)
+#   repair ──(edit applied)──> validate      repair ──(edit rejected)──> draft | give_up
+#
+# Counters live in the graph state (attempts = full or repaired plans checked, steps = LLM calls), so every
+# routing decision is an edge. The conversation and caches live in the PlanSession.
+
+
+class PlanLoopState(TypedDict, total=False):
+    session: PlanSession
+    attempts: int
+    steps: int
+    outcome: Literal["lookup", "check", "retry", "done"]
+    reply: str | None
+    plan: Plan
+
+
+async def draft(state: PlanLoopState) -> dict:
+    """A whole plan from the conversation (tools mode: or lookups to run first)."""
+    s = state["session"]
+    msg = await planner_response(s.llm, s.conversation(), tools=s.mode == "tools", lecture=s.lecture, explainer=s.explainer)
+    s.count(usage_of(msg))
+    steps = state["steps"] + 1
+    if getattr(msg, "tool_calls", None):
+        s.pending = msg
+        return {"steps": steps, "outcome": "lookup"}
+    reply = text_of(msg)
+    if reply is None:
+        return {"steps": steps, "attempts": state["attempts"] + 1, "outcome": "retry"}
+    return {"steps": steps, "reply": reply, "outcome": "check"}
+
+
+async def lookup(state: PlanLoopState) -> dict:
+    """Run the lookups the planner asked for and add their results to the conversation."""
+    s = state["session"]
+    msg, s.pending = s.pending, None
+    _compact_old_lookups(s.tool_history, s.scene_results)
+    s.tool_history.append(msg)
+    for call in msg.tool_calls:
+        name, args = call["name"], call["args"]
+        fn = LOOKUP_TOOLS.get(name)
+        cached = False
+        if name == "search_scenes" and isinstance(args.get("query"), str):
+            result = search_scene_summaries(args["query"], exclude=s.known_scenes)
+        elif name == "get_scene" and isinstance(scene_name := args.get("name"), str):
+            if scene_name in s.examples_sent:
+                result = f"{scene_name} details are already in this conversation."
+            else:
+                include_fields = scene_name not in s.known_scenes
+                key = (name, json.dumps([scene_name, include_fields]))
+                cached = key in s.cache
+                if not cached:
+                    s.cache[key] = scene_details(scene_name, include_fields=include_fields, link_diagram=True)
+                result = s.cache[key]
+                s.known_scenes.add(scene_name)
+                s.examples_sent.add(scene_name)
+                s.scene_results[call["id"]] = scene_name
+        elif fn:
+            # New drawings become searchable as soon as another chapter creates one.
+            version = iso_inventory_version() if name == "find_iso_objects" else None
+            key = (name, json.dumps([args, version], sort_keys=True))
+            cached = key in s.cache
+            if not cached:
+                s.cache[key] = str(fn.invoke(args))
+            result = s.cache[key]
         else:
-            msg = await planner_response(llm, [*initial, *tool_history, *retry_context], tools=True,
-                                         lecture=lecture, explainer=explainer)
-            calls += 1
-            i, o = usage_of(msg)
-            tin, tout = tin + i, tout + o
-            if msg.tool_calls:
-                _compact_old_lookups(tool_history, scene_results)
-                tool_history.append(msg)
-                for call in msg.tool_calls:
-                    name, args = call["name"], call["args"]
-                    fn = lookup.get(name)
-                    cached = False
-                    if name == "search_scenes" and isinstance(args.get("query"), str):
-                        result = search_scene_summaries(args["query"], exclude=known_scenes)
-                    elif name == "get_scene" and isinstance(scene_name := args.get("name"), str):
-                        if scene_name in examples_sent:
-                            result = f"{scene_name} details are already in this conversation."
-                        else:
-                            include_fields = scene_name not in known_scenes
-                            args_key = json.dumps([scene_name, include_fields])
-                            key = (name, args_key)
-                            cached = key in cache
-                            if not cached:
-                                cache[key] = scene_details(scene_name, include_fields=include_fields, link_diagram=True)
-                            result = cache[key]
-                            known_scenes.add(scene_name)
-                            examples_sent.add(scene_name)
-                            scene_results[call["id"]] = scene_name
-                    elif fn:
-                        # New drawings become searchable as soon as another chapter creates one.
-                        version = iso_inventory_version() if name == "find_iso_objects" else None
-                        key = (name, json.dumps([args, version], sort_keys=True))
-                        cached = key in cache
-                        if not cached:
-                            cache[key] = str(fn.invoke(args))
-                        result = cache[key]
-                    else:
-                        result = f"Unknown tool {name}"
-                    log.info("tool %s(%s) -> %d chars%s", name, json.dumps(args)[:120], len(str(result)),
-                             " (cached lookup)" if cached else "")
-                    content = str(result) if name == "get_scene" else str(result)[:8000]
-                    tool_history.append(ToolMessage(content, tool_call_id=call["id"]))
-                continue
-            reply = text_of(msg)
-        attempts += 1
-        last = reply
-        spec, problem = await _check(last, code_demo, lecture=lecture, explainer=explainer, layout=layout)
-        if spec:
-            style = _lint(spec, selected, topic, code_demo=code_demo)
-            if not style:
-                return Plan(spec, attempts, "tools", calls, tin, tout, selected)
-            if best.add(spec, attempts, style):
-                return Plan(best.spec, best.attempt, "tools", calls, tin, tout, selected)
-            problem = style
-        log.warning("planner.retry mode=tools attempt=%d problem=%s", attempts, problem[:300])
-        if attempts >= settings.PLANNER_MAX_ATTEMPTS:
-            break
-        repair = _repair_for(last, spec, problem, repair)
-        retry_context = [AIMessage(last), HumanMessage(problem)]
-    if best.spec:
-        return Plan(best.spec, best.attempt, "tools", calls, tin, tout, selected)
-    salvaged = None if lecture else await _salvage(last, problem, code_demo, explainer=explainer, layout=layout)
+            result = f"Unknown tool {name}"
+        log.info("tool %s(%s) -> %d chars%s", name, json.dumps(args)[:120], len(str(result)),
+                 " (cached lookup)" if cached else "")
+        content = str(result) if name == "get_scene" else str(result)[:8000]
+        s.tool_history.append(ToolMessage(content, tool_call_id=call["id"]))
+    return {}
+
+
+async def repair(state: PlanLoopState) -> dict:
+    """Ask only for the flagged fields (or scenes) instead of a whole new plan."""
+    s = state["session"]
+    reply, usage = await _edit(s.repair, s.repair_llm, use_tool=s.mode == "tools")
+    s.count(usage)
+    steps = state["steps"] + 1
+    if reply is None:  # the edit did not apply: the next try is a whole new plan
+        s.repair = None
+        return {"steps": steps, "attempts": state["attempts"] + 1, "outcome": "retry"}
+    return {"steps": steps, "reply": reply, "outcome": "check"}
+
+
+async def validate(state: PlanLoopState) -> dict:
+    """Check the reply against the scene contracts, then the style rules; on a problem, prepare the retry."""
+    s, reply = state["session"], state["reply"]
+    attempts = state["attempts"] + 1
+    s.last = reply
+    spec, problem = await _check(reply, s.code_demo, lecture=s.lecture, explainer=s.explainer, layout=s.layout)
+    if spec:
+        style = _lint(spec, s.selected, s.topic, code_demo=s.code_demo)
+        if not style:
+            return {"attempts": attempts, "outcome": "done", "plan": s.plan(spec, attempts, state["steps"])}
+        if s.best.add(spec, attempts, style):  # no style retries left: the plan with the fewest problems
+            return {"attempts": attempts, "outcome": "done", "plan": s.plan(s.best.spec, s.best.attempt, state["steps"])}
+        problem = style
+    log.warning("planner.retry mode=%s attempt=%d problem=%s", s.mode, attempts, problem[:300])
+    s.problem = problem
+    if attempts < settings.PLANNER_MAX_ATTEMPTS:
+        s.repair = _repair_for(reply, spec, problem, s.repair)
+        s.retry = [AIMessage(reply), HumanMessage(problem)]
+    return {"attempts": attempts, "outcome": "retry"}
+
+
+async def give_up(state: PlanLoopState) -> dict:
+    """Attempts or steps used up: the best valid plan, else salvage the few broken scenes, else fail."""
+    s, attempts, steps = state["session"], state["attempts"], state["steps"]
+    if s.best.spec:
+        return {"plan": s.plan(s.best.spec, s.best.attempt, steps)}
+    salvaged = None if s.lecture else await _salvage(s.last, s.problem, s.code_demo, explainer=s.explainer, layout=s.layout)
     if salvaged:
-        return Plan(salvaged, attempts, "tools", calls, tin, tout, selected)
-    raise PlanError(f"planner did not produce valid JSON (mode=tools, {attempts} attempts, {calls} calls)", problem)
+        return {"plan": s.plan(salvaged, attempts, steps)}
+    if s.mode == "catalog":
+        raise PlanError(f"planner gave invalid JSON {settings.PLANNER_MAX_ATTEMPTS} times", s.problem)
+    raise PlanError(f"planner did not produce valid JSON (mode=tools, {attempts} attempts, {steps} calls)", s.problem)
 
 
-async def plan_scenes(state: VideoState) -> dict:
-    """Write and validate the visual content and narration together in each scene."""
+def _next_call(state: PlanLoopState) -> str:
+    if state["steps"] >= settings.PLANNER_MAX_STEPS:
+        return "give_up"
+    return "repair" if state["session"].repair else "draft"
+
+
+def _after_retry(state: PlanLoopState) -> str:
+    return "give_up" if state["attempts"] >= settings.PLANNER_MAX_ATTEMPTS else _next_call(state)
+
+
+def _after_draft(state: PlanLoopState) -> str:
+    return {"lookup": "lookup", "check": "validate"}.get(state["outcome"]) or _after_retry(state)
+
+
+def _after_repair(state: PlanLoopState) -> str:
+    return "validate" if state["outcome"] == "check" else _after_retry(state)
+
+
+def _after_validate(state: PlanLoopState) -> str:
+    return "done" if state["outcome"] == "done" else _after_retry(state)
+
+
+def add_plan_loop(graph: StateGraph, done: str) -> str:
+    """Add the plan loop's nodes and edges to ``graph``; a finished plan goes to ``done``. Returns the entry node."""
+    for name, node in (("draft", draft), ("lookup", lookup), ("repair", repair), ("validate", validate), ("give_up", give_up)):
+        graph.add_node(name, node)
+    calls = {"draft": "draft", "repair": "repair", "give_up": "give_up"}
+    graph.add_conditional_edges("draft", _after_draft, {**calls, "lookup": "lookup", "validate": "validate"})
+    graph.add_conditional_edges("lookup", _next_call, calls)
+    graph.add_conditional_edges("repair", _after_repair, {**calls, "validate": "validate"})
+    graph.add_conditional_edges("validate", _after_validate, {**calls, "done": done})
+    graph.add_edge("give_up", done)
+    return "draft"
+
+
+def recursion_limit() -> int:
+    """LangGraph node runs one plan may take: up to two per LLM call (draft + lookup, repair + validate)."""
+    return 2 * settings.PLANNER_MAX_STEPS + 2 * settings.PLANNER_MAX_ATTEMPTS + 10
+
+
+def _build_plan_loop():
+    graph = StateGraph(PlanLoopState)
+    graph.add_edge(START, add_plan_loop(graph, END))
+    return graph.compile(name="plan_loop")
+
+
+PLAN_LOOP = _build_plan_loop()
+
+
+async def run_plan_loop(session: PlanSession) -> Plan:
+    """Run the plan loop on its own (one plan, no skill routing or assets)."""
+    result = await PLAN_LOOP.ainvoke({"session": session, "attempts": 0, "steps": 0},
+                                     config={"recursion_limit": recursion_limit()})
+    return result["plan"]
+
+
+# --------------------------------------------------------------------------- video graph nodes
+
+
+async def start_planning(state: VideoState) -> dict:
+    """Build the planner's prompt and session for the plan loop."""
     topic, hint, model = state["topic"], state["hint"], state["model"]
     selected, allowed = state["selected"], state["allowed"]
     code_demo, mode = state["code_demo"], state["mode"]
@@ -354,13 +482,18 @@ async def plan_scenes(state: VideoState) -> dict:
         hint += iso_design.planner_hint()
     hint += _visual_hint(topic, selected)
     if mode == "tools":
-        plan = await _plan_tools(topic, hint, model, selected, code_demo=code_demo, layout=layout,
+        session = _tools_session(topic, hint, model, selected, code_demo=code_demo, layout=layout,
                                  scene_shortlist=scene_shortlist, lookup_cache=state.get("lookup_cache"),
                                  lookup_focus=state.get("lookup_focus", ""), prepicked=state.get("prepicked"))
     else:
-        plan = await _plan_catalog(topic, hint, model, selected, code_demo=code_demo, allowed=allowed, layout=layout,
+        session = _catalog_session(topic, hint, model, selected, code_demo=code_demo, allowed=allowed, layout=layout,
                                    scene_shortlist=scene_shortlist)
-        plan.skills = selected
+    return {"session": session, "attempts": 0, "steps": 0}
+
+
+async def finish_planning(state: VideoState) -> dict:
+    """Add the skill router's LLM usage to the finished plan."""
+    plan = state["plan"]
     calls, tin, tout = state["route_usage"]
     plan.llm_calls += calls
     plan.input_tokens += tin

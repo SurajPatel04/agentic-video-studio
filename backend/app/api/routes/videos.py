@@ -45,6 +45,7 @@ def _video_job(job_id: str) -> dict[str, Any]:
 @router.get("/videos/{job_id}")
 def get_video(job_id: str) -> dict[str, Any]:
     """status: queued | running | done | failed | cancelled (POST /cancel/{id}) | paused (a long video that stopped).
+    queue_position = place in the queue while "queued" (1 = next to start), else null.
     step = what it is doing now, progress = 0..1, progress_percent = display percentage (e.g. "45%"), error when failed; the file URLs appear when done."""
     return _video_job(job_id)
 

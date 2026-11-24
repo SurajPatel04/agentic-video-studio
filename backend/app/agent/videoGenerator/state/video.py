@@ -1,4 +1,6 @@
 """Inputs, intermediate results and output of one video planning run."""
+from typing import Any
+
 from typing_extensions import NotRequired, TypedDict
 
 from ..schemas.plan import Plan
@@ -30,3 +32,9 @@ class VideoState(VideoInput):
     allowed: NotRequired[list[str] | None]
     route_usage: NotRequired[tuple[int, int, int]]
     plan: NotRequired[Plan]
+    # plan loop (nodes/plan_scenes.py): working memory, counters and the last step's result
+    session: NotRequired[Any]  # PlanSession
+    attempts: NotRequired[int]
+    steps: NotRequired[int]
+    outcome: NotRequired[str]
+    reply: NotRequired[str | None]

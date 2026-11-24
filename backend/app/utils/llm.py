@@ -9,6 +9,7 @@ import time
 from typing import Any
 from urllib.parse import urlparse
 
+from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 
 from app.config import settings
@@ -79,12 +80,13 @@ def get_llm(model: str | None = None, **kwargs: Any) -> ChatOpenAI:
     return _LLM_CACHE[key]
 
 
-async def call_model(prompt: Any, model: str | None = None, **kwargs: Any) -> str:
-    """Send ``prompt`` (a string or list of messages) and return the text reply."""
+async def call_model(prompt: str | list[BaseMessage], model: str | None = None, **kwargs: Any) -> str:
+    """Send ``prompt`` (LangChain messages; a plain string becomes one HumanMessage) and return the text reply."""
     llm = get_llm(model, **kwargs)
+    messages = [HumanMessage(prompt)] if isinstance(prompt, str) else prompt
     started = time.perf_counter()
     try:
-        response = await llm.ainvoke(prompt)
+        response = await llm.ainvoke(messages)
     except Exception:
         log.exception("llm.call.failed model=%s", llm.model_name)
         raise

@@ -158,6 +158,15 @@ class VideosApiTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual((status["length"], status["status"], status["progress_percent"]),
                                  (length, "queued", "0%"))
 
+    async def test_post_and_get_show_the_queue_position(self):
+        with patch("app.agent.videoGenerator.jobs.tasks.generate_video.apply_async"):
+            jobs = [(await self.client.post("/videos", json={"prompt": f"Explain DNS {i}", "length": length})).json()
+                    for i, length in enumerate(("short", "long", "short"))]
+            self.assertEqual([j["queue_position"] for j in jobs], [1, 2, 3])
+            await self.client.post(f"/cancel/{jobs[0]['id']}")  # leaves the queue: the others move up
+            got = [(await self.client.get(j["status_url"])).json()["queue_position"] for j in jobs]
+            self.assertEqual(got, [None, 1, 2])
+
     async def test_short_ids_are_uuid4(self):
         with patch("app.agent.videoGenerator.jobs.video_jobs.plan_video", AsyncMock(side_effect=RuntimeError("stop"))):
             job = (await self.client.post("/videos", json={"prompt": "Explain DNS"})).json()

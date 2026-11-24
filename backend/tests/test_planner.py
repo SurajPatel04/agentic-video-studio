@@ -627,3 +627,38 @@ class RepairContextTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("component", fixed["scenes"][1]["props"])
         spec_ok, problem = await planner._check(json.dumps(fixed))
         self.assertTrue(spec_ok, problem)
+
+
+class PlanLoopGraphTests(unittest.IsolatedAsyncioTestCase):
+    """The draft -> validate -> repair loop is LangGraph nodes and edges, not a for loop inside one node."""
+
+    def test_loop_steps_are_graph_nodes(self):
+        from app.agent.videoGenerator.graph import video_graph
+        nodes = set(video_graph.get_graph().nodes)
+        self.assertTrue({"select_skills", "start_planning", "draft", "lookup", "validate", "repair", "give_up",
+                         "finish_planning", "prepare_assets"} <= nodes, nodes)
+
+    async def test_rejected_replies_retry_then_fail_with_plan_error(self):
+        llm = AsyncMock()
+        llm.ainvoke.side_effect = [AIMessage("not json")] * 5
+        with patch.object(planner, "get_llm", return_value=llm), self.assertRaises(planner.PlanError):
+            await planner._plan_catalog("topic", "", None)
+        self.assertEqual(llm.ainvoke.call_count, settings.PLANNER_MAX_ATTEMPTS)
+
+    async def test_broken_field_goes_through_the_repair_edge(self):
+        spec = _broken_plan()
+        flow = spec["scenes"][3]["props"]
+        fixed_flow = {**flow, "links": [{"from": flow["objects"][0]["id"], "to": "page"}]}
+        llm = AsyncMock()
+        llm.ainvoke.side_effect = [AIMessage(json.dumps(spec)), AIMessage(json.dumps({"updates": {"scenes[3].props": fixed_flow}}))] \
+            + [AIMessage(json.dumps(spec))] * 3  # later tries, if the repaired plan still has a problem
+        with patch.object(planner, "get_llm", return_value=llm), patch.object(planner, "_lint", return_value=""), \
+                patch.object(planner, "_repair_for", wraps=planner._repair_for) as repair_for, \
+                patch.object(planner, "_check", wraps=planner._check) as check:
+            try:
+                await planner._plan_catalog("topic", "", None)
+            except planner.PlanError:
+                pass
+        self.assertGreaterEqual(repair_for.call_count, 1)
+        self.assertIn("updates", str(llm.ainvoke.call_args_list[1].args[0]))  # the 2nd call is a scoped repair
+        self.assertGreaterEqual(check.call_count, 2)  # and its result is validated again

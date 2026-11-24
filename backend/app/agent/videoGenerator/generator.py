@@ -5,7 +5,7 @@ from app.utils.console import step
 from .ads import AD_SKILL, ad_brief
 from .source import source_context
 from .graph import video_graph
-from .nodes.plan_scenes import Mode
+from .nodes.plan_scenes import Mode, recursion_limit
 from .prompts.catalog import LAYOUT_HINT
 from .schemas.plan import Plan
 from .tools import catalog
@@ -52,7 +52,7 @@ async def plan_video(topic: str, *, scenes: int | None = None, model: str | None
             "lookup_focus": lookup_focus,
             "prepicked": prepicked or {},
             "force_format": AD_SKILL if ad else "",
-        })
+        }, config={"recursion_limit": recursion_limit() + 10})  # + the nodes around the plan loop
         plan = result["plan"]
         s.update(mode=plan.mode, skills=",".join(plan.skills), scenes=len(plan.spec.get("scenes", [])),
                  attempts=plan.attempts, llm_calls=plan.llm_calls, tokens_in=plan.input_tokens, tokens_out=plan.output_tokens)

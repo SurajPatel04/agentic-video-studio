@@ -304,6 +304,25 @@ class RouterTests(unittest.IsolatedAsyncioTestCase):
         r = await skill_router.route("anything", ["teach-code"], fmt="make-ad")  # requested guides + the ad guide
         self.assertEqual(r.skills, ["make-ad", "teach-code"])
 
+    async def test_llm_router_sends_system_and_human_messages(self):
+        from langchain_core.messages import HumanMessage, SystemMessage
+        from app.agent.videoGenerator.nodes import select_skills as skill_router
+        from app.utils import llm as llm_utils
+        llm = AsyncMock()
+        llm.ainvoke.side_effect = [AIMessage('{"format": "make-explainer"}')]
+        with patch.object(settings, "SKILL_ROUTER", "llm"), patch("app.agent.videoGenerator.nodes.select_skills.get_llm", return_value=llm):
+            await skill_router.route("How DNS works")
+        system, human = llm.ainvoke.call_args.args[0]
+        self.assertIsInstance(system, SystemMessage)
+        self.assertIsInstance(human, HumanMessage)
+        self.assertEqual(human.content, "Topic: How DNS works")
+        chat = AsyncMock()
+        chat.ainvoke.return_value = AIMessage("hi")
+        chat.model_name = "m"
+        with patch.object(llm_utils, "get_llm", return_value=chat):
+            await llm_utils.call_model("hello")  # a plain string is wrapped in a HumanMessage
+        self.assertEqual(chat.ainvoke.call_args.args[0], [HumanMessage("hello")])
+
     async def test_make_ad_only_on_request(self):
         from app.agent.videoGenerator.nodes import select_skills as skill_router
         for topic in ("Make a promo ad commercial for TaskFlow", "Teach how advertising campaigns work"):

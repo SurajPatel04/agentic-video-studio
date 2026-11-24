@@ -13,6 +13,7 @@ import re
 from dataclasses import dataclass, field
 
 from langchain_core.decisions import Choice, Noul, Question
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agent.videoGenerator import skills as teaching_skills
 from ..prompts.catalog import PROMPT
@@ -248,7 +249,8 @@ async def _route(topic: str, requested: list[str] | None = None, *, long_video: 
         else:
             llm = get_llm(settings.SKILL_ROUTER_MODEL or model or settings.PLANNER_MODEL or None)
             objectives = "\n".join(f"- {key}: {pattern['purpose']}" for key, pattern in OBJECTIVES.items())
-            msg = await llm.ainvoke(PROMPT.format(guides=_menu(available), objectives=objectives) + f"\n\nTopic: {topic}")
+            msg = await llm.ainvoke([SystemMessage(PROMPT.format(guides=_menu(available), objectives=objectives)),
+                                     HumanMessage(f"Topic: {topic}")])
             tin, tout = usage_of(msg)
             pick = _parse(text_of(msg))
     except Exception as exc:  # never block planning on the router

@@ -296,10 +296,32 @@ def progress_percent(fraction: float) -> str:
     return f"{fraction * 100:.1f}".removesuffix(".0") + "%"
 
 
+def queue_position(job_id: str) -> int | None:
+    """1 = the next job a free worker takes. Counts the queued jobs (videos and component agent jobs share
+    the Celery queue) that were queued before this one. None when this job is not waiting."""
+    root = settings.WORKSPACE_DIR / "jobs"
+    now, mine, waiting = time.time(), None, []
+    for path in root.glob("*/status.json"):
+        try:
+            s = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue  # being written right now
+        if s.get("status") != "queued" or now - s.get("updated", 0) >= settings.CELERY_VISIBILITY_TIMEOUT:
+            continue  # not waiting (or a stale entry no worker will take)
+        queued_at = s.get("queued_at") or s.get("created") or 0
+        if path.parent.name == job_id:
+            mine = queued_at
+        waiting.append((queued_at, path.parent.name))
+    if mine is None:
+        return None
+    return 1 + sum(1 for at, other in waiting if (at, other) < (mine, job_id))
+
+
 def view(job_id: str) -> dict[str, Any] | None:
     job = _job_status(job_id)
     if job is not None:
         job["progress_percent"] = progress_percent(job["progress"])
+        job["queue_position"] = queue_position(job_id) if job["status"] == "queued" else None
     return job
 
 
